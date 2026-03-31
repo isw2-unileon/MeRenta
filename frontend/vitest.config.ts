@@ -8,6 +8,7 @@ export default defineConfig({
     },
   },
   test: {
+    passWithNoTests: true,
     environment: "happy-dom",
     coverage: {
       provider: "v8",

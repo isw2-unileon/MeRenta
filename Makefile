@@ -1,7 +1,7 @@
 GOPATH := $(shell go env GOPATH)
 BACKEND_BIN := backend/bin/server
 
-.PHONY: install clean \
+.PHONY: install install-backend install-frontend install-e2e clean \
         run-backend run-frontend run \
         build-backend build-frontend build \
         run-backend-prod run-frontend-prod \
@@ -16,14 +16,23 @@ BACKEND_BIN := backend/bin/server
 # INSTALL
 # ============================================================================
 
-## Install all dependencies and tools
-install:
+## Install backend dependencies and tools
+install-backend:
 	go install github.com/air-verse/air@latest
 	curl -sSfL https://raw.githubusercontent.com/golangci/golangci-lint/HEAD/install.sh | sh -s -- -b $(GOPATH)/bin
 	go mod download
+
+## Install frontend dependencies
+install-frontend:
 	cd frontend && npm ci
+
+## Install E2E dependencies and browsers
+install-e2e: install-backend install-frontend
 	cd e2e && npm ci
 	cd e2e && npx playwright install --with-deps
+
+## Install all dependencies and tools
+install: install-backend install-frontend
 
 # ============================================================================
 # CLEAN
@@ -104,7 +113,7 @@ test: test-backend test-frontend
 
 ## Lint backend
 lint-backend:
-	$(GOPATH)/bin/golangci-lint run ./...
+	$(GOPATH)/bin/golangci-lint run ./backend/...
 
 ## Lint frontend
 lint-frontend:

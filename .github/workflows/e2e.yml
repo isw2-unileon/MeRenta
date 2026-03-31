@@ -25,7 +25,7 @@ jobs:
             e2e/package-lock.json
 
       - name: Install dependencies
-        run: make install
+        run: make install-e2e
 
       - name: Build frontend
         run: make build-frontend
