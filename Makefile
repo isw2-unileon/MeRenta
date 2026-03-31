@@ -9,6 +9,7 @@ BACKEND_BIN := backend/bin/server
         lint lint-backend lint-frontend \
         e2e \
         fmt fmt-backend fmt-frontend \
+        format-check format-check-backend format-check-frontend \
         check \
         seed migrate-up migrate-down migrate-create
 
@@ -32,7 +33,12 @@ install-e2e: install-backend install-frontend
 	cd e2e && npx playwright install --with-deps
 
 ## Install all dependencies and tools
-install: install-backend install-frontend
+install-dev: install-backend install-frontend install-e2e
+
+## Install production dependencies (no dev tools)
+install-prod:
+	go mod download
+	cd frontend && npm ci --omit=dev
 
 # ============================================================================
 # CLEAN
@@ -44,6 +50,7 @@ clean:
 	rm -fr $(BACKEND_BIN)
 	rm -fr e2e/playwright-report
 	rm -fr e2e/test-results
+	rm -fr coverage.out
 
 # ============================================================================
 # DEVELOPMENT
@@ -93,7 +100,7 @@ run-frontend-prod: build-frontend
 
 ## Run backend tests
 test-backend:
-	go test -v -race -count=1 ./...
+	go test -v -race -count=1 ./backend/...
 
 ## Run frontend tests
 test-frontend:
@@ -101,14 +108,29 @@ test-frontend:
 
 ## Run backend tests with coverage
 test-coverage:
-	go test -v -race -count=1 -coverprofile=coverage.out -covermode=atomic ./...
+	go test -v -race -count=1 -coverprofile=coverage.out -covermode=atomic ./backend/...
 	go tool cover -func=coverage.out
 
 ## Run all tests
 test: test-backend test-frontend
 
 # ============================================================================
-# LINT & FORMAT
+# FORMAT
+# ============================================================================
+
+## Format backend
+fmt-backend:
+	gofmt -w ./backend/
+
+## Format frontend
+fmt-frontend:
+	cd frontend && npm run format
+
+## Format everything
+fmt: fmt-backend fmt-frontend
+
+# ============================================================================
+# LINT & FORMAT CHECK
 # ============================================================================
 
 ## Lint backend
@@ -122,16 +144,22 @@ lint-frontend:
 ## Lint everything
 lint: lint-backend lint-frontend
 
-## Format backend
-fmt-backend:
-	go fmt ./...
+## Check formatting backend
+format-check-backend:
+	@echo "Checking backend formatting..."
+	@if [ -n "$$(gofmt -l ./backend/)" ]; then \
+		echo "The following files are not formatted:"; \
+		gofmt -l ./backend/; \
+		exit 1; \
+	fi
+	@echo "Backend formatting OK"
 
-## Format frontend
-fmt-frontend:
-	cd frontend && npx prettier --write "src/**/*.{ts,tsx,css}"
+## Check formatting frontend
+format-check-frontend:
+	cd frontend && npm run format:check
 
-## Format everything
-fmt: fmt-backend fmt-frontend
+## Check formatting everything
+format-check: format-check-backend format-check-frontend
 
 # ============================================================================
 # E2E
@@ -145,5 +173,5 @@ e2e:
 # CI / PRE-PUSH CHECK
 # ============================================================================
 
-## Run all checks (lint + test) — use in CI or before pushing
-check: lint test
+## Run all checks (lint + format check + test) — use in CI or before pushing
+check: lint format-check test
