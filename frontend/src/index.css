@@ -1,1 +1,105 @@
 @import "tailwindcss";
+
+@theme {
+  --font-sans: "Sora", sans-serif;
+  --font-logo: "Alan Sans", sans-serif;
+
+  --color-light: #d9d9d9;
+  --color-dark: rgb(45 70 84 / 70%);
+  --color-session: rgb(83 132 163 / 70%);
+  --color-button: #0f314d;
+  --color-button-hover: #123a5c;
+  --color-ring: #5384a3;
+
+  --color-primary: #304262;
+  --color-main: #243b4a;
+  --color-link: #045174;
+  --color-link-hover: #033d58;
+  --color-placeholder: rgb(36 59 74 / 70%);
+}
+
+@layer base {
+  body {
+    font-family: var(--font-sans), sans-serif;
+    color: var(--color-main);
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+  }
+
+  h1,
+  h2,
+  h3,
+  h4,
+  h5,
+  h6 {
+    color: var(--color-primary);
+    font-weight: 700;
+  }
+
+  a {
+    color: var(--color-link);
+    transition: color 0.2s ease;
+  }
+
+  a:hover {
+    color: var(--color-link-hover);
+    text-shadow:
+      0.3px 0 0 currentColor,
+      -0.3px 0 0 currentColor;
+  }
+
+  input,
+  select,
+  textarea {
+    background: var(--color-light);
+    color: var(--color-main);
+    border-radius: 0.5rem;
+  }
+
+  ::placeholder {
+    color: var(--color-placeholder);
+  }
+
+  input:focus,
+  textarea:focus,
+  select:focus {
+    outline: none;
+    box-shadow: 0 0 0 2px var(--color-ring);
+  }
+
+  button {
+    color: white;
+    background: var(--color-button);
+    border-radius: 0.5rem;
+    cursor: pointer;
+    will-change: transform;
+    backface-visibility: hidden;
+    -webkit-font-smoothing: subpixel-antialiased;
+    transition:
+      background 0.5s ease,
+      transform 0.3s ease;
+  }
+
+  button:hover {
+    background: var(--color-button-hover);
+    transform: scale(1.02);
+  }
+
+  button:focus-visible {
+    outline: none;
+    box-shadow:
+      0 0 0 2px white,
+      0 0 0 4px var(--color-ring);
+  }
+
+  button:disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
+  }
+
+  img,
+  svg {
+    display: block;
+    max-width: 100%;
+  }
+}
