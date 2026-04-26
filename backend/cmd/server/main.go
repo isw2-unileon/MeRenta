@@ -1,4 +1,3 @@
-// Package main is the entry point for the backend server.
 package main
 
 import (
@@ -12,6 +11,7 @@ import (
 
 	"github.com/gin-gonic/gin"
 	"github.com/isw2-unileon/MeRenta/backend/internal/config"
+	"github.com/isw2-unileon/MeRenta/backend/internal/database"
 )
 
 var logger = slog.New(slog.NewJSONHandler(os.Stdout, nil))
@@ -21,13 +21,33 @@ func main() {
 
 	cfg := config.Load()
 
+	// Conectar a la DB
+	pool, err := database.Connect(ctx, cfg.DatabaseURL)
+	if err != nil {
+		logger.Error("database connection failed", "error", err)
+		os.Exit(1)
+	}
+	defer pool.Close()
+	logger.Info("connected to database")
+
 	gin.SetMode(cfg.GinMode)
 
 	r := gin.New()
 	r.Use(gin.Logger(), gin.Recovery())
 
 	r.GET("/health", func(c *gin.Context) {
-		c.JSON(http.StatusOK, gin.H{"status": "ok"})
+		// Verificar que la DB sigue viva
+		if err := pool.Ping(c.Request.Context()); err != nil {
+			c.JSON(http.StatusServiceUnavailable, gin.H{
+				"status":   "error",
+				"database": "disconnected",
+			})
+			return
+		}
+		c.JSON(http.StatusOK, gin.H{
+			"status":   "ok",
+			"database": "connected",
+		})
 	})
 
 	api := r.Group("/api")
@@ -46,7 +66,7 @@ func main() {
 	defer stop()
 
 	go func() {
-		slog.Info("server listening", "addr", srv.Addr)
+		logger.Info("server listening", "addr", srv.Addr)
 		if err := srv.ListenAndServe(); err != nil && err != http.ErrServerClosed {
 			logger.Error("server error", "error", err)
 			os.Exit(1)
@@ -54,7 +74,7 @@ func main() {
 	}()
 
 	<-ctx.Done()
-	slog.Info("shutting down server")
+	logger.Info("shutting down server")
 
 	shutdownCtx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
 	defer cancel()
