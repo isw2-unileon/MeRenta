@@ -9,9 +9,11 @@ import (
 	"syscall"
 	"time"
 
+	"github.com/gin-contrib/cors"
 	"github.com/gin-gonic/gin"
 	"github.com/isw2-unileon/MeRenta/backend/internal/config"
 	"github.com/isw2-unileon/MeRenta/backend/internal/database"
+	"github.com/isw2-unileon/MeRenta/backend/internal/handlers"
 )
 
 var logger = slog.New(slog.NewJSONHandler(os.Stdout, nil))
@@ -35,6 +37,16 @@ func main() {
 	r := gin.New()
 	r.Use(gin.Logger(), gin.Recovery())
 
+	// CORS middleware
+	r.Use(cors.New(cors.Config{
+		AllowOrigins:     []string{cfg.CORSAllowOrigin},
+		AllowMethods:     []string{"GET", "POST", "PUT", "DELETE", "OPTIONS", "PATCH"},
+		AllowHeaders:     []string{"Origin", "Content-Type", "Authorization"},
+		ExposeHeaders:    []string{"Content-Length"},
+		AllowCredentials: true,
+		MaxAge:           12 * 3600,
+	}))
+
 	r.GET("/health", func(c *gin.Context) {
 		// Verificar que la DB sigue viva
 		if err := pool.Ping(c.Request.Context()); err != nil {
@@ -54,6 +66,14 @@ func main() {
 	api.GET("/hello", func(c *gin.Context) {
 		c.JSON(http.StatusOK, gin.H{"message": "Hello from the API"})
 	})
+
+	// Authentication routes
+	authHandler := handlers.NewAuthHandler(pool)
+	auth := api.Group("/auth")
+	{
+		auth.POST("/register", authHandler.Register)
+		auth.POST("/login", authHandler.Login)
+	}
 
 	srv := &http.Server{
 		Addr:         ":" + cfg.Port,
