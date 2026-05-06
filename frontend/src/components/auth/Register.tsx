@@ -1,4 +1,4 @@
-import { useState, useContext } from "react";
+import { type ChangeEvent, type FormEvent, useState, useContext } from "react";
 import { Eye, EyeOff } from "lucide-react";
 import { AuthContext } from "@/context/AuthContext";
 
@@ -6,12 +6,11 @@ type AuthView = "login" | "register" | "forgot";
 
 export function Register({ onSwitch }: { onSwitch: (v: AuthView) => void }) {
   const { register, isLoading } = useContext(AuthContext);
-  
+
   const [showPassword, setShowPassword] = useState(false);
   const [showRepeat, setShowRepeat] = useState(false);
   const [error, setError] = useState<string>("");
-  
-  // Form state
+
   const [formData, setFormData] = useState({
     firstName: "",
     lastName: "",
@@ -20,7 +19,7 @@ export function Register({ onSwitch }: { onSwitch: (v: AuthView) => void }) {
     repeatPassword: "",
   });
 
-  const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+  const handleChange = (e: ChangeEvent<HTMLInputElement>) => {
     const { id, value } = e.target;
     const fieldMap: Record<string, keyof typeof formData> = {
       "register-name": "firstName",
@@ -29,24 +28,27 @@ export function Register({ onSwitch }: { onSwitch: (v: AuthView) => void }) {
       "register-password": "password",
       "register-repeat-password": "repeatPassword",
     };
-    
+
     const field = fieldMap[id];
     if (field) {
-      setFormData(prev => ({ ...prev, [field]: value }));
+      setFormData((prev) => ({ ...prev, [field]: value }));
     }
   };
 
-  const handleSubmit = async (e: React.FormEvent) => {
+  const handleSubmit = async (e: FormEvent<HTMLFormElement>) => {
     e.preventDefault();
     setError("");
 
-    // Validation
-    if (!formData.firstName.trim() || !formData.lastName.trim()) {
+    const firstName = formData.firstName.trim();
+    const lastName = formData.lastName.trim();
+    const email = formData.email.trim();
+
+    if (!firstName || !lastName) {
       setError("El nombre es requerido");
       return;
     }
 
-    if (!formData.email.trim()) {
+    if (!email) {
       setError("El email es requerido");
       return;
     }
@@ -63,14 +65,13 @@ export function Register({ onSwitch }: { onSwitch: (v: AuthView) => void }) {
 
     try {
       await register({
-        first_name: formData.firstName,
-        last_name: formData.lastName,
-        email: formData.email,
+        first_name: firstName,
+        last_name: lastName,
+        email,
         password: formData.password,
         confirm_password: formData.repeatPassword,
       });
-      
-      // Success - switch to login
+
       setError("");
       setFormData({
         firstName: "",
@@ -87,12 +88,11 @@ export function Register({ onSwitch }: { onSwitch: (v: AuthView) => void }) {
 
   return (
     <div className="flex min-h-9/10 flex-col justify-between">
-      <form className="flex flex-col gap-4" onSubmit={handleSubmit}>
-        {error && (
-          <div className="p-3 bg-red-50 border border-red-200 rounded text-red-600 text-sm">
-            {error}
-          </div>
-        )}
+      <form
+        className="flex flex-col gap-4"
+        onSubmit={handleSubmit}
+      >
+        {error && <div className="rounded border border-red-200 bg-red-50 p-3 text-sm text-red-600">{error}</div>}
 
         <div>
           <label

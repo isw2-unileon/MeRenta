@@ -24,13 +24,52 @@ const AuthContext = createContext<AuthContextType>({
 
 const API_BASE_URL = "/api";
 
+const parseErrorMessage = async (response: Response): Promise<string> => {
+  try {
+    const payload: unknown = await response.json();
+    if (payload && typeof payload === "object") {
+      const maybePayload = payload as { error?: string; message?: string };
+      if (typeof maybePayload.error === "string" && maybePayload.error.trim() !== "") {
+        return maybePayload.error;
+      }
+      if (typeof maybePayload.message === "string" && maybePayload.message.trim() !== "") {
+        return maybePayload.message;
+      }
+    }
+    return "Request failed";
+  } catch {
+    return "Request failed";
+  }
+};
+
+const parseAuthResponse = async (
+  response: Response
+): Promise<{
+  token: string;
+  customer: CustomerPublic;
+}> => {
+  const payload: unknown = await response.json();
+  if (!payload || typeof payload !== "object") {
+    throw new Error("Invalid response payload");
+  }
+  const data = (payload as { data?: unknown }).data;
+  if (!data || typeof data !== "object") {
+    throw new Error("Invalid response data");
+  }
+  const token = (data as { token?: unknown }).token;
+  const customer = (data as { customer?: unknown }).customer;
+  if (typeof token !== "string" || !customer || typeof customer !== "object") {
+    throw new Error("Invalid auth response");
+  }
+  return { token, customer: customer as CustomerPublic };
+};
+
 function AuthProvider({ children }: { children: React.ReactNode }) {
   const [isAuthenticated, setIsAuthenticated] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
   const [user, setUser] = useState<CustomerPublic | null>(null);
   const [accessToken, setAccessToken] = useState<string | null>(null);
 
-  // Initialize on mount - no persistent storage needed
   useEffect(() => {
     setIsLoading(false);
   }, []);
@@ -47,14 +86,12 @@ function AuthProvider({ children }: { children: React.ReactNode }) {
       });
 
       if (!response.ok) {
-        const error = await response.json();
-        throw new Error(error.message || "Login failed");
+        throw new Error(await parseErrorMessage(response));
       }
 
-      const data = await response.json();
-      const { access_token, refresh_token, customer } = data.data;
+      const { token, customer } = await parseAuthResponse(response);
 
-      setAccessToken(access_token);
+      setAccessToken(token);
       setUser(customer);
       setIsAuthenticated(true);
     } catch (error) {
@@ -81,26 +118,19 @@ function AuthProvider({ children }: { children: React.ReactNode }) {
           email: data.email,
           password: data.password,
           confirm_password: data.confirm_password,
-          phone: data.phone || undefined,
+          phone: data.phone ?? undefined,
         }),
       });
 
       if (!response.ok) {
-        const error = await response.json();
-        throw new Error(error.error || "Registration failed");
+        throw new Error(await parseErrorMessage(response));
       }
-
-      // Registration successful - no storage needed
-      // User will need to login separately
-    } catch (error) {
-      throw error;
     } finally {
       setIsLoading(false);
     }
   }, []);
 
   const logout = useCallback(() => {
-    // Clear state
     setAccessToken(null);
     setUser(null);
     setIsAuthenticated(false);

@@ -57,12 +57,11 @@ export interface UpdateProfileRequest {
 }
 
 export interface LoginResponse {
-  access_token: string;
-  refresh_token: string;
+  token: string;
   customer: CustomerPublic;
 }
 
 export interface RegisterResponse {
-  message: string;
+  token: string;
   customer: CustomerPublic;
 }
