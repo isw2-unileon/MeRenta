@@ -1,3 +1,4 @@
+// Package database provides database connection helpers.
 package database
 
 import (
@@ -10,12 +11,12 @@ import (
 // Connect establishes a connection pool to the PostgreSQL database using the provided URL.
 func Connect(ctx context.Context, url string) (*pgxpool.Pool, error) {
 	if url == "" {
-		return nil, fmt.Errorf("DATABASE_URL no definida")
+		return nil, fmt.Errorf("DATABASE_URL is not defined")
 	}
 
 	config, err := pgxpool.ParseConfig(url)
 	if err != nil {
-		return nil, fmt.Errorf("error parseando config de DB: %w", err)
+		return nil, fmt.Errorf("error parsing database config: %w", err)
 	}
 
 	config.MaxConns = 10
@@ -23,11 +24,11 @@ func Connect(ctx context.Context, url string) (*pgxpool.Pool, error) {
 
 	pool, err := pgxpool.NewWithConfig(ctx, config)
 	if err != nil {
-		return nil, fmt.Errorf("error creando pool de conexiones: %w", err)
+		return nil, fmt.Errorf("error creating connection pool: %w", err)
 	}
 
 	if err := pool.Ping(ctx); err != nil {
-		return nil, fmt.Errorf("error conectando a la DB: %w", err)
+		return nil, fmt.Errorf("error connecting to database: %w", err)
 	}
 
 	return pool, nil
