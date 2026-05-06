@@ -5,6 +5,7 @@ import { AppLayout } from "@/layouts/AppLayout.tsx";
 import { MinimalLayout } from "@/layouts/MinimalLayout.tsx";
 import { BlankLayout } from "@/layouts/BlankLayout.tsx";
 import { ProtectedRoute } from "@/router/ProtectedRoute.tsx";
+import { RootProvider } from "@/router/ProvideRouter.tsx";
 
 import { Auth } from "@/pages/Auth.tsx";
 import { Landing } from "@/pages/Landing.tsx";
@@ -30,64 +31,69 @@ import { ServerError } from "@/pages/ServerError.tsx";
 
 const router = createBrowserRouter([
   {
-    element: <PublicLayout />,
-    children: [
-      { index: true, element: <Landing /> },
-      { path: "terms", element: <Terms /> },
-      { path: "privacy", element: <Privacy /> },
-      { path: "more-info", element: <Info /> },
-    ],
-  },
-
-  {
-    element: <BlankLayout />,
-    children: [
-      { path: "auth", element: <Auth /> },
-      { path: "payment/success", element: <PaymentSuccess /> },
-      { path: "payment/error", element: <PaymentError /> },
-      { path: "not-found", element: <NotFound /> },
-    ],
-  },
-
-  {
-    element: <ProtectedRoute />,
+    element: <RootProvider />,
     children: [
       {
-        element: <MinimalLayout />,
+        element: <PublicLayout />,
         children: [
-          { path: "chat", element: <Chat /> },
-          { path: "chat/:conversationId", element: <Chat /> },
+          { index: true, element: <Landing /> },
+          { path: "terms", element: <Terms /> },
+          { path: "privacy", element: <Privacy /> },
+          { path: "more-info", element: <Info /> },
         ],
       },
 
       {
-        element: <AppLayout />,
+        element: <BlankLayout />,
         children: [
-          { path: "home", element: <Home /> },
-          { path: "search", element: <Search /> },
-          { path: "product/new", element: <ProductCreate /> },
-          { path: "product/:id/edit", element: <ProductEdit /> },
-          { path: "product/:id", element: <Product /> },
-          { path: "profile", element: <MyProfile /> },
-          { path: "profile/edit", element: <ProfileEdit /> },
-          { path: "profile/:id", element: <ProfileOther /> },
-          { path: "favs", element: <Favs /> },
-          { path: "checkout/:id", element: <Checkout /> },
-          { path: "403", element: <Forbidden /> },
-          { path: "500", element: <ServerError /> },
+          { path: "auth", element: <Auth /> },
+          { path: "payment/success", element: <PaymentSuccess /> },
+          { path: "payment/error", element: <PaymentError /> },
+          { path: "not-found", element: <NotFound /> },
         ],
       },
-    ],
-  },
 
-  {
-    path: "*",
-    element: (
-      <Navigate
-        to="/not-found"
-        replace
-      />
-    ),
+      {
+        element: <ProtectedRoute />,
+        children: [
+          {
+            element: <MinimalLayout />,
+            children: [
+              { path: "chat", element: <Chat /> },
+              { path: "chat/:conversationId", element: <Chat /> },
+            ],
+          },
+
+          {
+            element: <AppLayout />,
+            children: [
+              { path: "home", element: <Home /> },
+              { path: "search", element: <Search /> },
+              { path: "product/new", element: <ProductCreate /> },
+              { path: "product/:id/edit", element: <ProductEdit /> },
+              { path: "product/:id", element: <Product /> },
+              { path: "profile", element: <MyProfile /> },
+              { path: "profile/edit", element: <ProfileEdit /> },
+              { path: "profile/:id", element: <ProfileOther /> },
+              { path: "favs", element: <Favs /> },
+              { path: "checkout/:id", element: <Checkout /> },
+              { path: "403", element: <Forbidden /> },
+              { path: "500", element: <ServerError /> },
+            ],
+          },
+        ],
+      },
+
+      {
+        path: "*",
+        element: (
+          <Navigate
+            to="/not-found"
+            replace
+          />
+        ),
+      },
+    ],
   },
 ]);
 

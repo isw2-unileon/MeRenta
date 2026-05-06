@@ -1,0 +1,74 @@
+// Package handler provides HTTP handlers for the API.
+package handler
+
+import (
+	"errors"
+	"net/http"
+
+	"github.com/gin-gonic/gin"
+
+	"github.com/isw2-unileon/MeRenta/backend/internal/model"
+	"github.com/isw2-unileon/MeRenta/backend/internal/service"
+	"github.com/isw2-unileon/MeRenta/backend/pkg/response"
+)
+
+// AuthHandler wires authentication endpoints to the auth service.
+type AuthHandler struct {
+	svc *service.AuthService
+}
+
+// NewAuthHandler builds a new AuthHandler.
+func NewAuthHandler(svc *service.AuthService) *AuthHandler {
+	return &AuthHandler{svc: svc}
+}
+
+// Register handles user registration requests.
+func (h *AuthHandler) Register(c *gin.Context) {
+	var req model.RegisterRequest
+	if err := c.ShouldBindJSON(&req); err != nil {
+		response.Error(c, http.StatusBadRequest, formatBindError(err))
+		return
+	}
+
+	res, err := h.svc.Register(c.Request.Context(), req)
+	if err != nil {
+		switch {
+		case errors.Is(err, service.ErrEmailExists):
+			response.Error(c, http.StatusConflict, err.Error())
+		default:
+			response.Error(c, http.StatusInternalServerError, "internal server error")
+		}
+		return
+	}
+	response.OK(c, http.StatusCreated, res)
+}
+
+// Login handles user login requests.
+func (h *AuthHandler) Login(c *gin.Context) {
+	var req model.LoginRequest
+	if err := c.ShouldBindJSON(&req); err != nil {
+		response.Error(c, http.StatusBadRequest, formatBindError(err))
+		return
+	}
+
+	res, err := h.svc.Login(c.Request.Context(), req)
+	if err != nil {
+		switch {
+		case errors.Is(err, service.ErrInvalidCredentials):
+			response.Error(c, http.StatusUnauthorized, err.Error())
+		case errors.Is(err, service.ErrAccountNotActive):
+			response.Error(c, http.StatusForbidden, err.Error())
+		default:
+			response.Error(c, http.StatusInternalServerError, "internal server error")
+		}
+		return
+	}
+	response.OK(c, http.StatusOK, res)
+}
+
+func formatBindError(err error) string {
+	if gin.Mode() == gin.ReleaseMode {
+		return "invalid request body"
+	}
+	return err.Error()
+}

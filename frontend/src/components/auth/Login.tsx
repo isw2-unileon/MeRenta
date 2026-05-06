@@ -1,14 +1,68 @@
-import { useState } from "react";
+import { type ChangeEvent, type FormEventHandler, useState, useContext } from "react";
+import { useNavigate } from "react-router-dom";
 import { Eye, EyeOff } from "lucide-react";
+import { AuthContext } from "@/context/AuthContext";
 
 type AuthView = "login" | "register" | "forgot";
 
 export function Login({ onSwitch }: { onSwitch: (v: AuthView) => void }) {
+  const { login, isLoading } = useContext(AuthContext);
+  const navigate = useNavigate();
   const [showPassword, setShowPassword] = useState(false);
+  const [error, setError] = useState<string>("");
+  const [formData, setFormData] = useState({
+    email: "",
+    password: "",
+  });
+
+  const handleChange = (e: ChangeEvent<HTMLInputElement>) => {
+    const { id, value } = e.target;
+    if (id === "login-email") {
+      setFormData((prev) => ({ ...prev, email: value }));
+    }
+    if (id === "login-password") {
+      setFormData((prev) => ({ ...prev, password: value }));
+    }
+  };
+
+  const handleSubmit: FormEventHandler<HTMLFormElement> = (e) => {
+    e.preventDefault();
+    setError("");
+
+    if (!formData.email.trim()) {
+      setError("El email es requerido");
+      return;
+    }
+
+    if (!formData.password) {
+      setError("La contraseña es requerida");
+      return;
+    }
+
+    const runLogin = async () => {
+      try {
+        await login({
+          email: formData.email.trim(),
+          password: formData.password,
+        });
+        setFormData({ email: "", password: "" });
+        await navigate("/home", { replace: true });
+      } catch (err) {
+        setError(err instanceof Error ? err.message : "Error al iniciar sesión");
+      }
+    };
+
+    void runLogin();
+  };
 
   return (
     <div className="flex min-h-9/10 flex-col justify-between">
-      <form className="flex flex-col gap-6">
+      <form
+        className="flex flex-col gap-6"
+        onSubmit={handleSubmit}
+      >
+        {error && <div className="rounded border border-red-200 bg-red-50 p-3 text-sm text-red-600">{error}</div>}
+
         <div>
           <label
             className="label-auth"
@@ -22,6 +76,9 @@ export function Login({ onSwitch }: { onSwitch: (v: AuthView) => void }) {
             type="email"
             placeholder="tu@email.com"
             autoComplete="email"
+            value={formData.email}
+            onChange={handleChange}
+            required
           />
         </div>
 
@@ -40,6 +97,9 @@ export function Login({ onSwitch }: { onSwitch: (v: AuthView) => void }) {
               type={showPassword ? "text" : "password"}
               placeholder="••••••••"
               autoComplete="current-password"
+              value={formData.password}
+              onChange={handleChange}
+              required
             />
 
             <button
@@ -64,8 +124,9 @@ export function Login({ onSwitch }: { onSwitch: (v: AuthView) => void }) {
         <button
           className="btn-auth-submit"
           type="submit"
+          disabled={isLoading}
         >
-          Iniciar sesión
+          {isLoading ? "Iniciando sesión..." : "Iniciar sesión"}
         </button>
       </form>
 
