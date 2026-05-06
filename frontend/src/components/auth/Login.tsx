@@ -1,4 +1,5 @@
-import { type ChangeEvent, type FormEvent, useState, useContext } from "react";
+import { type ChangeEvent, type FormEventHandler, useState, useContext } from "react";
+import { useNavigate } from "react-router-dom";
 import { Eye, EyeOff } from "lucide-react";
 import { AuthContext } from "@/context/AuthContext";
 
@@ -6,6 +7,7 @@ type AuthView = "login" | "register" | "forgot";
 
 export function Login({ onSwitch }: { onSwitch: (v: AuthView) => void }) {
   const { login, isLoading } = useContext(AuthContext);
+  const navigate = useNavigate();
   const [showPassword, setShowPassword] = useState(false);
   const [error, setError] = useState<string>("");
   const [formData, setFormData] = useState({
@@ -23,7 +25,7 @@ export function Login({ onSwitch }: { onSwitch: (v: AuthView) => void }) {
     }
   };
 
-  const handleSubmit = async (e: FormEvent<HTMLFormElement>) => {
+  const handleSubmit: FormEventHandler<HTMLFormElement> = (e) => {
     e.preventDefault();
     setError("");
 
@@ -37,15 +39,20 @@ export function Login({ onSwitch }: { onSwitch: (v: AuthView) => void }) {
       return;
     }
 
-    try {
-      await login({
-        email: formData.email.trim(),
-        password: formData.password,
-      });
-      setFormData({ email: "", password: "" });
-    } catch (err) {
-      setError(err instanceof Error ? err.message : "Error al iniciar sesión");
-    }
+    const runLogin = async () => {
+      try {
+        await login({
+          email: formData.email.trim(),
+          password: formData.password,
+        });
+        setFormData({ email: "", password: "" });
+        await navigate("/home", { replace: true });
+      } catch (err) {
+        setError(err instanceof Error ? err.message : "Error al iniciar sesión");
+      }
+    };
+
+    void runLogin();
   };
 
   return (
