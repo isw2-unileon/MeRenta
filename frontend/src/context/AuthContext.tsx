@@ -1,6 +1,7 @@
 import { createContext, useState, useEffect, useCallback } from "react";
 import * as React from "react";
 import type { CustomerPublic, LoginRequest, RegisterRequest } from "@/types/customer";
+import { useMe } from "@/hooks/useMe";
 
 interface AuthContextType {
   isAuthenticated: boolean;
@@ -84,22 +85,12 @@ function AuthProvider({ children }: { children: React.ReactNode }) {
   const [user, setUser] = useState<CustomerPublic | null>(null);
   const [accessToken, setAccessToken] = useState<string | null>(null);
 
+  const { getMe } = useMe(accessToken);
+
   useEffect(() => {
   const loadSession = async () => {
-    try {
-      const response = await fetch(`${API_BASE_URL}/session`, {
-        method: "GET",
-        credentials: "include",
-      });
-
-      if (!response.ok) {
-        setUser(null);
-        setAccessToken(null);
-        setIsAuthenticated(false);
-        return;
-      }
-
-      const customer = await parseSessionResponse(response);
+     try {
+      const customer = await getMe();
 
       setUser(customer);
       setIsAuthenticated(true);
@@ -114,7 +105,7 @@ function AuthProvider({ children }: { children: React.ReactNode }) {
   };
 
   loadSession();
-}, []);
+}, [getMe]);
 
   const login = useCallback(async (credentials: LoginRequest) => {
     setIsLoading(true);

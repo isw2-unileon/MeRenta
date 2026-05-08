@@ -18,9 +18,11 @@ type AuthHandler struct {
 	svc *service.AuthService
 }
 
-const authCookieName = "access_token"
-const authCookiePath = "/"
-const authCookieMaxAge = 60 * 60 * 24
+const (
+	authCookieName   = "access_token"
+	authCookiePath   = "/"
+	authCookieMaxAge = 60 * 60 * 24
+)
 
 // NewAuthHandler builds a new AuthHandler.
 func NewAuthHandler(svc *service.AuthService) *AuthHandler {
@@ -90,6 +92,28 @@ func (h *AuthHandler) Session(c *gin.Context) {
 		response.Error(c, http.StatusInternalServerError, "internal server error")
 		return
 	}
+	response.OK(c, http.StatusOK, res)
+}
+
+func (h *AuthHandler) Me(c *gin.Context) {
+	customerID, ok := c.Get("customer_id")
+	if !ok {
+		response.Error(c, http.StatusUnauthorized, "missing auth context")
+		return
+	}
+
+	id, ok := customerID.(uuid.UUID)
+	if !ok {
+		response.Error(c, http.StatusUnauthorized, "invalid auth context")
+		return
+	}
+
+	res, err := h.svc.GetCustomerByID(c.Request.Context(), id)
+	if err != nil {
+		response.Error(c, http.StatusInternalServerError, "internal server error")
+		return
+	}
+
 	response.OK(c, http.StatusOK, res)
 }
 
