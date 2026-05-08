@@ -4,7 +4,15 @@ import { Heart, MessageSquare } from "lucide-react";
 
 function NavbarAuth() {
   const navigate = useNavigate();
-  const { user } = useAuth();
+  const { user, isAuthenticated, isLoading, logout } = useAuth();
+
+  if (isLoading) {
+  return null;
+}
+
+if (!isAuthenticated || !user) {
+  return null;
+}
 
   const fullName = `${user.first_name} ${user.last_name}`;
 
