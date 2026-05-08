@@ -64,15 +64,57 @@ const parseAuthResponse = async (
   return { token, customer: customer as CustomerPublic };
 };
 
+const parseSessionResponse = async (
+  response: Response
+): Promise<CustomerPublic> => {
+  const payload: unknown = await response.json();
+  if (!payload || typeof payload !== "object") {
+    throw new Error("Invalid response payload");
+  }
+  const data = (payload as { data?: unknown }).data;
+  if (!data || typeof data !== "object") {
+    throw new Error("Invalid response data");
+  }
+  return data as CustomerPublic;
+};
+
 function AuthProvider({ children }: { children: React.ReactNode }) {
   const [isAuthenticated, setIsAuthenticated] = useState(false);
-  const [isLoading, setIsLoading] = useState(false);
+  const [isLoading, setIsLoading] = useState(true);
   const [user, setUser] = useState<CustomerPublic | null>(null);
   const [accessToken, setAccessToken] = useState<string | null>(null);
 
   useEffect(() => {
-    setIsLoading(false);
-  }, []);
+  const loadSession = async () => {
+    try {
+      const response = await fetch(`${API_BASE_URL}/session`, {
+        method: "GET",
+        credentials: "include",
+      });
+
+      if (!response.ok) {
+        setUser(null);
+        setAccessToken(null);
+        setIsAuthenticated(false);
+        return;
+      }
+
+      const customer = await parseSessionResponse(response);
+
+      setUser(customer);
+      setIsAuthenticated(true);
+      setAccessToken(null);
+    } catch {
+      setUser(null);
+      setAccessToken(null);
+      setIsAuthenticated(false);
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  loadSession();
+}, []);
 
   const login = useCallback(async (credentials: LoginRequest) => {
     setIsLoading(true);
@@ -127,9 +169,19 @@ function AuthProvider({ children }: { children: React.ReactNode }) {
       if (!response.ok) {
         throw new Error(await parseErrorMessage(response));
       }
+      const { token, customer } = await parseAuthResponse(response);
+      setAccessToken(token);
+      setUser(customer);
+      setIsAuthenticated(true);
+    } catch (error) {
+      setIsAuthenticated(false);
+      setUser(null);
+      setAccessToken(null);
+      throw error;
     } finally {
       setIsLoading(false);
     }
+
   }, []);
 
   const logout = useCallback(() => {

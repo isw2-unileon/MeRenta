@@ -1,6 +1,7 @@
 import { type ChangeEvent, type FormEvent, useState, useContext } from "react";
 import { Eye, EyeOff } from "lucide-react";
 import { AuthContext } from "@/context/AuthContext";
+import { useNavigate } from "react-router-dom";
 
 type AuthView = "login" | "register" | "forgot";
 
@@ -10,6 +11,8 @@ export function Register({ onSwitch }: { onSwitch: (v: AuthView) => void }) {
   const [showPassword, setShowPassword] = useState(false);
   const [showRepeat, setShowRepeat] = useState(false);
   const [error, setError] = useState<string>("");
+
+  const navigate = useNavigate();
 
   const [formData, setFormData] = useState({
     firstName: "",
@@ -80,7 +83,7 @@ export function Register({ onSwitch }: { onSwitch: (v: AuthView) => void }) {
         password: "",
         repeatPassword: "",
       });
-      onSwitch("login");
+      navigate("/home", { replace: true });
     } catch (err) {
       setError(err instanceof Error ? err.message : "Error al registrar");
     }

@@ -12,23 +12,31 @@ import (
 	"github.com/isw2-unileon/MeRenta/backend/pkg/response"
 )
 
-// JWTAuth validates bearer tokens and injects auth claims into the context.
+const authCookieName = "access_token"
+
+// JWTAuth validates bearer tokens or auth cookies and injects auth claims into the context.
 func JWTAuth(jwtMgr *jwt.Manager) gin.HandlerFunc {
 	return func(c *gin.Context) {
-		header := c.GetHeader("Authorization")
-		if header == "" || !strings.HasPrefix(header, "Bearer ") {
-			response.Error(c, http.StatusUnauthorized, "missing or invalid authorization header")
-			return
+		tokenStr, err := c.Cookie(authCookieName)
+		if err != nil || tokenStr == "" {
+			header := c.GetHeader("Authorization")
+			if header == "" || !strings.HasPrefix(header, "Bearer ") {
+				response.Error(c, http.StatusUnauthorized, "missing or invalid authorization header")
+				c.Abort()
+				return
+			}
+			tokenStr = strings.TrimPrefix(header, "Bearer ")
 		}
-		tokenStr := strings.TrimPrefix(header, "Bearer ")
 		claims, err := jwtMgr.Verify(tokenStr)
 		if err != nil {
 			response.Error(c, http.StatusUnauthorized, "invalid token")
+			c.Abort()
 			return
 		}
 		role, ok := normalizeRole(claims.Role)
 		if !ok {
 			response.Error(c, http.StatusForbidden, "forbidden")
+			c.Abort()
 			return
 		}
 		c.Set("customer_id", claims.CustomerID)
