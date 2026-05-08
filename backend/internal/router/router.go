@@ -48,6 +48,12 @@ func Setup(
 	protected := api.Group("/")
 	protected.Use(middleware.JWTAuth(jwtMgr))
 
+	// auto log in with cookie
+	protected.GET("/session", authH.Session)
+
+	// authenticated user profile
+	protected.GET("/me", authH.Me)
+
 	// admin
 	admin := api.Group("/admin")
 	admin.Use(middleware.JWTAuth(jwtMgr), middleware.RequireRole(sqlcdb.UserRoleAdmin))

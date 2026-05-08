@@ -1,6 +1,7 @@
 import { createContext, useState, useEffect, useCallback } from "react";
 import * as React from "react";
 import type { CustomerPublic, LoginRequest, RegisterRequest } from "@/types/customer";
+import { useMe } from "@/hooks/useMe";
 
 interface AuthContextType {
   isAuthenticated: boolean;
@@ -12,15 +13,7 @@ interface AuthContextType {
   accessToken: string | null;
 }
 
-const AuthContext = createContext<AuthContextType>({
-  isAuthenticated: false,
-  isLoading: true,
-  user: null,
-  login: async () => {},
-  register: async () => {},
-  logout: () => {},
-  accessToken: null,
-});
+const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
 const API_BASE_URL = "/api";
 
@@ -66,19 +59,38 @@ const parseAuthResponse = async (
 
 function AuthProvider({ children }: { children: React.ReactNode }) {
   const [isAuthenticated, setIsAuthenticated] = useState(false);
-  const [isLoading, setIsLoading] = useState(false);
+  const [isLoading, setIsLoading] = useState(true);
   const [user, setUser] = useState<CustomerPublic | null>(null);
   const [accessToken, setAccessToken] = useState<string | null>(null);
 
+  const { getMe } = useMe(accessToken);
+
   useEffect(() => {
-    setIsLoading(false);
-  }, []);
+    const loadSession = async () => {
+      try {
+        const customer = await getMe();
+
+        setUser(customer);
+        setIsAuthenticated(true);
+        setAccessToken(null);
+      } catch {
+        setUser(null);
+        setAccessToken(null);
+        setIsAuthenticated(false);
+      } finally {
+        setIsLoading(false);
+      }
+    };
+
+    void loadSession();
+  }, [getMe]);
 
   const login = useCallback(async (credentials: LoginRequest) => {
     setIsLoading(true);
     try {
       const response = await fetch(`${API_BASE_URL}/auth/login`, {
         method: "POST",
+        credentials: "include",
         headers: {
           "Content-Type": "application/json",
         },
@@ -109,6 +121,7 @@ function AuthProvider({ children }: { children: React.ReactNode }) {
     try {
       const response = await fetch(`${API_BASE_URL}/auth/register`, {
         method: "POST",
+        credentials: "include",
         headers: {
           "Content-Type": "application/json",
         },
@@ -125,6 +138,15 @@ function AuthProvider({ children }: { children: React.ReactNode }) {
       if (!response.ok) {
         throw new Error(await parseErrorMessage(response));
       }
+      const { token, customer } = await parseAuthResponse(response);
+      setAccessToken(token);
+      setUser(customer);
+      setIsAuthenticated(true);
+    } catch (error) {
+      setIsAuthenticated(false);
+      setUser(null);
+      setAccessToken(null);
+      throw error;
     } finally {
       setIsLoading(false);
     }
