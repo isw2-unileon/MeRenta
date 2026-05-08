@@ -7,30 +7,30 @@ import { Navigate } from "react-router-dom";
 import { useAuth } from "@/hooks/useAuth";
 
 function Landing() {
-	const { isAuthenticated, isLoading } = useAuth();
+  const { isAuthenticated, isLoading } = useAuth();
 
-	if (isLoading) {
-		return null;
-	}
+  if (isLoading) {
+    return null;
+  }
 
-	if (isAuthenticated) {
-		return (
-			<Navigate
-				to="/home"
-				replace
-			/>
-		);
-	}
+  if (isAuthenticated) {
+    return (
+      <Navigate
+        to="/home"
+        replace
+      />
+    );
+  }
 
-	return (
-		<main className="pt-navbar">
-			<Hero />
-			<Stats />
-			<Categories />
-			<HowItWorks />
-			<Trust />
-		</main>
-	);
+  return (
+    <main className="pt-navbar">
+      <Hero />
+      <Stats />
+      <Categories />
+      <HowItWorks />
+      <Trust />
+    </main>
+  );
 }
 
 export { Landing };

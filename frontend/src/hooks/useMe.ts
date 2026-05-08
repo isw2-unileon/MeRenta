@@ -10,17 +10,11 @@ const parseErrorMessage = async (response: Response): Promise<string> => {
     if (payload && typeof payload === "object") {
       const maybePayload = payload as { error?: string; message?: string };
 
-      if (
-        typeof maybePayload.error === "string" &&
-        maybePayload.error.trim() !== ""
-      ) {
+      if (typeof maybePayload.error === "string" && maybePayload.error.trim() !== "") {
         return maybePayload.error;
       }
 
-      if (
-        typeof maybePayload.message === "string" &&
-        maybePayload.message.trim() !== ""
-      ) {
+      if (typeof maybePayload.message === "string" && maybePayload.message.trim() !== "") {
         return maybePayload.message;
       }
     }

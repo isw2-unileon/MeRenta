@@ -13,15 +13,7 @@ interface AuthContextType {
   accessToken: string | null;
 }
 
-const AuthContext = createContext<AuthContextType>({
-  isAuthenticated: false,
-  isLoading: true,
-  user: null,
-  login: async () => {},
-  register: async () => {},
-  logout: () => {},
-  accessToken: null,
-});
+const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
 const API_BASE_URL = "/api";
 
@@ -65,20 +57,6 @@ const parseAuthResponse = async (
   return { token, customer: customer as CustomerPublic };
 };
 
-const parseSessionResponse = async (
-  response: Response
-): Promise<CustomerPublic> => {
-  const payload: unknown = await response.json();
-  if (!payload || typeof payload !== "object") {
-    throw new Error("Invalid response payload");
-  }
-  const data = (payload as { data?: unknown }).data;
-  if (!data || typeof data !== "object") {
-    throw new Error("Invalid response data");
-  }
-  return data as CustomerPublic;
-};
-
 function AuthProvider({ children }: { children: React.ReactNode }) {
   const [isAuthenticated, setIsAuthenticated] = useState(false);
   const [isLoading, setIsLoading] = useState(true);
@@ -88,24 +66,24 @@ function AuthProvider({ children }: { children: React.ReactNode }) {
   const { getMe } = useMe(accessToken);
 
   useEffect(() => {
-  const loadSession = async () => {
-     try {
-      const customer = await getMe();
+    const loadSession = async () => {
+      try {
+        const customer = await getMe();
 
-      setUser(customer);
-      setIsAuthenticated(true);
-      setAccessToken(null);
-    } catch {
-      setUser(null);
-      setAccessToken(null);
-      setIsAuthenticated(false);
-    } finally {
-      setIsLoading(false);
-    }
-  };
+        setUser(customer);
+        setIsAuthenticated(true);
+        setAccessToken(null);
+      } catch {
+        setUser(null);
+        setAccessToken(null);
+        setIsAuthenticated(false);
+      } finally {
+        setIsLoading(false);
+      }
+    };
 
-  loadSession();
-}, [getMe]);
+    void loadSession();
+  }, [getMe]);
 
   const login = useCallback(async (credentials: LoginRequest) => {
     setIsLoading(true);
@@ -172,7 +150,6 @@ function AuthProvider({ children }: { children: React.ReactNode }) {
     } finally {
       setIsLoading(false);
     }
-
   }, []);
 
   const logout = useCallback(() => {

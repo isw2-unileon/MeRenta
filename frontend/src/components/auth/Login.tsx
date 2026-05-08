@@ -1,12 +1,12 @@
-import { type ChangeEvent, type FormEventHandler, useState, useContext } from "react";
+import { type ChangeEvent, type FormEventHandler, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { Eye, EyeOff } from "lucide-react";
-import { AuthContext } from "@/context/AuthContext";
+import { useAuth } from "@/hooks/useAuth";
 
 type AuthView = "login" | "register" | "forgot";
 
 export function Login({ onSwitch }: { onSwitch: (v: AuthView) => void }) {
-  const { login, isLoading } = useContext(AuthContext);
+  const { login, isLoading } = useAuth();
   const navigate = useNavigate();
   const [showPassword, setShowPassword] = useState(false);
   const [error, setError] = useState<string>("");

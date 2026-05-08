@@ -1,12 +1,12 @@
-import { type ChangeEvent, type FormEvent, useState, useContext } from "react";
+import { type ChangeEvent, type FormEvent, useState } from "react";
 import { Eye, EyeOff } from "lucide-react";
-import { AuthContext } from "@/context/AuthContext";
+import { useAuth } from "@/hooks/useAuth";
 import { useNavigate } from "react-router-dom";
 
 type AuthView = "login" | "register" | "forgot";
 
 export function Register({ onSwitch }: { onSwitch: (v: AuthView) => void }) {
-  const { register, isLoading } = useContext(AuthContext);
+  const { register, isLoading } = useAuth();
 
   const [showPassword, setShowPassword] = useState(false);
   const [showRepeat, setShowRepeat] = useState(false);
@@ -83,7 +83,7 @@ export function Register({ onSwitch }: { onSwitch: (v: AuthView) => void }) {
         password: "",
         repeatPassword: "",
       });
-      navigate("/home", { replace: true });
+      await navigate("/home", { replace: true });
     } catch (err) {
       setError(err instanceof Error ? err.message : "Error al registrar");
     }

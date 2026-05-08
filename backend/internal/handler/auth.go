@@ -77,43 +77,30 @@ func (h *AuthHandler) Login(c *gin.Context) {
 
 // Session returns the current authenticated customer.
 func (h *AuthHandler) Session(c *gin.Context) {
-	customerID, ok := c.Get("customer_id")
-	if !ok {
-		response.Error(c, http.StatusUnauthorized, "missing auth context")
-		return
-	}
-	id, ok := customerID.(uuid.UUID)
-	if !ok {
-		response.Error(c, http.StatusUnauthorized, "invalid auth context")
-		return
-	}
-	res, err := h.svc.GetCustomerByID(c.Request.Context(), id)
-	if err != nil {
-		response.Error(c, http.StatusInternalServerError, "internal server error")
-		return
-	}
-	response.OK(c, http.StatusOK, res)
+	respondWithCurrentCustomer(c, h.svc)
 }
 
+// Me returns the authenticated customer's public profile.
 func (h *AuthHandler) Me(c *gin.Context) {
+	respondWithCurrentCustomer(c, h.svc)
+}
+
+func respondWithCurrentCustomer(c *gin.Context, svc *service.AuthService) {
 	customerID, ok := c.Get("customer_id")
 	if !ok {
 		response.Error(c, http.StatusUnauthorized, "missing auth context")
 		return
 	}
-
 	id, ok := customerID.(uuid.UUID)
 	if !ok {
 		response.Error(c, http.StatusUnauthorized, "invalid auth context")
 		return
 	}
-
-	res, err := h.svc.GetCustomerByID(c.Request.Context(), id)
+	res, err := svc.GetCustomerByID(c.Request.Context(), id)
 	if err != nil {
 		response.Error(c, http.StatusInternalServerError, "internal server error")
 		return
 	}
-
 	response.OK(c, http.StatusOK, res)
 }
 
