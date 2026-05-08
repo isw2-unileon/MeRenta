@@ -79,6 +79,7 @@ function AuthProvider({ children }: { children: React.ReactNode }) {
     try {
       const response = await fetch(`${API_BASE_URL}/auth/login`, {
         method: "POST",
+        credentials: "include",
         headers: {
           "Content-Type": "application/json",
         },
@@ -109,6 +110,7 @@ function AuthProvider({ children }: { children: React.ReactNode }) {
     try {
       const response = await fetch(`${API_BASE_URL}/auth/register`, {
         method: "POST",
+        credentials: "include",
         headers: {
           "Content-Type": "application/json",
         },

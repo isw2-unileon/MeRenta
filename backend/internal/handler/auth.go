@@ -6,6 +6,7 @@ import (
 	"net/http"
 
 	"github.com/gin-gonic/gin"
+	"github.com/google/uuid"
 
 	"github.com/isw2-unileon/MeRenta/backend/internal/model"
 	"github.com/isw2-unileon/MeRenta/backend/internal/service"
@@ -16,6 +17,10 @@ import (
 type AuthHandler struct {
 	svc *service.AuthService
 }
+
+const authCookieName = "access_token"
+const authCookiePath = "/"
+const authCookieMaxAge = 60 * 60 * 24
 
 // NewAuthHandler builds a new AuthHandler.
 func NewAuthHandler(svc *service.AuthService) *AuthHandler {
@@ -40,6 +45,7 @@ func (h *AuthHandler) Register(c *gin.Context) {
 		}
 		return
 	}
+	setAuthCookie(c, res.Token)
 	response.OK(c, http.StatusCreated, res)
 }
 
@@ -63,6 +69,27 @@ func (h *AuthHandler) Login(c *gin.Context) {
 		}
 		return
 	}
+	setAuthCookie(c, res.Token)
+	response.OK(c, http.StatusOK, res)
+}
+
+// Session returns the current authenticated customer.
+func (h *AuthHandler) Session(c *gin.Context) {
+	customerID, ok := c.Get("customer_id")
+	if !ok {
+		response.Error(c, http.StatusUnauthorized, "missing auth context")
+		return
+	}
+	id, ok := customerID.(uuid.UUID)
+	if !ok {
+		response.Error(c, http.StatusUnauthorized, "invalid auth context")
+		return
+	}
+	res, err := h.svc.GetCustomerByID(c.Request.Context(), id)
+	if err != nil {
+		response.Error(c, http.StatusInternalServerError, "internal server error")
+		return
+	}
 	response.OK(c, http.StatusOK, res)
 }
 
@@ -71,4 +98,10 @@ func formatBindError(err error) string {
 		return "invalid request body"
 	}
 	return err.Error()
+}
+
+func setAuthCookie(c *gin.Context, token string) {
+	c.SetSameSite(http.SameSiteLaxMode)
+	secure := gin.Mode() == gin.ReleaseMode
+	c.SetCookie(authCookieName, token, authCookieMaxAge, authCookiePath, "", secure, true)
 }
