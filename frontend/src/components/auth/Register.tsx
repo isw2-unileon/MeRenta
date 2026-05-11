@@ -5,6 +5,11 @@ import { useNavigate } from "react-router-dom";
 
 type AuthView = "login" | "register" | "forgot";
 
+/**
+ * Renders the registration form and handles account creation.
+ * @param onSwitch Callback to swap between auth views.
+ * @returns The registration form UI with validation and feedback.
+ */
 function Register({ onSwitch }: { onSwitch: (v: AuthView) => void }) {
   const { register, isLoading } = useAuth();
 
@@ -22,6 +27,10 @@ function Register({ onSwitch }: { onSwitch: (v: AuthView) => void }) {
     repeatPassword: "",
   });
 
+  /**
+   * Maps input identifiers to form state fields.
+   * @param e Input change event from the registration form.
+   */
   const updateRegisterField = (e: ChangeEvent<HTMLInputElement>) => {
     const { id, value } = e.target;
     const fieldMap: Record<string, keyof typeof formData> = {
@@ -38,6 +47,10 @@ function Register({ onSwitch }: { onSwitch: (v: AuthView) => void }) {
     }
   };
 
+  /**
+   * Validates user input and sends a registration request.
+   * @param e Form submit event for the registration action.
+   */
   const handleSubmit = async (e: FormEvent<HTMLFormElement>) => {
     e.preventDefault();
     setError("");

@@ -2,6 +2,10 @@ import { useNavigate } from "react-router-dom";
 import { useAuth } from "@/hooks/useAuth";
 import { Heart, MessageSquare } from "lucide-react";
 
+/**
+ * Renders the authenticated navigation bar with profile shortcuts.
+ * @returns The private navigation UI or null while unauthenticated.
+ */
 function NavbarAuth() {
   const navigate = useNavigate();
   const { user, isAuthenticated, isLoading } = useAuth();

@@ -1,3 +1,7 @@
+/**
+ * Privacy policy page.
+ * @returns The privacy placeholder content.
+ */
 function Privacy() {
   return (
     <div className="p-4">

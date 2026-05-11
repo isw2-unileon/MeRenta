@@ -3,6 +3,10 @@ import { ErrorPage } from "../components/ui/ErrorPage";
 
 type ErrorCode = 404 | 403 | 500;
 
+/**
+ * Sandbox page for previewing error states.
+ * @returns The error preview page with selectable codes.
+ */
 function Error() {
   const [errorCode, setErrorCode] = useState<ErrorCode>(404);
 

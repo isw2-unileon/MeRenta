@@ -1,3 +1,7 @@
+/**
+ * Product detail page for a single listing.
+ * @returns The product page placeholder content.
+ */
 function Product() {
   return (
     <div className="p-4">

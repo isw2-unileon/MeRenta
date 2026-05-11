@@ -1,3 +1,7 @@
+/**
+ * Server error page for unexpected failures.
+ * @returns The server error placeholder content.
+ */
 function ServerError() {
   return (
     <div className="p-4">

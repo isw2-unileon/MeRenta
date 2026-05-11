@@ -1,3 +1,7 @@
+/**
+ * Shows another user's public profile details.
+ * @returns The public profile placeholder content.
+ */
 function ProfileOther() {
   return (
     <div className="p-4">

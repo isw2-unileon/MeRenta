@@ -3,6 +3,9 @@ import * as React from "react";
 import type { CustomerPublic, LoginRequest, RegisterRequest } from "@/types/customer";
 import { useMe } from "@/hooks/useMe";
 
+/**
+ * Describes the authentication context contract exposed to consumers.
+ */
 interface AuthContextType {
   isAuthenticated: boolean;
   isLoading: boolean;
@@ -17,6 +20,11 @@ const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
 const API_BASE_URL = "/api";
 
+/**
+ * Extracts a readable error message from an API response payload.
+ * @param response Failed response to inspect for error messages.
+ * @returns A user-facing message suitable for UI feedback.
+ */
 const parseErrorMessage = async (response: Response): Promise<string> => {
   try {
     const payload: unknown = await response.json();
@@ -35,6 +43,12 @@ const parseErrorMessage = async (response: Response): Promise<string> => {
   }
 };
 
+/**
+ * Parses the login/register response into a token and user object.
+ * @param response Successful auth response to decode.
+ * @returns Auth token and customer payload.
+ * @throws Error when the payload is missing or malformed.
+ */
 const parseAuthResponse = async (
   response: Response
 ): Promise<{
@@ -81,6 +95,12 @@ const initialState: AuthState = {
   accessToken: null,
 };
 
+/**
+ * Handles state transitions for authentication actions.
+ * @param state Current auth state snapshot.
+ * @param action State transition descriptor.
+ * @returns The next auth state.
+ */
 const authReducer = (state: AuthState, action: AuthAction): AuthState => {
   switch (action.type) {
     case "load_start":
@@ -131,6 +151,11 @@ const authReducer = (state: AuthState, action: AuthAction): AuthState => {
   }
 };
 
+/**
+ * Provides authentication state and actions to descendant components.
+ * @param children React subtree that needs auth state.
+ * @returns Auth context provider wrapper.
+ */
 function AuthProvider({ children }: { children: React.ReactNode }) {
   const [state, dispatch] = useReducer(authReducer, initialState);
   const { isAuthenticated, isLoading, user, accessToken } = state;
@@ -151,6 +176,12 @@ function AuthProvider({ children }: { children: React.ReactNode }) {
     void loadSession();
   }, [getMe]);
 
+  /**
+   * Executes the login flow and stores the auth token locally.
+   * @param credentials Email/password credentials.
+   * @returns Resolves when the auth state is updated.
+   * @throws Error when the API returns a non-OK response.
+   */
   const login = useCallback(async (credentials: LoginRequest) => {
     dispatch({ type: "load_start" });
     try {
@@ -175,6 +206,12 @@ function AuthProvider({ children }: { children: React.ReactNode }) {
     }
   }, []);
 
+  /**
+   * Registers a new customer and updates auth state on success.
+   * @param data Registration details provided by the user.
+   * @returns Resolves when the auth state is updated.
+   * @throws Error when the API returns a non-OK response.
+   */
   const register = useCallback(async (data: RegisterRequest) => {
     dispatch({ type: "load_start" });
     try {
@@ -205,6 +242,10 @@ function AuthProvider({ children }: { children: React.ReactNode }) {
     }
   }, []);
 
+  /**
+   * Clears the local auth state.
+   * @returns Nothing; state is reset synchronously.
+   */
   const logout = useCallback(() => {
     dispatch({ type: "logout" });
   }, []);

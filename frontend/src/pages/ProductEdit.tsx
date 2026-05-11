@@ -1,3 +1,7 @@
+/**
+ * Form page for editing an existing listing.
+ * @returns The product edit placeholder content.
+ */
 function ProductEdit() {
   return (
     <div className="p-4">

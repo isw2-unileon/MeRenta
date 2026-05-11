@@ -1,5 +1,9 @@
 import { Link, useNavigate } from "react-router-dom";
 
+/**
+ * Renders the site footer with legal links and branding.
+ * @returns The footer UI used across public layouts.
+ */
 function Footer() {
   const navigate = useNavigate();
 

@@ -1,3 +1,7 @@
+/**
+ * Form page for publishing a new listing.
+ * @returns The product creation placeholder content.
+ */
 function ProductCreate() {
   return (
     <div className="p-4">

@@ -1,6 +1,15 @@
+/**
+ * Allowed account lifecycle states.
+ */
 type AccountStatus = "active" | "inactive" | "suspended" | "banned";
+/**
+ * Roles supported by the platform.
+ */
 type UserRole = "customer" | "admin";
 
+/**
+ * Full customer record including private fields.
+ */
 interface Customer {
   customer_id: string;
   first_name: string;
@@ -15,6 +24,9 @@ interface Customer {
   stripe_customer_id: string | null;
 }
 
+/**
+ * Public-facing customer data safe to expose to clients.
+ */
 interface CustomerPublic {
   customer_id: string;
   first_name: string;
@@ -27,6 +39,9 @@ interface CustomerPublic {
   user_role: UserRole;
 }
 
+/**
+ * Lightweight profile data used in listings and chats.
+ */
 interface CustomerProfile {
   customer_id: string;
   first_name: string;
@@ -35,11 +50,17 @@ interface CustomerProfile {
   registration_date: string;
 }
 
+/**
+ * Login payload for authenticating a customer.
+ */
 interface LoginRequest {
   email: string;
   password: string;
 }
 
+/**
+ * Registration payload used to create a new account.
+ */
 interface RegisterRequest {
   first_name: string;
   last_name: string;
@@ -49,6 +70,9 @@ interface RegisterRequest {
   phone?: string;
 }
 
+/**
+ * Partial profile update payload.
+ */
 interface UpdateProfileRequest {
   first_name?: string;
   last_name?: string;
@@ -56,11 +80,17 @@ interface UpdateProfileRequest {
   avatar_url?: string | null;
 }
 
+/**
+ * Login response containing token and customer info.
+ */
 interface LoginResponse {
   token: string;
   customer: CustomerPublic;
 }
 
+/**
+ * Registration response containing token and customer info.
+ */
 interface RegisterResponse {
   token: string;
   customer: CustomerPublic;

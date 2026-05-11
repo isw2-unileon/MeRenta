@@ -6,6 +6,10 @@ import { ForgotPassword } from "@/components/auth/ForgotPassword";
 
 type AuthView = "login" | "register" | "forgot";
 
+/**
+ * Hosts login, registration, and recovery flows in a single page.
+ * @returns The authentication layout with tabs and selected view.
+ */
 function Auth() {
   const [view, setView] = useState<AuthView>("login");
 

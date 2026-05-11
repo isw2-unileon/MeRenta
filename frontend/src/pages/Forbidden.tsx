@@ -1,3 +1,7 @@
+/**
+ * Access denied page for restricted routes.
+ * @returns The forbidden placeholder content.
+ */
 function Forbidden() {
   return (
     <div className="p-4">

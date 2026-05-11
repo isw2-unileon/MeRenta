@@ -1,3 +1,6 @@
+/**
+ * Headline metrics displayed on the landing page.
+ */
 const stats = [
   { value: "12.400+", label: "Productos disponibles" },
   { value: "8.200", label: "Usuarios activos" },
@@ -5,6 +8,10 @@ const stats = [
   { value: "98%", label: "Alquileres sin incidencias" },
 ];
 
+/**
+ * Displays marketplace metrics to build credibility.
+ * @returns The stats strip shown on the landing page.
+ */
 function Stats() {
   return (
     <section className="h-stats bg-page border-border-main px-layout-margin flex items-center border-t border-b">

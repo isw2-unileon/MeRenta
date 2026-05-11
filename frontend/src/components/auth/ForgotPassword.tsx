@@ -1,5 +1,10 @@
 type AuthView = "login" | "register" | "forgot";
 
+/**
+ * Displays password recovery instructions and the email capture form.
+ * @param onSwitch Callback to return to the login view.
+ * @returns The recovery UI for requesting reset instructions.
+ */
 function ForgotPassword({ onSwitch }: { onSwitch: (v: AuthView) => void }) {
   return (
     <div className="flex min-h-9/10 flex-col">

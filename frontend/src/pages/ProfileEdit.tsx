@@ -1,3 +1,7 @@
+/**
+ * Form page for updating the current user's profile.
+ * @returns The profile edit placeholder content.
+ */
 function ProfileEdit() {
   return (
     <div className="p-4">

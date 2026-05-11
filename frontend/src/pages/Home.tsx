@@ -1,3 +1,7 @@
+/**
+ * Entry page for authenticated users.
+ * @returns The home page placeholder content.
+ */
 function Home() {
   return (
     <div className="p-4">

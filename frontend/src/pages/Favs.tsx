@@ -1,3 +1,7 @@
+/**
+ * Lists saved favorite products.
+ * @returns The favorites placeholder content.
+ */
 function Favs() {
   return (
     <div className="p-4">

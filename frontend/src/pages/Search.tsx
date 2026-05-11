@@ -1,3 +1,7 @@
+/**
+ * Search results page for browsing listings.
+ * @returns The search page placeholder content.
+ */
 function Search() {
   return (
     <div className="p-4">

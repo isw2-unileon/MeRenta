@@ -1,3 +1,7 @@
+/**
+ * Legal terms and conditions page.
+ * @returns The terms placeholder content.
+ */
 function Terms() {
   return (
     <div className="p-4">

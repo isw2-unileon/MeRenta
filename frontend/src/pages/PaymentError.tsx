@@ -1,3 +1,7 @@
+/**
+ * Error page shown when a payment fails.
+ * @returns The payment error placeholder content.
+ */
 function PaymentError() {
   return (
     <div className="p-4">

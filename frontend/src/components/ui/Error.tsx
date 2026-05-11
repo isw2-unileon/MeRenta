@@ -8,6 +8,9 @@ interface ErrorInfo {
   variant: "info" | "danger";
 }
 
+/**
+ * Lookup table for UI copy by error code.
+ */
 const errors: Record<ErrorCode, ErrorInfo> = {
   404: {
     title: "Pagina no encontrada",
@@ -40,10 +43,20 @@ interface ErrorProps {
   onAction?: () => void;
 }
 
+/**
+ * Displays an error card with contextual actions.
+ * @param code Error code used to select copy and styling.
+ * @param onAction Optional override for the default action.
+ * @returns The error card UI.
+ */
 function Error({ code, onAction }: ErrorProps) {
   const error = errors[code];
   const isDanger = error.variant === "danger";
 
+  /**
+   * Executes the provided action or falls back to a safe default.
+   * @returns Nothing; triggers navigation or reload.
+   */
   const runErrorAction = () => {
     if (onAction) {
       onAction();

@@ -1,5 +1,12 @@
+/**
+ * Featured categories shown on the landing page.
+ */
 const categories = ["Deporte", "Fotografía", "Herramientas", "Electronica", "Aventura", "Musica"];
 
+/**
+ * Lists quick category filters for browsing.
+ * @returns The category section for the landing page.
+ */
 function Categories() {
   return (
     <section

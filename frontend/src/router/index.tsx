@@ -30,6 +30,9 @@ import { Forbidden } from "@/pages/Forbidden.tsx";
 import { ServerError } from "@/pages/ServerError.tsx";
 import { Error } from "@/pages/Error.tsx";
 
+/**
+ * Application route map and layout nesting for react-router.
+ */
 const router = createBrowserRouter([
   {
     element: <RootProvider />,

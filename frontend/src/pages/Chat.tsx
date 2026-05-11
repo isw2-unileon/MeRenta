@@ -1,3 +1,7 @@
+/**
+ * Messaging hub for user conversations.
+ * @returns The chat placeholder content.
+ */
 function Chat() {
   return (
     <div className="p-4">

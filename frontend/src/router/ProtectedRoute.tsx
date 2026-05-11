@@ -1,6 +1,10 @@
 import { Navigate, Outlet } from "react-router-dom";
 import { useAuth } from "@/hooks/useAuth.ts";
 
+/**
+ * Guards nested routes by redirecting unauthenticated users to the auth page.
+ * @returns A loading state, redirect, or nested outlet.
+ */
 function ProtectedRoute() {
   const { isAuthenticated, isLoading } = useAuth();
 

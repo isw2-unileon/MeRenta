@@ -1,3 +1,7 @@
+/**
+ * Confirmation page shown after a successful payment.
+ * @returns The payment success placeholder content.
+ */
 function PaymentSuccess() {
   return (
     <div className="p-4">

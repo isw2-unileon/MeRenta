@@ -1,3 +1,7 @@
+/**
+ * Checkout flow entry point for a booking.
+ * @returns The checkout placeholder content.
+ */
 function Checkout() {
   return (
     <div className="p-4">
