@@ -1,5 +1,9 @@
 import { useNavigate } from "react-router-dom";
 
+/**
+ * Highlights the main value proposition and primary calls to action.
+ * @returns The landing hero section with CTA buttons and sample listings.
+ */
 function Hero() {
   const navigate = useNavigate();
 

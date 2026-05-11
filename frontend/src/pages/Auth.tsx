@@ -6,7 +6,11 @@ import { ForgotPassword } from "@/components/auth/ForgotPassword";
 
 type AuthView = "login" | "register" | "forgot";
 
-export function Auth() {
+/**
+ * Hosts login, registration, and recovery flows in a single page.
+ * @returns The authentication layout with tabs and selected view.
+ */
+function Auth() {
   const [view, setView] = useState<AuthView>("login");
 
   const showTabs = view !== "forgot";
@@ -19,7 +23,7 @@ export function Auth() {
 
           <span className="self-center text-center text-xl text-white/70">ACCESO A LA PLATAFORMA</span>
 
-          <h1 className="mt-4 self-center text-center text-6xl leading-tight font-bold text-white/85">
+          <h1 className="mt-4 self-center text-center text-6xl leading-tight font-semibold text-white/85">
             Únete a MeRenta
           </h1>
 
@@ -69,3 +73,5 @@ export function Auth() {
     </main>
   );
 }
+
+export { Auth };

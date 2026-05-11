@@ -2,6 +2,10 @@ import { useNavigate } from "react-router-dom";
 import { useAuth } from "@/hooks/useAuth";
 import { Heart, MessageSquare } from "lucide-react";
 
+/**
+ * Renders the authenticated navigation bar with profile shortcuts.
+ * @returns The private navigation UI or null while unauthenticated.
+ */
 function NavbarAuth() {
   const navigate = useNavigate();
   const { user, isAuthenticated, isLoading } = useAuth();
@@ -87,7 +91,7 @@ function NavbarAuth() {
               <img
                 src={user.avatar_url}
                 alt={fullName}
-                className="h-8 w-8 rounded-full object-cover"
+                className="size-8 rounded-full object-cover"
               />
             ) : (
               <div className="avatar-initials">{initials}</div>

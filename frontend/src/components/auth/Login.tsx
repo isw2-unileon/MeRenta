@@ -5,7 +5,12 @@ import { useAuth } from "@/hooks/useAuth";
 
 type AuthView = "login" | "register" | "forgot";
 
-export function Login({ onSwitch }: { onSwitch: (v: AuthView) => void }) {
+/**
+ * Renders the login form and coordinates auth flow transitions.
+ * @param onSwitch Callback to swap between auth views.
+ * @returns The login form UI with validation and feedback.
+ */
+function Login({ onSwitch }: { onSwitch: (v: AuthView) => void }) {
   const { login, isLoading } = useAuth();
   const navigate = useNavigate();
   const [showPassword, setShowPassword] = useState(false);
@@ -15,7 +20,11 @@ export function Login({ onSwitch }: { onSwitch: (v: AuthView) => void }) {
     password: "",
   });
 
-  const handleChange = (e: ChangeEvent<HTMLInputElement>) => {
+  /**
+   * Syncs form state with the email/password inputs.
+   * @param e Input change event from the login form.
+   */
+  const updateLoginField = (e: ChangeEvent<HTMLInputElement>) => {
     const { id, value } = e.target;
     if (id === "login-email") {
       setFormData((prev) => ({ ...prev, email: value }));
@@ -25,6 +34,10 @@ export function Login({ onSwitch }: { onSwitch: (v: AuthView) => void }) {
     }
   };
 
+  /**
+   * Validates credentials and triggers the login request.
+   * @param e Form submit event for the login action.
+   */
   const handleSubmit: FormEventHandler<HTMLFormElement> = (e) => {
     e.preventDefault();
     setError("");
@@ -77,7 +90,7 @@ export function Login({ onSwitch }: { onSwitch: (v: AuthView) => void }) {
             placeholder="tu@email.com"
             autoComplete="email"
             value={formData.email}
-            onChange={handleChange}
+            onChange={updateLoginField}
             required
           />
         </div>
@@ -98,7 +111,7 @@ export function Login({ onSwitch }: { onSwitch: (v: AuthView) => void }) {
               placeholder="••••••••"
               autoComplete="current-password"
               value={formData.password}
-              onChange={handleChange}
+              onChange={updateLoginField}
               required
             />
 
@@ -144,3 +157,5 @@ export function Login({ onSwitch }: { onSwitch: (v: AuthView) => void }) {
     </div>
   );
 }
+
+export { Login };

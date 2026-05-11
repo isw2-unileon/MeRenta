@@ -1,24 +1,36 @@
-export interface ApiResponse<T> {
+/**
+ * Generic API response wrapper used by backend endpoints.
+ */
+interface ApiResponse<T> {
   success: boolean;
-  data: T;
+  data?: T;
   message?: string;
 }
 
-export interface ApiError {
+/**
+ * Standard API error payload with validation details.
+ */
+interface ApiError {
   success: false;
   message: string;
   errors?: Record<string, string[]>;
   status_code: number;
 }
 
-export interface PaginationParams {
+/**
+ * Common pagination and sorting parameters for list endpoints.
+ */
+interface PaginationParams {
   page: number;
   limit: number;
   sort_by?: string;
   order?: "asc" | "desc";
 }
 
-export interface PaginatedResponse<T> {
+/**
+ * Response shape for paginated resources.
+ */
+interface PaginatedResponse<T> {
   items: T[];
   total: number;
   page: number;
@@ -28,7 +40,10 @@ export interface PaginatedResponse<T> {
   has_prev: boolean;
 }
 
-export interface SearchFilters {
+/**
+ * Query filters for product search.
+ */
+interface SearchFilters {
   query?: string;
   category?: string;
   min_price?: number;
@@ -39,34 +54,70 @@ export interface SearchFilters {
   order?: "asc" | "desc";
 }
 
-export type ProductCondition = "new" | "like_new" | "good" | "fair" | "poor";
+/**
+ * Normalized condition values for listings.
+ */
+type ProductCondition = "new" | "like_new" | "good" | "fair" | "poor";
 
-export type ProductStatus = "available" | "reserved" | "sold";
+/**
+ * Availability states for a listing.
+ */
+type ProductStatus = "available" | "reserved" | "sold";
 
-export interface WSMessage {
+/**
+ * WebSocket message envelope for realtime events.
+ */
+interface WSMessage {
   type: "chat" | "notification" | "typing" | "read";
   payload: unknown;
   timestamp: string;
 }
 
-export interface PaymentIntentRequest {
+/**
+ * Payload to initialize a payment intent.
+ */
+interface PaymentIntentRequest {
   product_id: string;
   amount: number;
 }
 
-export interface PaymentIntentResponse {
+/**
+ * Response data needed to complete a payment.
+ */
+interface PaymentIntentResponse {
   client_secret: string;
   payment_intent_id: string;
 }
 
-export interface ImageUpload {
+/**
+ * Upload metadata for images stored externally.
+ */
+interface ImageUpload {
   file: File;
   bucket: string;
   path: string;
 }
 
-export interface ImageData {
+/**
+ * Persisted image metadata returned by the API.
+ */
+interface ImageData {
   id: string;
   url: string;
   position: number;
 }
+
+export type {
+  ApiError,
+  ApiResponse,
+  ImageData,
+  ImageUpload,
+  PaginatedResponse,
+  PaginationParams,
+  PaymentIntentRequest,
+  PaymentIntentResponse,
+  ProductCondition,
+  ProductStatus,
+  SearchFilters,
+  WSMessage,
+};

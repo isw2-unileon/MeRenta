@@ -1,5 +1,9 @@
 import { useNavigate } from "react-router-dom";
 
+/**
+ * Renders the public navigation bar for unauthenticated visitors.
+ * @returns The public navigation UI with anchor links and auth actions.
+ */
 function NavbarPublic() {
   const navigate = useNavigate();
 

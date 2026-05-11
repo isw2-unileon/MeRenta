@@ -6,6 +6,11 @@ interface ErrorPageProps {
   errorCode: ErrorCode;
 }
 
+/**
+ * Wraps the error card in a centered layout with a back action.
+ * @param errorCode Error code forwarded to the error card.
+ * @returns The error page layout.
+ */
 function ErrorPage({ errorCode }: ErrorPageProps) {
   return (
     <div className="flex justify-center">
