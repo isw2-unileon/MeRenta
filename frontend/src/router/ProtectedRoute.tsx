@@ -7,7 +7,7 @@ function ProtectedRoute() {
   if (isLoading) {
     return (
       <div className="flex h-screen items-center justify-center">
-        <p className="text-body-lg text-subtle">Cargando...</p>
+        <p className="text-body-lg text-subtle">Cargando…</p>
       </div>
     );
   }

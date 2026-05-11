@@ -1,5 +1,6 @@
 import { useCallback } from "react";
 import type { CustomerPublic } from "@/types/customer";
+import type { ApiResponse } from "@/types/common";
 
 const API_BASE_URL = "/api";
 
@@ -32,13 +33,12 @@ const parseMeResponse = async (response: Response): Promise<CustomerPublic> => {
     throw new Error("Invalid response payload");
   }
 
-  const data = (payload as { data?: unknown }).data;
-
-  if (!data || typeof data !== "object") {
+  const data = (payload as ApiResponse<CustomerPublic>).data;
+  if (!data) {
     throw new Error("Invalid response data");
   }
 
-  return data as CustomerPublic;
+  return data;
 };
 
 export function useMe(accessToken: string | null) {

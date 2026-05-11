@@ -1,4 +1,4 @@
-export type AccountStatus = "active" | "inactive" | "suspended" | "banned";
+type AccountStatus = "active" | "inactive" | "suspended" | "banned";
 export type UserRole = "customer" | "admin";
 
 export interface Customer {

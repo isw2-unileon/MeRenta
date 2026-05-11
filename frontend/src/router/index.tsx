@@ -28,6 +28,8 @@ import { Info } from "@/pages/Info.tsx";
 import { NotFound } from "@/pages/NotFound.tsx";
 import { Forbidden } from "@/pages/Forbidden.tsx";
 import { ServerError } from "@/pages/ServerError.tsx";
+import { Error } from "@/pages/Error.tsx";
+import { ProfilePublic } from "@/pages/ProfilePublic.tsx";
 
 const router = createBrowserRouter([
   {
@@ -40,6 +42,7 @@ const router = createBrowserRouter([
           { path: "terms", element: <Terms /> },
           { path: "privacy", element: <Privacy /> },
           { path: "more-info", element: <Info /> },
+          { path: "profile/public", element: <ProfilePublic /> },
         ],
       },
 
@@ -47,6 +50,7 @@ const router = createBrowserRouter([
         element: <BlankLayout />,
         children: [
           { path: "auth", element: <Auth /> },
+          { path: "error", element: <Error /> },
           { path: "payment/success", element: <PaymentSuccess /> },
           { path: "payment/error", element: <PaymentError /> },
           { path: "not-found", element: <NotFound /> },

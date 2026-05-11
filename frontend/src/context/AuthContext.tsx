@@ -1,4 +1,4 @@
-import { createContext, useState, useEffect, useCallback } from "react";
+import { createContext, useCallback, useEffect, useReducer } from "react";
 import * as React from "react";
 import type { CustomerPublic, LoginRequest, RegisterRequest } from "@/types/customer";
 import { useMe } from "@/hooks/useMe";
@@ -57,28 +57,94 @@ const parseAuthResponse = async (
   return { token, customer: customer as CustomerPublic };
 };
 
+interface AuthState {
+  isAuthenticated: boolean;
+  isLoading: boolean;
+  user: CustomerPublic | null;
+  accessToken: string | null;
+}
+
+type AuthAction =
+  | { type: "load_start" }
+  | { type: "load_success"; user: CustomerPublic }
+  | { type: "load_failure" }
+  | { type: "login_success"; user: CustomerPublic; token: string }
+  | { type: "login_failure" }
+  | { type: "register_success"; user: CustomerPublic; token: string }
+  | { type: "register_failure" }
+  | { type: "logout" };
+
+const initialState: AuthState = {
+  isAuthenticated: false,
+  isLoading: true,
+  user: null,
+  accessToken: null,
+};
+
+const authReducer = (state: AuthState, action: AuthAction): AuthState => {
+  switch (action.type) {
+    case "load_start":
+      return { ...state, isLoading: true };
+    case "load_success":
+      return {
+        ...state,
+        isLoading: false,
+        isAuthenticated: true,
+        user: action.user,
+        accessToken: null,
+      };
+    case "load_failure":
+      return {
+        ...state,
+        isLoading: false,
+        isAuthenticated: false,
+        user: null,
+        accessToken: null,
+      };
+    case "login_success":
+    case "register_success":
+      return {
+        ...state,
+        isLoading: false,
+        isAuthenticated: true,
+        user: action.user,
+        accessToken: action.token,
+      };
+    case "login_failure":
+    case "register_failure":
+      return {
+        ...state,
+        isLoading: false,
+        isAuthenticated: false,
+        user: null,
+        accessToken: null,
+      };
+    case "logout":
+      return {
+        ...state,
+        isAuthenticated: false,
+        user: null,
+        accessToken: null,
+      };
+    default:
+      return state;
+  }
+};
+
 function AuthProvider({ children }: { children: React.ReactNode }) {
-  const [isAuthenticated, setIsAuthenticated] = useState(false);
-  const [isLoading, setIsLoading] = useState(true);
-  const [user, setUser] = useState<CustomerPublic | null>(null);
-  const [accessToken, setAccessToken] = useState<string | null>(null);
+  const [state, dispatch] = useReducer(authReducer, initialState);
+  const { isAuthenticated, isLoading, user, accessToken } = state;
 
   const { getMe } = useMe(accessToken);
 
   useEffect(() => {
     const loadSession = async () => {
+      dispatch({ type: "load_start" });
       try {
         const customer = await getMe();
-
-        setUser(customer);
-        setIsAuthenticated(true);
-        setAccessToken(null);
+        dispatch({ type: "load_success", user: customer });
       } catch {
-        setUser(null);
-        setAccessToken(null);
-        setIsAuthenticated(false);
-      } finally {
-        setIsLoading(false);
+        dispatch({ type: "load_failure" });
       }
     };
 
@@ -86,7 +152,7 @@ function AuthProvider({ children }: { children: React.ReactNode }) {
   }, [getMe]);
 
   const login = useCallback(async (credentials: LoginRequest) => {
-    setIsLoading(true);
+    dispatch({ type: "load_start" });
     try {
       const response = await fetch(`${API_BASE_URL}/auth/login`, {
         method: "POST",
@@ -102,22 +168,15 @@ function AuthProvider({ children }: { children: React.ReactNode }) {
       }
 
       const { token, customer } = await parseAuthResponse(response);
-
-      setAccessToken(token);
-      setUser(customer);
-      setIsAuthenticated(true);
+      dispatch({ type: "login_success", user: customer, token });
     } catch (error) {
-      setIsAuthenticated(false);
-      setUser(null);
-      setAccessToken(null);
+      dispatch({ type: "login_failure" });
       throw error;
-    } finally {
-      setIsLoading(false);
     }
   }, []);
 
   const register = useCallback(async (data: RegisterRequest) => {
-    setIsLoading(true);
+    dispatch({ type: "load_start" });
     try {
       const response = await fetch(`${API_BASE_URL}/auth/register`, {
         method: "POST",
@@ -139,23 +198,15 @@ function AuthProvider({ children }: { children: React.ReactNode }) {
         throw new Error(await parseErrorMessage(response));
       }
       const { token, customer } = await parseAuthResponse(response);
-      setAccessToken(token);
-      setUser(customer);
-      setIsAuthenticated(true);
+      dispatch({ type: "register_success", user: customer, token });
     } catch (error) {
-      setIsAuthenticated(false);
-      setUser(null);
-      setAccessToken(null);
+      dispatch({ type: "register_failure" });
       throw error;
-    } finally {
-      setIsLoading(false);
     }
   }, []);
 
   const logout = useCallback(() => {
-    setAccessToken(null);
-    setUser(null);
-    setIsAuthenticated(false);
+    dispatch({ type: "logout" });
   }, []);
 
   const value: AuthContextType = {
