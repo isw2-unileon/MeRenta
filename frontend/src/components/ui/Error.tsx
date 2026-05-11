@@ -44,7 +44,7 @@ function Error({ code, onAction }: ErrorProps) {
   const error = errors[code];
   const isDanger = error.variant === "danger";
 
-  const handleClick = () => {
+  const runErrorAction = () => {
     if (onAction) {
       onAction();
     } else {
@@ -75,7 +75,7 @@ function Error({ code, onAction }: ErrorProps) {
       <button
         type="button"
         className={`${isDanger ? "btn-danger" : "btn-primary"} btn--error mt-auto`}
-        onClick={handleClick}
+        onClick={runErrorAction}
       >
         {error.buttonText}
       </button>

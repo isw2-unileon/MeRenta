@@ -5,7 +5,7 @@ import { useAuth } from "@/hooks/useAuth";
 
 type AuthView = "login" | "register" | "forgot";
 
-export function Login({ onSwitch }: { onSwitch: (v: AuthView) => void }) {
+function Login({ onSwitch }: { onSwitch: (v: AuthView) => void }) {
   const { login, isLoading } = useAuth();
   const navigate = useNavigate();
   const [showPassword, setShowPassword] = useState(false);
@@ -15,7 +15,7 @@ export function Login({ onSwitch }: { onSwitch: (v: AuthView) => void }) {
     password: "",
   });
 
-  const handleChange = (e: ChangeEvent<HTMLInputElement>) => {
+  const updateLoginField = (e: ChangeEvent<HTMLInputElement>) => {
     const { id, value } = e.target;
     if (id === "login-email") {
       setFormData((prev) => ({ ...prev, email: value }));
@@ -77,7 +77,7 @@ export function Login({ onSwitch }: { onSwitch: (v: AuthView) => void }) {
             placeholder="tu@email.com"
             autoComplete="email"
             value={formData.email}
-            onChange={handleChange}
+            onChange={updateLoginField}
             required
           />
         </div>
@@ -98,7 +98,7 @@ export function Login({ onSwitch }: { onSwitch: (v: AuthView) => void }) {
               placeholder="••••••••"
               autoComplete="current-password"
               value={formData.password}
-              onChange={handleChange}
+              onChange={updateLoginField}
               required
             />
 
@@ -144,3 +144,5 @@ export function Login({ onSwitch }: { onSwitch: (v: AuthView) => void }) {
     </div>
   );
 }
+
+export { Login };

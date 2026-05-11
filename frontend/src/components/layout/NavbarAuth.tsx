@@ -87,7 +87,7 @@ function NavbarAuth() {
               <img
                 src={user.avatar_url}
                 alt={fullName}
-                className="h-8 w-8 rounded-full object-cover"
+                className="size-8 rounded-full object-cover"
               />
             ) : (
               <div className="avatar-initials">{initials}</div>

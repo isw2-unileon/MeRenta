@@ -5,7 +5,7 @@ import { useNavigate } from "react-router-dom";
 
 type AuthView = "login" | "register" | "forgot";
 
-export function Register({ onSwitch }: { onSwitch: (v: AuthView) => void }) {
+function Register({ onSwitch }: { onSwitch: (v: AuthView) => void }) {
   const { register, isLoading } = useAuth();
 
   const [showPassword, setShowPassword] = useState(false);
@@ -22,7 +22,7 @@ export function Register({ onSwitch }: { onSwitch: (v: AuthView) => void }) {
     repeatPassword: "",
   });
 
-  const handleChange = (e: ChangeEvent<HTMLInputElement>) => {
+  const updateRegisterField = (e: ChangeEvent<HTMLInputElement>) => {
     const { id, value } = e.target;
     const fieldMap: Record<string, keyof typeof formData> = {
       "register-name": "firstName",
@@ -111,7 +111,7 @@ export function Register({ onSwitch }: { onSwitch: (v: AuthView) => void }) {
             placeholder="Tu nombre"
             autoComplete="given-name"
             value={formData.firstName}
-            onChange={handleChange}
+            onChange={updateRegisterField}
             required
           />
         </div>
@@ -130,7 +130,7 @@ export function Register({ onSwitch }: { onSwitch: (v: AuthView) => void }) {
             placeholder="Tu apellido"
             autoComplete="family-name"
             value={formData.lastName}
-            onChange={handleChange}
+            onChange={updateRegisterField}
             required
           />
         </div>
@@ -149,7 +149,7 @@ export function Register({ onSwitch }: { onSwitch: (v: AuthView) => void }) {
             placeholder="tu@email.com"
             autoComplete="email"
             value={formData.email}
-            onChange={handleChange}
+            onChange={updateRegisterField}
             required
           />
         </div>
@@ -170,7 +170,7 @@ export function Register({ onSwitch }: { onSwitch: (v: AuthView) => void }) {
               placeholder="Crea una contraseña"
               autoComplete="new-password"
               value={formData.password}
-              onChange={handleChange}
+              onChange={updateRegisterField}
               required
             />
 
@@ -201,7 +201,7 @@ export function Register({ onSwitch }: { onSwitch: (v: AuthView) => void }) {
               placeholder="Repite la contraseña"
               autoComplete="new-password"
               value={formData.repeatPassword}
-              onChange={handleChange}
+              onChange={updateRegisterField}
               required
             />
 
@@ -239,3 +239,5 @@ export function Register({ onSwitch }: { onSwitch: (v: AuthView) => void }) {
     </div>
   );
 }
+
+export { Register };

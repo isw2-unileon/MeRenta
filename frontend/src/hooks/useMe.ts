@@ -41,7 +41,7 @@ const parseMeResponse = async (response: Response): Promise<CustomerPublic> => {
   return data;
 };
 
-export function useMe(accessToken: string | null) {
+function useMe(accessToken: string | null) {
   const getMe = useCallback(async (): Promise<CustomerPublic> => {
     const response = await fetch(`${API_BASE_URL}/me`, {
       method: "GET",
@@ -62,3 +62,5 @@ export function useMe(accessToken: string | null) {
 
   return { getMe };
 }
+
+export { useMe };

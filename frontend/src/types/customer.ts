@@ -1,7 +1,7 @@
 type AccountStatus = "active" | "inactive" | "suspended" | "banned";
-export type UserRole = "customer" | "admin";
+type UserRole = "customer" | "admin";
 
-export interface Customer {
+interface Customer {
   customer_id: string;
   first_name: string;
   last_name: string;
@@ -15,7 +15,7 @@ export interface Customer {
   stripe_customer_id: string | null;
 }
 
-export interface CustomerPublic {
+interface CustomerPublic {
   customer_id: string;
   first_name: string;
   last_name: string;
@@ -27,7 +27,7 @@ export interface CustomerPublic {
   user_role: UserRole;
 }
 
-export interface CustomerProfile {
+interface CustomerProfile {
   customer_id: string;
   first_name: string;
   last_name: string;
@@ -35,12 +35,12 @@ export interface CustomerProfile {
   registration_date: string;
 }
 
-export interface LoginRequest {
+interface LoginRequest {
   email: string;
   password: string;
 }
 
-export interface RegisterRequest {
+interface RegisterRequest {
   first_name: string;
   last_name: string;
   email: string;
@@ -49,19 +49,32 @@ export interface RegisterRequest {
   phone?: string;
 }
 
-export interface UpdateProfileRequest {
+interface UpdateProfileRequest {
   first_name?: string;
   last_name?: string;
   phone?: string | null;
   avatar_url?: string | null;
 }
 
-export interface LoginResponse {
+interface LoginResponse {
   token: string;
   customer: CustomerPublic;
 }
 
-export interface RegisterResponse {
+interface RegisterResponse {
   token: string;
   customer: CustomerPublic;
 }
+
+export type {
+  AccountStatus,
+  Customer,
+  CustomerProfile,
+  CustomerPublic,
+  LoginRequest,
+  LoginResponse,
+  RegisterRequest,
+  RegisterResponse,
+  UpdateProfileRequest,
+  UserRole,
+};

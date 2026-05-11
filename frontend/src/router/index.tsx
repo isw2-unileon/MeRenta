@@ -29,7 +29,6 @@ import { NotFound } from "@/pages/NotFound.tsx";
 import { Forbidden } from "@/pages/Forbidden.tsx";
 import { ServerError } from "@/pages/ServerError.tsx";
 import { Error } from "@/pages/Error.tsx";
-import { ProfilePublic } from "@/pages/ProfilePublic.tsx";
 
 const router = createBrowserRouter([
   {
@@ -42,7 +41,6 @@ const router = createBrowserRouter([
           { path: "terms", element: <Terms /> },
           { path: "privacy", element: <Privacy /> },
           { path: "more-info", element: <Info /> },
-          { path: "profile/public", element: <ProfilePublic /> },
         ],
       },
 

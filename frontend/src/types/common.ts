@@ -1,24 +1,24 @@
-export interface ApiResponse<T> {
+interface ApiResponse<T> {
   success: boolean;
   data?: T;
   message?: string;
 }
 
-export interface ApiError {
+interface ApiError {
   success: false;
   message: string;
   errors?: Record<string, string[]>;
   status_code: number;
 }
 
-export interface PaginationParams {
+interface PaginationParams {
   page: number;
   limit: number;
   sort_by?: string;
   order?: "asc" | "desc";
 }
 
-export interface PaginatedResponse<T> {
+interface PaginatedResponse<T> {
   items: T[];
   total: number;
   page: number;
@@ -28,7 +28,7 @@ export interface PaginatedResponse<T> {
   has_prev: boolean;
 }
 
-export interface SearchFilters {
+interface SearchFilters {
   query?: string;
   category?: string;
   min_price?: number;
@@ -39,34 +39,49 @@ export interface SearchFilters {
   order?: "asc" | "desc";
 }
 
-export type ProductCondition = "new" | "like_new" | "good" | "fair" | "poor";
+type ProductCondition = "new" | "like_new" | "good" | "fair" | "poor";
 
-export type ProductStatus = "available" | "reserved" | "sold";
+type ProductStatus = "available" | "reserved" | "sold";
 
-export interface WSMessage {
+interface WSMessage {
   type: "chat" | "notification" | "typing" | "read";
   payload: unknown;
   timestamp: string;
 }
 
-export interface PaymentIntentRequest {
+interface PaymentIntentRequest {
   product_id: string;
   amount: number;
 }
 
-export interface PaymentIntentResponse {
+interface PaymentIntentResponse {
   client_secret: string;
   payment_intent_id: string;
 }
 
-export interface ImageUpload {
+interface ImageUpload {
   file: File;
   bucket: string;
   path: string;
 }
 
-export interface ImageData {
+interface ImageData {
   id: string;
   url: string;
   position: number;
 }
+
+export type {
+  ApiError,
+  ApiResponse,
+  ImageData,
+  ImageUpload,
+  PaginatedResponse,
+  PaginationParams,
+  PaymentIntentRequest,
+  PaymentIntentResponse,
+  ProductCondition,
+  ProductStatus,
+  SearchFilters,
+  WSMessage,
+};

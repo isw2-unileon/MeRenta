@@ -1,6 +1,6 @@
 type AuthView = "login" | "register" | "forgot";
 
-export function ForgotPassword({ onSwitch }: { onSwitch: (v: AuthView) => void }) {
+function ForgotPassword({ onSwitch }: { onSwitch: (v: AuthView) => void }) {
   return (
     <div className="flex min-h-9/10 flex-col">
       <span className="eyebrow">RECUPERACIÓN DE ACCESO</span>
@@ -51,3 +51,5 @@ export function ForgotPassword({ onSwitch }: { onSwitch: (v: AuthView) => void }
     </div>
   );
 }
+
+export { ForgotPassword };
