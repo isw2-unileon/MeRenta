@@ -8,7 +8,7 @@ import { Heart, MessageSquare, LogOut } from "lucide-react";
  */
 function NavbarAuth() {
   const navigate = useNavigate();
-  const { user, isAuthenticated, isLoading } = useAuth();
+  const { user, isAuthenticated, isLoading, logout } = useAuth();
 
   if (isLoading) {
     return null;
@@ -28,6 +28,14 @@ function NavbarAuth() {
     .slice(0, 2);
 
   const displayName = user.last_name ? `${user.first_name} ${user.last_name[0]}.` : user.first_name;
+
+  const handleLogout = async () => {
+    try {
+      await logout();
+    } finally {
+      navigate("/", { replace: true });
+    }
+  };
 
   return (
     <nav className="h-navbar bg-page border-border-main fixed top-0 right-0 left-0 z-50 border-b">
@@ -94,7 +102,12 @@ function NavbarAuth() {
             <span className="text-body text-ink font-medium">{displayName}</span>
           </button>
 
-          <button type="button">
+          <button 
+              type="button"
+              aria-label="Cerrar sesión"
+              title="Cerrar sesión"
+              onClick={handleLogout}
+          >
             <LogOut className="stroke-nav transition-all hover:scale-110 hover:stroke-red-700" />
           </button>
         </div>

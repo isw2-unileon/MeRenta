@@ -12,7 +12,7 @@ interface AuthContextType {
   user: CustomerPublic | null;
   login: (credentials: LoginRequest) => Promise<void>;
   register: (data: RegisterRequest) => Promise<void>;
-  logout: () => void;
+  logout: () => Promise<void>;
   accessToken: string | null;
 }
 
@@ -86,7 +86,9 @@ type AuthAction =
   | { type: "login_failure" }
   | { type: "register_success"; user: CustomerPublic; token: string }
   | { type: "register_failure" }
-  | { type: "logout" };
+  | { type: "logout_start" }
+  | { type: "logout_success" }
+  | { type: "logout_failure" };
 
 const initialState: AuthState = {
   isAuthenticated: false,
@@ -139,9 +141,23 @@ const authReducer = (state: AuthState, action: AuthAction): AuthState => {
         user: null,
         accessToken: null,
       };
-    case "logout":
+    case "logout_start":
       return {
         ...state,
+        isLoading: true,
+      };
+    case "logout_success":
+      return {
+        ...state,
+        isLoading: false,
+        isAuthenticated: false,
+        user: null,
+        accessToken: null,
+      };
+    case "logout_failure":
+      return {
+        ...state,
+        isLoading: false,
         isAuthenticated: false,
         user: null,
         accessToken: null,
@@ -246,8 +262,23 @@ function AuthProvider({ children }: { children: React.ReactNode }) {
    * Clears the local auth state.
    * @returns Nothing; state is reset synchronously.
    */
-  const logout = useCallback(() => {
-    dispatch({ type: "logout" });
+  const logout = useCallback(async () => {
+    dispatch({ type: "logout_start" });
+
+    try {
+      const response = await fetch(`${API_BASE_URL}/auth/logout`, {
+        method: "POST",
+        credentials: "include",
+      });
+
+      if (!response.ok) {
+        throw new Error(await parseErrorMessage(response));
+      }
+      dispatch({ type: "logout_success" });
+    } catch (error) {
+      dispatch({ type: "logout_failure" });
+      throw error;
+    }
   }, []);
 
   const value: AuthContextType = {

@@ -43,6 +43,7 @@ func Setup(
 	auth := api.Group("/auth")
 	auth.POST("/register", authH.Register)
 	auth.POST("/login", authH.Login)
+	auth.POST("/logout", authH.Logout)
 
 	// protected
 	protected := api.Group("/")
