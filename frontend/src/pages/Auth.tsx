@@ -16,19 +16,6 @@ function Auth() {
   const location = useLocation();
   const { isAuthenticated, isLoading } = useAuth();
 
-  if (isLoading) {
-    return null;
-  }
-
-  if (isAuthenticated) {
-    return (
-      <Navigate
-        to="/home"
-        replace
-      />
-    );
-  }
-  
   const initialView = useMemo<AuthView>(() => {
     const stateView = (location.state as { view?: AuthView } | null)?.view;
     const queryView = new URLSearchParams(location.search).get("view");
@@ -41,13 +28,24 @@ function Auth() {
     return "login";
   }, [location.search, location.state]);
 
-
-
   const [view, setView] = useState<AuthView>(initialView);
 
   useEffect(() => {
     setView(initialView);
   }, [initialView]);
+
+  if (isLoading) {
+    return null;
+  }
+
+  if (isAuthenticated) {
+    return (
+      <Navigate
+        to="/home"
+        replace
+      />
+    );
+  }
 
   const showTabs = view !== "forgot";
 
