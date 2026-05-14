@@ -33,7 +33,7 @@ function NavbarAuth() {
     try {
       await logout();
     } finally {
-      navigate("/", { replace: true });
+      void navigate("/", { replace: true });
     }
   };
 
@@ -102,11 +102,11 @@ function NavbarAuth() {
             <span className="text-body text-ink font-medium">{displayName}</span>
           </button>
 
-          <button 
-              type="button"
-              aria-label="Cerrar sesión"
-              title="Cerrar sesión"
-              onClick={handleLogout}
+          <button
+            type="button"
+            aria-label="Cerrar sesión"
+            title="Cerrar sesión"
+            onClick={handleLogout}
           >
             <LogOut className="stroke-nav transition-all hover:scale-110 hover:stroke-red-700" />
           </button>
