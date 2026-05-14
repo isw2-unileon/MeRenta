@@ -85,6 +85,14 @@ func (h *AuthHandler) Me(c *gin.Context) {
 	respondWithCurrentCustomer(c, h.svc)
 }
 
+// Logout clears the authentication cookie.
+func (h *AuthHandler) Logout(c *gin.Context) {
+	clearAuthCookie(c)
+	response.OK(c, http.StatusOK, gin.H{
+		"message": "logged out successfully",
+	})
+}
+
 func respondWithCurrentCustomer(c *gin.Context, svc *service.AuthService) {
 	customerID, ok := c.Get("customer_id")
 	if !ok {
@@ -115,4 +123,10 @@ func setAuthCookie(c *gin.Context, token string) {
 	c.SetSameSite(http.SameSiteLaxMode)
 	secure := gin.Mode() == gin.ReleaseMode
 	c.SetCookie(authCookieName, token, authCookieMaxAge, authCookiePath, "", secure, true)
+}
+
+func clearAuthCookie(c *gin.Context) {
+	c.SetSameSite(http.SameSiteLaxMode)
+	secure := gin.Mode() == gin.ReleaseMode
+	c.SetCookie(authCookieName, "", -1, authCookiePath, "", secure, true)
 }

@@ -1,5 +1,4 @@
-import { useEffect, useMemo, useState } from "react";
-import { Navigate, useLocation } from "react-router-dom";
+import { Navigate, useLocation, useNavigate } from "react-router-dom";
 
 import { Login } from "@/components/auth/Login";
 import { Register } from "@/components/auth/Register";
@@ -13,26 +12,29 @@ type AuthView = "login" | "register" | "forgot";
  * @returns The authentication layout with tabs and selected view.
  */
 function Auth() {
-  const location = useLocation();
+  const routerLocation = useLocation();
+  const navigate = useNavigate();
   const { isAuthenticated, isLoading } = useAuth();
 
-  const initialView = useMemo<AuthView>(() => {
-    const stateView = (location.state as { view?: AuthView } | null)?.view;
-    const queryView = new URLSearchParams(location.search).get("view");
-    const candidate = stateView ?? queryView;
+  const stateView = (routerLocation.state as { view?: AuthView } | null)?.view;
+  const queryView = new URLSearchParams(routerLocation.search).get("view");
+  const candidate = stateView ?? queryView;
 
-    if (candidate === "login" || candidate === "register" || candidate === "forgot") {
-      return candidate;
-    }
+  const view: AuthView =
+    candidate === "login" || candidate === "register" || candidate === "forgot" ? candidate : "login";
 
-    return "login";
-  }, [location.search, location.state]);
+  const setView = async (nextView: AuthView) => {
+    const search = new URLSearchParams(routerLocation.search);
+    search.set("view", nextView);
 
-  const [view, setView] = useState<AuthView>(initialView);
-
-  useEffect(() => {
-    setView(initialView);
-  }, [initialView]);
+    await navigate(
+      {
+        pathname: routerLocation.pathname,
+        search: search.toString(),
+      },
+      { replace: true }
+    );
+  };
 
   if (isLoading) {
     return null;
