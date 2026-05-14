@@ -1581,7 +1581,7 @@
   ul.nav-list {
     display: flex;
     align-items: center;
-    gap: 40px;
+    gap: 20px;
   }
   ul.filter-list {
     display: flex;
