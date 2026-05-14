@@ -1,6 +1,6 @@
 import { useNavigate } from "react-router-dom";
 import { useAuth } from "@/hooks/useAuth";
-import { Heart, MessageSquare } from "lucide-react";
+import { Heart, MessageSquare, LogOut } from "lucide-react";
 
 /**
  * Renders the authenticated navigation bar with profile shortcuts.
@@ -32,39 +32,33 @@ function NavbarAuth() {
   return (
     <nav className="h-navbar bg-page border-border-main fixed top-0 right-0 left-0 z-50 border-b">
       <div className="max-w-alert-width px-nav-margin mx-auto flex h-full items-center justify-between">
-        <button
-          className="text-logo text-ink cursor-pointer border-none bg-transparent p-0 font-bold"
-          onClick={() => navigate("/home")}
-        >
-          Me<span className="text-primary">Renta</span>
-        </button>
+        <div className="flex items-center gap-8">
+          <button
+            className="text-logo text-ink cursor-pointer border-none bg-transparent p-0 font-bold"
+            onClick={() => navigate("/home")}
+          >
+            Me<span className="text-primary">Renta</span>
+          </button>
 
-        <ul className="nav-list">
-          <li>
-            <button
-              className="link-nav"
-              onClick={() => navigate("/search")}
-            >
-              Explorar
-            </button>
-          </li>
-          <li>
-            <a
-              className="link-nav"
-              href="#categorias"
-            >
-              Categorías
-            </a>
-          </li>
-          <li>
-            <a
-              className="link-nav"
-              href="#como-funciona"
-            >
-              Cómo funciona
-            </a>
-          </li>
-        </ul>
+          <ul className="nav-list">
+            <li>
+              <button
+                className="link-nav"
+                onClick={() => navigate("/search")}
+              >
+                Explorar
+              </button>
+            </li>
+            <li>
+              <button
+                className="border-primary text-primary hover:bg-primary rounded-full border-2 p-2.5 hover:text-white"
+                onClick={() => navigate("/product/new")}
+              >
+                Publicar +
+              </button>
+            </li>
+          </ul>
+        </div>
 
         <div className="flex items-center gap-4">
           <button
@@ -100,11 +94,8 @@ function NavbarAuth() {
             <span className="text-body text-ink font-medium">{displayName}</span>
           </button>
 
-          <button
-            className="btn-primary btn--md"
-            onClick={() => navigate("/product/new")}
-          >
-            + Publicar producto
+          <button type="button">
+            <LogOut className="stroke-nav transition-all hover:scale-110 hover:stroke-red-700" />
           </button>
         </div>
       </div>

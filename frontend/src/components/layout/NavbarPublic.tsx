@@ -19,40 +19,44 @@ function NavbarPublic() {
           Me<span className="text-primary">Renta</span>
         </button>
 
-        <ul className="nav-list">
-          <li>
-            <a
-              className="link-nav"
-              href="#como-funciona"
-            >
-              Como funciona
-            </a>
-          </li>
-          <li>
-            <a
-              className="link-nav"
-              href="#categorias"
-            >
-              Categorias
-            </a>
-          </li>
-        </ul>
-
         {!isLoading && !isAuthenticated ? (
-          <div className="flex items-center gap-2.5">
-            <button
-              className="btn-secondary btn--md"
-              onClick={() => navigate("/auth", { state: { view: "login" } })}
-            >
-              Iniciar sesion
-            </button>
-            <button
-              className="btn-primary btn--md"
-              onClick={() => navigate("/auth", { state: { view: "register" } })}
-            >
-              Registrarse
-            </button>
-          </div>
+          <>
+            <div className="flex items-center gap-8">
+              <ul className="nav-list">
+                <li>
+                  <a
+                    className="link-nav"
+                    href="#categorias"
+                  >
+                    Categorias
+                  </a>
+                </li>
+                <li>
+                  <a
+                    className="link-nav"
+                    href="#como-funciona"
+                  >
+                    Como funciona
+                  </a>
+                </li>
+              </ul>
+            </div>
+
+            <div className="flex items-center gap-2.5">
+              <button
+                className="btn-secondary btn--md"
+                onClick={() => navigate("/auth", { state: { view: "login" } })}
+              >
+                Iniciar sesion
+              </button>
+              <button
+                className="btn-primary btn--md"
+                onClick={() => navigate("/auth", { state: { view: "register" } })}
+              >
+                Registrarse
+              </button>
+            </div>
+          </>
         ) : null}
       </div>
     </nav>
