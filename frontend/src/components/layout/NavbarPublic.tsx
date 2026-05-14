@@ -1,4 +1,5 @@
 import { useNavigate } from "react-router-dom";
+import { useAuth } from "@/hooks/useAuth";
 
 /**
  * Renders the public navigation bar for unauthenticated visitors.
@@ -6,6 +7,7 @@ import { useNavigate } from "react-router-dom";
  */
 function NavbarPublic() {
   const navigate = useNavigate();
+  const { isAuthenticated, isLoading } = useAuth();
 
   return (
     <nav className="h-navbar bg-page border-border-main fixed top-0 right-0 left-0 z-50 border-b">
@@ -36,20 +38,22 @@ function NavbarPublic() {
           </li>
         </ul>
 
-        <div className="flex items-center gap-2.5">
-          <button
-            className="btn-secondary btn--md"
-            onClick={() => navigate("/auth", { state: { view: "login" } })}
-          >
-            Iniciar sesion
-          </button>
-          <button
-            className="btn-primary btn--md"
-            onClick={() => navigate("/auth", { state: { view: "register" } })}
-          >
-            Registrarse
-          </button>
-        </div>
+        {!isLoading && !isAuthenticated ? (
+          <div className="flex items-center gap-2.5">
+            <button
+              className="btn-secondary btn--md"
+              onClick={() => navigate("/auth", { state: { view: "login" } })}
+            >
+              Iniciar sesion
+            </button>
+            <button
+              className="btn-primary btn--md"
+              onClick={() => navigate("/auth", { state: { view: "register" } })}
+            >
+              Registrarse
+            </button>
+          </div>
+        ) : null}
       </div>
     </nav>
   );
