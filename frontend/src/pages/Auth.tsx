@@ -1,4 +1,5 @@
-import { useState } from "react";
+import { useEffect, useMemo, useState } from "react";
+import { useLocation } from "react-router-dom";
 
 import { Login } from "@/components/auth/Login";
 import { Register } from "@/components/auth/Register";
@@ -11,7 +12,25 @@ type AuthView = "login" | "register" | "forgot";
  * @returns The authentication layout with tabs and selected view.
  */
 function Auth() {
-  const [view, setView] = useState<AuthView>("login");
+  const location = useLocation();
+
+  const initialView = useMemo<AuthView>(() => {
+    const stateView = (location.state as { view?: AuthView } | null)?.view;
+    const queryView = new URLSearchParams(location.search).get("view");
+    const candidate = stateView ?? queryView;
+
+    if (candidate === "login" || candidate === "register" || candidate === "forgot") {
+      return candidate;
+    }
+
+    return "login";
+  }, [location.search, location.state]);
+
+  const [view, setView] = useState<AuthView>(initialView);
+
+  useEffect(() => {
+    setView(initialView);
+  }, [initialView]);
 
   const showTabs = view !== "forgot";
 

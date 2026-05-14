@@ -41,12 +41,12 @@ function NavbarAuth() {
 
         <ul className="nav-list">
           <li>
-            <a
+            <button
               className="link-nav"
-              href="/search"
+              onClick={() => navigate("/search")}
             >
               Explorar
-            </a>
+            </button>
           </li>
           <li>
             <a

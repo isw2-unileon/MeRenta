@@ -39,13 +39,13 @@ function NavbarPublic() {
         <div className="flex items-center gap-2.5">
           <button
             className="btn-secondary btn--md"
-            onClick={() => navigate("/auth")}
+            onClick={() => navigate("/auth", { state: { view: "login" } })}
           >
             Iniciar sesion
           </button>
           <button
             className="btn-primary btn--md"
-            onClick={() => navigate("/auth")}
+            onClick={() => navigate("/auth", { state: { view: "register" } })}
           >
             Registrarse
           </button>
