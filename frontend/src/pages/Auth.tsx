@@ -1,9 +1,10 @@
 import { useEffect, useMemo, useState } from "react";
-import { useLocation } from "react-router-dom";
+import { Navigate, useLocation } from "react-router-dom";
 
 import { Login } from "@/components/auth/Login";
 import { Register } from "@/components/auth/Register";
 import { ForgotPassword } from "@/components/auth/ForgotPassword";
+import { useAuth } from "@/hooks/useAuth";
 
 type AuthView = "login" | "register" | "forgot";
 
@@ -13,7 +14,21 @@ type AuthView = "login" | "register" | "forgot";
  */
 function Auth() {
   const location = useLocation();
+  const { isAuthenticated, isLoading } = useAuth();
 
+  if (isLoading) {
+    return null;
+  }
+
+  if (isAuthenticated) {
+    return (
+      <Navigate
+        to="/home"
+        replace
+      />
+    );
+  }
+  
   const initialView = useMemo<AuthView>(() => {
     const stateView = (location.state as { view?: AuthView } | null)?.view;
     const queryView = new URLSearchParams(location.search).get("view");
@@ -25,6 +40,8 @@ function Auth() {
 
     return "login";
   }, [location.search, location.state]);
+
+
 
   const [view, setView] = useState<AuthView>(initialView);
 
