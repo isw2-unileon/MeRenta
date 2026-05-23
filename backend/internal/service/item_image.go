@@ -84,7 +84,7 @@ func (s *ItemImageService) AddItemImages(
 		img, err := s.q.CreateItemImage(ctx, sqlcdb.CreateItemImageParams{
 			ItemID:       itemID,
 			ImageUrl:     signedURL,
-			DisplayOrder: int32(i + 1), //nolint:gosec // position counter fits in int32
+			DisplayOrder: int32(i + 1),
 		})
 		if err != nil {
 			return nil, err
@@ -113,7 +113,9 @@ func (s *ItemImageService) uploadAndSign(
 	if err != nil {
 		return "", fmt.Errorf("open upload file: %w", err)
 	}
-	defer f.Close() //nolint:errcheck
+	defer func() {
+		_ = f.Close()
+	}()
 
 	ext := strings.ToLower(filepath.Ext(fh.Filename))
 	if ext == "" {

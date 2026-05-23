@@ -66,7 +66,9 @@ func (c *SupabaseClient) Upload(
 	if err != nil {
 		return fmt.Errorf("storage upload: %w", err)
 	}
-	defer resp.Body.Close() //nolint:errcheck
+	defer func() {
+		_ = resp.Body.Close()
+	}()
 
 	if resp.StatusCode >= http.StatusMultipleChoices {
 		return c.decodeStorageError("upload", resp)
@@ -115,7 +117,9 @@ func (c *SupabaseClient) SignURL(
 	if err != nil {
 		return "", fmt.Errorf("storage sign: %w", err)
 	}
-	defer resp.Body.Close() //nolint:errcheck
+	defer func() {
+		_ = resp.Body.Close()
+	}()
 
 	if resp.StatusCode >= http.StatusMultipleChoices {
 		return "", c.decodeStorageError("sign", resp)

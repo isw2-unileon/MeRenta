@@ -31,68 +31,21 @@ type Config struct {
 func Load() *Config {
 	_ = godotenv.Load()
 
-	jwtSecret := strings.TrimSpace(getEnv("JWT_SECRET", ""))
-	if jwtSecret == "" {
-		log.Fatal("JWT_SECRET is not defined in .env")
-	}
-	jwtSecretBytes, err := base64.StdEncoding.DecodeString(jwtSecret)
-	if err != nil {
-		log.Fatal("JWT_SECRET must be a valid base64 string")
-	}
-	if len(jwtSecretBytes) < 32 {
-		log.Fatal("JWT_SECRET must decode to at least 32 bytes")
-	}
+	jwtSecretBytes := mustDecodeJWTSecret()
+	jwtIssuer := mustGetEnv("JWT_ISSUER")
+	jwtAudience := mustGetEnv("JWT_AUDIENCE")
+	jwtExpiresIn := mustParsePositiveDuration("JWT_EXPIRES_IN", mustGetEnv("JWT_EXPIRES_IN"))
+	jwtLeeway := mustParseNonNegativeDuration("JWT_LEEWAY", getEnv("JWT_LEEWAY", "2m"))
 
-	jwtIssuer := strings.TrimSpace(getEnv("JWT_ISSUER", ""))
-	if jwtIssuer == "" {
-		log.Fatal("JWT_ISSUER is not defined in .env")
-	}
-
-	jwtAudience := strings.TrimSpace(getEnv("JWT_AUDIENCE", ""))
-	if jwtAudience == "" {
-		log.Fatal("JWT_AUDIENCE is not defined in .env")
-	}
-
-	jwtExpiresInStr := strings.TrimSpace(getEnv("JWT_EXPIRES_IN", ""))
-	if jwtExpiresInStr == "" {
-		log.Fatal("JWT_EXPIRES_IN is not defined in .env")
-	}
-	jwtExpiresIn, err := time.ParseDuration(jwtExpiresInStr)
-	if err != nil || jwtExpiresIn <= 0 {
-		log.Fatal("JWT_EXPIRES_IN must be a valid duration like 24h or 15m")
-	}
-
-	jwtLeewayStr := strings.TrimSpace(getEnv("JWT_LEEWAY", "2m"))
-	jwtLeeway, err := time.ParseDuration(jwtLeewayStr)
-	if err != nil || jwtLeeway < 0 {
-		log.Fatal("JWT_LEEWAY must be a valid non-negative duration like 2m")
-	}
-
-	stripeSecret := strings.TrimSpace(getEnv("STRIPE_SECRET_KEY", ""))
-	if stripeSecret == "" {
-		log.Fatal("STRIPE_SECRET_KEY is not defined in .env")
-	}
-
-	databaseURL := getEnv("DATABASE_URL", "")
-	if databaseURL == "" {
-		log.Fatal("DATABASE_URL is not defined in .env")
-	}
+	stripeSecret := mustGetEnv("STRIPE_SECRET_KEY")
+	databaseURL := mustGetEnv("DATABASE_URL")
 
 	ginMode := getEnv("GIN_MODE", "debug")
 	corsAllowOrigin := getEnv("CORS_ALLOW_ORIGIN", "*")
-	if isProductionMode(ginMode) && strings.TrimSpace(corsAllowOrigin) == "*" {
-		log.Fatal("CORS_ALLOW_ORIGIN must be an explicit allowlist in production")
-	}
+	ensureCORSAllowOrigin(ginMode, corsAllowOrigin)
 
-	supabaseURL := strings.TrimSpace(getEnv("SUPABASE_URL", ""))
-	if supabaseURL == "" {
-		log.Fatal("SUPABASE_URL is not defined in .env")
-	}
-
-	supabaseServiceRoleKey := strings.TrimSpace(getEnv("SUPABASE_SERVICE_ROLE_KEY", ""))
-	if supabaseServiceRoleKey == "" {
-		log.Fatal("SUPABASE_SERVICE_ROLE_KEY is not defined in .env")
-	}
+	supabaseURL := mustGetEnv("SUPABASE_URL")
+	supabaseServiceRoleKey := mustGetEnv("SUPABASE_SERVICE_ROLE_KEY")
 
 	return &Config{
 		Port:                   getEnv("PORT", "8080"),
@@ -107,6 +60,48 @@ func Load() *Config {
 		CORSAllowOrigin:        corsAllowOrigin,
 		SupabaseURL:            supabaseURL,
 		SupabaseServiceRoleKey: supabaseServiceRoleKey,
+	}
+}
+
+func mustGetEnv(key string) string {
+	value := strings.TrimSpace(getEnv(key, ""))
+	if value == "" {
+		log.Fatalf("%s is not defined in .env", key)
+	}
+	return value
+}
+
+func mustDecodeJWTSecret() []byte {
+	jwtSecret := mustGetEnv("JWT_SECRET")
+	jwtSecretBytes, err := base64.StdEncoding.DecodeString(jwtSecret)
+	if err != nil {
+		log.Fatal("JWT_SECRET must be a valid base64 string")
+	}
+	if len(jwtSecretBytes) < 32 {
+		log.Fatal("JWT_SECRET must decode to at least 32 bytes")
+	}
+	return jwtSecretBytes
+}
+
+func mustParsePositiveDuration(key, value string) time.Duration {
+	parsed, err := time.ParseDuration(strings.TrimSpace(value))
+	if err != nil || parsed <= 0 {
+		log.Fatalf("%s must be a valid duration like 24h or 15m", key)
+	}
+	return parsed
+}
+
+func mustParseNonNegativeDuration(key, value string) time.Duration {
+	parsed, err := time.ParseDuration(strings.TrimSpace(value))
+	if err != nil || parsed < 0 {
+		log.Fatalf("%s must be a valid non-negative duration like 2m", key)
+	}
+	return parsed
+}
+
+func ensureCORSAllowOrigin(mode, corsAllowOrigin string) {
+	if isProductionMode(mode) && strings.TrimSpace(corsAllowOrigin) == "*" {
+		log.Fatal("CORS_ALLOW_ORIGIN must be an explicit allowlist in production")
 	}
 }
 
