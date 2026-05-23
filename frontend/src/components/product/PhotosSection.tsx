@@ -73,7 +73,7 @@ function PhotosSection({ photos, error, onAddPhotos, onRemovePhoto }: PhotosSect
   const visibleSlots = Math.min(MAX_PHOTOS, Math.max(MIN_VISIBLE_SLOTS, photos.length + 2));
 
   return (
-    <section className="rounded-xl border border-border-main bg-white p-6">
+    <section className="border-border-main rounded-xl border bg-white p-6">
       <h4 className="heading-content mb-1">Fotos del producto</h4>
       <p className="field-hint mb-6">Sube entre 1 y 10 fotos. La primera será la imagen principal.</p>
 
@@ -88,17 +88,15 @@ function PhotosSection({ photos, error, onAddPhotos, onRemovePhoto }: PhotosSect
         onDragOver={!isFull ? handleDragOver : undefined}
         className={[
           "flex flex-col items-center justify-center gap-3 rounded-xl border-2 border-dashed px-6 py-10 transition-colors",
-          error
-            ? "border-heart-active bg-[#fff8f8]"
-            : "border-border-input hover:border-primary hover:bg-primary-bg",
+          error ? "border-heart-active bg-[#fff8f8]" : "border-border-input hover:border-primary hover:bg-primary-bg",
           isFull ? "cursor-not-allowed opacity-50" : "cursor-pointer",
         ].join(" ")}
       >
-        <div className="flex size-12 items-center justify-center rounded-full bg-ghost">
-          <Plus className="size-6 text-subtle" />
+        <div className="bg-ghost flex size-12 items-center justify-center rounded-full">
+          <Plus className="text-subtle size-6" />
         </div>
         <div className="text-center">
-          <p className="text-[14px] font-medium text-ink">Arrastra tus fotos aquí o haz clic para seleccionar</p>
+          <p className="text-ink text-[14px] font-medium">Arrastra tus fotos aquí o haz clic para seleccionar</p>
           <p className="field-hint mt-1">JPG, PNG o WEBP · Máximo 5 MB por imagen · Hasta 10 fotos</p>
         </div>
       </div>
@@ -128,10 +126,10 @@ function PhotosSection({ photos, error, onAddPhotos, onRemovePhoto }: PhotosSect
                 <img
                   src={URL.createObjectURL(file)}
                   alt={`Foto ${idx + 1}`}
-                  className="h-24 w-28 rounded-lg border border-border-thumb object-cover"
+                  className="border-border-thumb h-24 w-28 rounded-lg border object-cover"
                 />
                 {idx === 0 && (
-                  <span className="absolute top-1.5 left-1.5 rounded-full bg-primary px-2 py-0.5 text-[10px] font-bold text-white">
+                  <span className="bg-primary absolute top-1.5 left-1.5 rounded-full px-2 py-0.5 text-[10px] font-bold text-white">
                     Principal
                   </span>
                 )}
@@ -139,7 +137,7 @@ function PhotosSection({ photos, error, onAddPhotos, onRemovePhoto }: PhotosSect
                   type="button"
                   onClick={() => onRemovePhoto(idx)}
                   aria-label={`Eliminar foto ${idx + 1}`}
-                  className="absolute -top-1.5 -right-1.5 flex size-5 items-center justify-center rounded-full bg-ink text-white opacity-0 transition-opacity group-hover:opacity-100"
+                  className="bg-ink absolute -top-1.5 -right-1.5 flex size-5 items-center justify-center rounded-full text-white opacity-0 transition-opacity group-hover:opacity-100"
                 >
                   <X className="size-3" />
                 </button>
@@ -153,9 +151,9 @@ function PhotosSection({ photos, error, onAddPhotos, onRemovePhoto }: PhotosSect
               type="button"
               onClick={openFilePicker}
               aria-label="Añadir foto"
-              className="flex h-24 w-28 items-center justify-center rounded-lg border-2 border-dashed border-border-input transition-colors hover:border-primary hover:bg-primary-bg"
+              className="border-border-input hover:border-primary hover:bg-primary-bg flex h-24 w-28 items-center justify-center rounded-lg border-2 border-dashed transition-colors"
             >
-              <Plus className="size-5 text-placeholder" />
+              <Plus className="text-placeholder size-5" />
             </button>
           );
         })}

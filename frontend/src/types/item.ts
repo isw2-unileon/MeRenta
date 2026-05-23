@@ -82,10 +82,4 @@ interface CategoryOption {
   subcategories: string[];
 }
 
-export type {
-  CategoryOption,
-  CreateItemRequest,
-  ItemImageResponse,
-  ItemResponse,
-  ProductFormData,
-};
+export type { CategoryOption, CreateItemRequest, ItemImageResponse, ItemResponse, ProductFormData };

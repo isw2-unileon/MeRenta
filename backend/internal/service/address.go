@@ -120,4 +120,3 @@ func toAddressResponse(a sqlcdb.Address) model.AddressResponse {
 
 	return resp
 }
-

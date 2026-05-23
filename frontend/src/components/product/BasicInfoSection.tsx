@@ -94,7 +94,7 @@ function BasicInfoSection({ data, errors, onChange }: BasicInfoSectionProps) {
   };
 
   return (
-    <section className="rounded-xl border border-border-main bg-white p-6">
+    <section className="border-border-main rounded-xl border bg-white p-6">
       <h4 className="heading-content mb-1">Información básica</h4>
       <p className="field-hint mb-6">Cuéntanos qué estás alquilando. Sé claro y específico.</p>
 
@@ -121,7 +121,9 @@ function BasicInfoSection({ data, errors, onChange }: BasicInfoSectionProps) {
             {errors.title ? (
               <p className="field-error">{errors.title}</p>
             ) : (
-              <p className="field-hint">Máximo 80 caracteres. Sé descriptivo: marca, modelo y característica principal.</p>
+              <p className="field-hint">
+                Máximo 80 caracteres. Sé descriptivo: marca, modelo y característica principal.
+              </p>
             )}
             <p className="field-hint shrink-0">{data.title.length}/80</p>
           </div>

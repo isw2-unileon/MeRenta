@@ -39,7 +39,7 @@ function PriceSection({ data, errors, onChange }: PriceSectionProps) {
   };
 
   return (
-    <section className="rounded-xl border border-border-main bg-white p-6">
+    <section className="border-border-main rounded-xl border bg-white p-6">
       <h4 className="heading-content mb-1">Precio y condiciones</h4>
       <p className="field-hint mb-6">Define cuánto cobras y en qué términos alquilas.</p>
 
@@ -140,10 +140,10 @@ function PriceSection({ data, errors, onChange }: PriceSectionProps) {
         </div>
 
         {/* Insurance notice */}
-        <div className="flex items-start gap-3 rounded-lg border border-primary-border bg-insurance p-4">
-          <ShieldCheck className="mt-0.5 size-5 shrink-0 text-primary" />
+        <div className="border-primary-border bg-insurance flex items-start gap-3 rounded-lg border p-4">
+          <ShieldCheck className="text-primary mt-0.5 size-5 shrink-0" />
           <div>
-            <p className="text-[13px] font-semibold text-primary">Seguro obligatorio incluido en cada alquiler</p>
+            <p className="text-primary text-[13px] font-semibold">Seguro obligatorio incluido en cada alquiler</p>
             <p className="auth-info-box-text mt-0.5">
               MeRenta calcula automáticamente la prima del seguro según el valor del producto y la duración. El
               inquilino lo abona al reservar.

@@ -249,8 +249,8 @@ function ProductCreate() {
   };
 
   return (
-    <div className="min-h-screen bg-surface py-8">
-      <div className="mx-auto max-w-[1280px] px-layout-margin">
+    <div className="bg-surface min-h-screen py-8">
+      <div className="px-layout-margin mx-auto max-w-[1280px]">
         <header className="mb-8">
           <h2 className="heading-panel">Publicar nuevo anuncio</h2>
           <p className="field-hint mt-1">Completa el formulario para publicar tu producto en MeRenta.</p>
@@ -259,7 +259,11 @@ function ProductCreate() {
         <div className="grid grid-cols-[1fr_360px] items-start gap-8 xl:grid-cols-[1fr_380px]">
           {/* ── Left: form ─────────────────────────────────────────────── */}
           <div className="flex flex-col gap-6">
-            <BasicInfoSection data={formData} errors={errors} onChange={handleChange} />
+            <BasicInfoSection
+              data={formData}
+              errors={errors}
+              onChange={handleChange}
+            />
 
             <PhotosSection
               photos={formData.photos}
@@ -268,7 +272,11 @@ function ProductCreate() {
               onRemovePhoto={handleRemovePhoto}
             />
 
-            <PriceSection data={formData} errors={errors} onChange={handleChange} />
+            <PriceSection
+              data={formData}
+              errors={errors}
+              onChange={handleChange}
+            />
 
             <LocationSection
               data={formData}
@@ -292,7 +300,7 @@ function ProductCreate() {
               </div>
             )}
 
-            <div className="flex items-center justify-between border-t border-border-main pt-6 pb-10">
+            <div className="border-border-main flex items-center justify-between border-t pt-6 pb-10">
               <button
                 type="button"
                 className="btn-secondary btn--lg"

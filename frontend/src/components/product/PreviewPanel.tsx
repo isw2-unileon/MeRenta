@@ -17,15 +17,9 @@ interface PreviewPanelProps {
 function PreviewPanel({ formData }: PreviewPanelProps) {
   const { title, category, condition, pricePerDay, deposit, minRentalPeriod, city, availableNow, photos } = formData;
 
-  const categoryLabel = useMemo(
-    () => CATEGORIES.find((c) => c.value === category)?.label ?? "",
-    [category]
-  );
+  const categoryLabel = useMemo(() => CATEGORIES.find((c) => c.value === category)?.label ?? "", [category]);
 
-  const conditionLabel = useMemo(
-    () => CONDITIONS.find((c) => c.value === condition)?.label ?? "",
-    [condition]
-  );
+  const conditionLabel = useMemo(() => CONDITIONS.find((c) => c.value === condition)?.label ?? "", [condition]);
 
   const cityLabel = useMemo(() => {
     if (!city) return "";
@@ -47,12 +41,12 @@ function PreviewPanel({ formData }: PreviewPanelProps) {
 
   return (
     <aside className="sticky top-[calc(var(--spacing-navbar)+24px)] flex flex-col gap-4">
-      <p className="text-[13px] font-medium text-subtle">Vista previa del anuncio</p>
+      <p className="text-subtle text-[13px] font-medium">Vista previa del anuncio</p>
 
       {/* Preview card */}
-      <div className="overflow-hidden rounded-xl border border-border-main bg-white shadow-sm">
+      <div className="border-border-main overflow-hidden rounded-xl border bg-white shadow-sm">
         {/* Photo area */}
-        <div className="relative flex h-40 items-center justify-center bg-primary-bg">
+        <div className="bg-primary-bg relative flex h-40 items-center justify-center">
           {firstPhoto ? (
             <img
               src={firstPhoto}
@@ -60,30 +54,26 @@ function PreviewPanel({ formData }: PreviewPanelProps) {
               className="h-full w-full object-cover"
             />
           ) : (
-            <div className="flex flex-col items-center gap-2 text-primary/40">
+            <div className="text-primary/40 flex flex-col items-center gap-2">
               <ImageIcon className="size-10" />
               <p className="text-[11px]">Sin imagen</p>
             </div>
           )}
 
-          {availableNow && (
-            <span className="product-status-badge absolute top-3 left-3">Disponible</span>
-          )}
+          {availableNow && <span className="product-status-badge absolute top-3 left-3">Disponible</span>}
         </div>
 
         {/* Card body */}
         <div className="p-4">
           {/* Title */}
-          <p className="line-clamp-2 text-[15px] font-medium text-ink">
-            {title || (
-              <span className="italic text-placeholder">Bicicleta de montaña Trek X-Caliber 8</span>
-            )}
+          <p className="text-ink line-clamp-2 text-[15px] font-medium">
+            {title || <span className="text-placeholder italic">Bicicleta de montaña Trek X-Caliber 8</span>}
           </p>
 
           {/* Location */}
           {cityLabel && (
             <div className="mt-1.5 flex items-center gap-1">
-              <MapPin className="size-3 text-subtle" />
+              <MapPin className="text-subtle size-3" />
               <p className="card-location">{cityLabel}</p>
             </div>
           )}
@@ -92,45 +82,33 @@ function PreviewPanel({ formData }: PreviewPanelProps) {
           {(categoryLabel || conditionLabel) && (
             <div className="mt-2.5 flex flex-wrap gap-1.5">
               {categoryLabel && (
-                <span className="inline-flex h-[22px] items-center rounded-full bg-primary-bg px-2.5 text-[11px] font-medium text-primary">
+                <span className="bg-primary-bg text-primary inline-flex h-[22px] items-center rounded-full px-2.5 text-[11px] font-medium">
                   {categoryLabel}
                 </span>
               )}
-              {conditionLabel && (
-                <span className="product-estado-badge">{conditionLabel}</span>
-              )}
+              {conditionLabel && <span className="product-estado-badge">{conditionLabel}</span>}
             </div>
           )}
 
           {/* Price */}
           <div className="mt-3">
             {previewPrice ? (
-              <p className="text-[28px] font-bold leading-none text-primary">
+              <p className="text-primary text-[28px] leading-none font-bold">
                 {previewPrice.toFixed(0)} EUR
-                <span className="text-[14px] font-medium text-subtle">/día</span>
+                <span className="text-subtle text-[14px] font-medium">/día</span>
               </p>
             ) : (
-              <p className="text-[28px] font-bold leading-none text-primary/30">
+              <p className="text-primary/30 text-[28px] leading-none font-bold">
                 — EUR<span className="text-[14px] font-medium">/día</span>
               </p>
             )}
 
-            <div className="mt-1 flex items-center gap-2 text-[12px] text-subtle">
-              {previewDeposit !== null && previewDeposit > 0 && (
-                <span>Depósito: {previewDeposit.toFixed(0)} EUR</span>
-              )}
-              {previewDeposit !== null && previewDeposit > 0 && (
-                <span className="text-border-main">·</span>
-              )}
+            <div className="text-subtle mt-1 flex items-center gap-2 text-[12px]">
+              {previewDeposit !== null && previewDeposit > 0 && <span>Depósito: {previewDeposit.toFixed(0)} EUR</span>}
+              {previewDeposit !== null && previewDeposit > 0 && <span className="text-border-main">·</span>}
               <span>
                 Mín.{" "}
-                {minDays === 1
-                  ? "1 día"
-                  : minDays < 7
-                    ? `${minDays} días`
-                    : minDays === 7
-                      ? "1 semana"
-                      : "2 semanas"}
+                {minDays === 1 ? "1 día" : minDays < 7 ? `${minDays} días` : minDays === 7 ? "1 semana" : "2 semanas"}
               </span>
             </div>
           </div>
@@ -146,12 +124,12 @@ function PreviewPanel({ formData }: PreviewPanelProps) {
         </div>
       </div>
 
-      <p className="text-center text-[11px] text-subtle">
+      <p className="text-subtle text-center text-[11px]">
         Así verá tu anuncio el comprador. Se actualiza en tiempo real.
       </p>
 
       {!hasContent && (
-        <p className="rounded-lg border border-border-main bg-surface p-3 text-center text-[12px] text-subtle">
+        <p className="border-border-main bg-surface text-subtle rounded-lg border p-3 text-center text-[12px]">
           Completa el formulario para ver la vista previa
         </p>
       )}
