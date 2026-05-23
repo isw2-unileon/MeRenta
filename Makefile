@@ -51,6 +51,7 @@ clean:
 	rm -fr e2e/playwright-report
 	rm -fr e2e/test-results
 	rm -fr coverage.out
+	rm -fr tmp
 
 # ============================================================================
 # DEVELOPMENT
@@ -70,6 +71,10 @@ run: run-backend run-frontend
 # ============================================================================
 # BUILD
 # ============================================================================
+
+## Generate SQLC code
+sqlc:
+	cd backend && sqlc generate
 
 ## Build backend binary
 build-backend:
