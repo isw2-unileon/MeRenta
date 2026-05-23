@@ -38,3 +38,13 @@ coverage/
 playwright-report/
 test-results/
 backend/.air.toml
+
+# Claude
+*claude*
+
+# Configuration
+.air.toml
+tsconfig.app.json
+
+# Aux
+etc/
