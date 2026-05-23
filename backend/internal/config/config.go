@@ -13,16 +13,18 @@ import (
 
 // Config holds application settings loaded from the environment.
 type Config struct {
-	Port            string
-	GinMode         string
-	DatabaseURL     string
-	JWTSecret       []byte
-	JWTIssuer       string
-	JWTAudience     string
-	JWTExpiresIn    time.Duration
-	JWTLeeway       time.Duration
-	StripeSecretKey string
-	CORSAllowOrigin string
+	Port                   string
+	GinMode                string
+	DatabaseURL            string
+	JWTSecret              []byte
+	JWTIssuer              string
+	JWTAudience            string
+	JWTExpiresIn           time.Duration
+	JWTLeeway              time.Duration
+	StripeSecretKey        string
+	CORSAllowOrigin        string
+	SupabaseURL            string
+	SupabaseServiceRoleKey string
 }
 
 // Load reads configuration from environment variables and applies defaults.
@@ -82,17 +84,29 @@ func Load() *Config {
 		log.Fatal("CORS_ALLOW_ORIGIN must be an explicit allowlist in production")
 	}
 
+	supabaseURL := strings.TrimSpace(getEnv("SUPABASE_URL", ""))
+	if supabaseURL == "" {
+		log.Fatal("SUPABASE_URL is not defined in .env")
+	}
+
+	supabaseServiceRoleKey := strings.TrimSpace(getEnv("SUPABASE_SERVICE_ROLE_KEY", ""))
+	if supabaseServiceRoleKey == "" {
+		log.Fatal("SUPABASE_SERVICE_ROLE_KEY is not defined in .env")
+	}
+
 	return &Config{
-		Port:            getEnv("PORT", "8080"),
-		GinMode:         ginMode,
-		DatabaseURL:     databaseURL,
-		JWTSecret:       jwtSecretBytes,
-		JWTIssuer:       jwtIssuer,
-		JWTAudience:     jwtAudience,
-		JWTExpiresIn:    jwtExpiresIn,
-		JWTLeeway:       jwtLeeway,
-		StripeSecretKey: stripeSecret,
-		CORSAllowOrigin: corsAllowOrigin,
+		Port:                   getEnv("PORT", "8080"),
+		GinMode:                ginMode,
+		DatabaseURL:            databaseURL,
+		JWTSecret:              jwtSecretBytes,
+		JWTIssuer:              jwtIssuer,
+		JWTAudience:            jwtAudience,
+		JWTExpiresIn:           jwtExpiresIn,
+		JWTLeeway:              jwtLeeway,
+		StripeSecretKey:        stripeSecret,
+		CORSAllowOrigin:        corsAllowOrigin,
+		SupabaseURL:            supabaseURL,
+		SupabaseServiceRoleKey: supabaseServiceRoleKey,
 	}
 }
 
