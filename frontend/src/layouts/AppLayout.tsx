@@ -8,13 +8,13 @@ import { Footer } from "@/components/layout/Footer";
  */
 function AppLayout() {
   return (
-    <>
+    <div className="flex min-h-screen flex-col">
       <NavbarAuth />
-      <main className="pt-navbar">
+      <main className="pt-navbar flex-1">
         <Outlet />
       </main>
       <Footer />
-    </>
+    </div>
   );
 }
 

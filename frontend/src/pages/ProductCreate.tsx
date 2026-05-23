@@ -257,7 +257,6 @@ function ProductCreate() {
         </header>
 
         <div className="grid grid-cols-[1fr_360px] items-start gap-8 xl:grid-cols-[1fr_380px]">
-          {/* ── Left: form ─────────────────────────────────────────────── */}
           <div className="flex flex-col gap-6">
             <BasicInfoSection
               data={formData}
@@ -300,16 +299,7 @@ function ProductCreate() {
               </div>
             )}
 
-            <div className="border-border-main flex items-center justify-between border-t pt-6 pb-10">
-              <button
-                type="button"
-                className="btn-secondary btn--lg"
-                onClick={() => handleSubmit(true)}
-                disabled={isSubmitting}
-              >
-                Guardar borrador
-              </button>
-
+            <div className="border-border-main flex items-center justify-center border-t pt-6 pb-10">
               <button
                 type="button"
                 className="btn-primary btn--lg min-w-[200px]"
@@ -322,13 +312,12 @@ function ProductCreate() {
                     {STEP_LABELS[submitStep]}
                   </span>
                 ) : (
-                  "Continuar — Fotos →"
+                  "Crear producto"
                 )}
               </button>
             </div>
           </div>
 
-          {/* ── Right: live preview ────────────────────────────────────── */}
           <PreviewPanel formData={formData} />
         </div>
       </div>
