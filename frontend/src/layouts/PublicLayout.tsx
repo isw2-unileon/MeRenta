@@ -8,13 +8,13 @@ import { Footer } from "@/components/layout/Footer";
  */
 function PublicLayout() {
   return (
-    <>
+    <div className="flex min-h-screen flex-col">
       <NavbarPublic />
-      <main className="pt-navbar">
+      <main className="pt-navbar flex-1">
         <Outlet />
       </main>
       <Footer />
-    </>
+    </div>
   );
 }
 

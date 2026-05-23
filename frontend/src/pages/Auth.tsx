@@ -1,4 +1,5 @@
-import { Navigate, useLocation, useNavigate } from "react-router-dom";
+import { Link, Navigate, useLocation } from "react-router-dom";
+import { useState } from "react";
 
 import { Login } from "@/components/auth/Login";
 import { Register } from "@/components/auth/Register";
@@ -12,29 +13,14 @@ type AuthView = "login" | "register" | "forgot";
  * @returns The authentication layout with tabs and selected view.
  */
 function Auth() {
-  const routerLocation = useLocation();
-  const navigate = useNavigate();
+  const location = useLocation();
   const { isAuthenticated, isLoading } = useAuth();
 
-  const stateView = (routerLocation.state as { view?: AuthView } | null)?.view;
-  const queryView = new URLSearchParams(routerLocation.search).get("view");
-  const candidate = stateView ?? queryView;
+  const initialView = (location.state as { view?: AuthView } | null)?.view;
+  const normalizedInitialView: AuthView =
+    initialView === "login" || initialView === "register" || initialView === "forgot" ? initialView : "login";
 
-  const view: AuthView =
-    candidate === "login" || candidate === "register" || candidate === "forgot" ? candidate : "login";
-
-  const setView = async (nextView: AuthView) => {
-    const search = new URLSearchParams(routerLocation.search);
-    search.set("view", nextView);
-
-    await navigate(
-      {
-        pathname: routerLocation.pathname,
-        search: search.toString(),
-      },
-      { replace: true }
-    );
-  };
+  const [view, setView] = useState<AuthView>(normalizedInitialView);
 
   if (isLoading) {
     return null;
@@ -57,15 +43,22 @@ function Auth() {
         <div className="from-primary to-primary-dark relative flex flex-col justify-center overflow-hidden bg-linear-to-br px-16 py-20 text-white">
           <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(circle_at_30%_30%,white,transparent)] opacity-10" />
 
-          <span className="self-center text-center text-xl text-white/70">ACCESO A LA PLATAFORMA</span>
-
-          <h1 className="mt-4 self-center text-center text-6xl leading-tight font-semibold text-white/85">
+          <h1 className="mt-5 self-center text-center text-6xl leading-tight font-semibold text-white/90">
             Únete a MeRenta
           </h1>
 
           <p className="text-body-lg mt-6 max-w-md self-center text-center text-white/70">
-            Alquila lo que necesitas, gana con lo que tienes.
+            Forma parte de la comunidad que comparte.
           </p>
+
+          <p className="text-body-lg mt-8 max-w-md self-center text-center text-white/60">— o —</p>
+
+          <Link
+            to="/"
+            className="text-body-lg mt-6 max-w-md self-center text-center text-white/75 transition-all hover:scale-110"
+          >
+            Vuelve al inicio
+          </Link>
         </div>
 
         <div className="bg-section-alt flex items-center justify-center px-8 py-16">

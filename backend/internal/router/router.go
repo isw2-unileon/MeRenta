@@ -16,6 +16,9 @@ import (
 // Setup builds the Gin engine with public and protected routes.
 func Setup(
 	authH *handler.AuthHandler,
+	itemH *handler.ItemHandler,
+	itemImgH *handler.ItemImageHandler,
+	addrH *handler.AddressHandler,
 	jwtMgr *jwt.Manager,
 	corsAllowOrigin string,
 	readiness func(context.Context) error,
@@ -54,6 +57,16 @@ func Setup(
 
 	// authenticated user profile
 	protected.GET("/me", authH.Me)
+
+	// addresses
+	addresses := protected.Group("/addresses")
+	addresses.GET("", addrH.List)
+	addresses.POST("", addrH.Create)
+
+	// items
+	items := protected.Group("/items")
+	items.POST("", itemH.Create)
+	items.POST("/:id/images", itemImgH.AddImages)
 
 	// admin
 	admin := api.Group("/admin")

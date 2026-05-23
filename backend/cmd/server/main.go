@@ -23,6 +23,7 @@ import (
 	"github.com/isw2-unileon/MeRenta/backend/internal/service"
 	"github.com/isw2-unileon/MeRenta/backend/internal/sqlcdb"
 	"github.com/isw2-unileon/MeRenta/backend/pkg/jwt"
+	"github.com/isw2-unileon/MeRenta/backend/pkg/storage"
 )
 
 // main loads configuration, wires dependencies, and starts the HTTP server.
@@ -61,7 +62,17 @@ func main() {
 	authSvc := service.NewAuthService(q, jwtMgr)
 	authH := handler.NewAuthHandler(authSvc)
 
-	r := router.Setup(authH, jwtMgr, cfg.CORSAllowOrigin, pool.Ping)
+	itemSvc := service.NewItemService(q)
+	itemH := handler.NewItemHandler(itemSvc)
+
+	storageCli := storage.NewSupabaseClient(cfg.SupabaseURL, cfg.SupabaseServiceRoleKey)
+	itemImgSvc := service.NewItemImageService(q, storageCli, "item")
+	itemImgH := handler.NewItemImageHandler(itemImgSvc)
+
+	addrSvc := service.NewAddressService(q)
+	addrH := handler.NewAddressHandler(addrSvc)
+
+	r := router.Setup(authH, itemH, itemImgH, addrH, jwtMgr, cfg.CORSAllowOrigin, pool.Ping)
 	portNum, err := strconv.Atoi(cfg.Port)
 	if err != nil || portNum < 1 || portNum > 65535 {
 		slog.Error("invalid port", "port", cfg.Port)
