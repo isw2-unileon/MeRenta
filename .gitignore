@@ -38,3 +38,14 @@ coverage/
 playwright-report/
 test-results/
 backend/.air.toml
+
+# IA Agents
+*agents*
+*claude*
+
+# Configuration
+.air.toml
+tsconfig.app.json
+
+# Aux
+etc/

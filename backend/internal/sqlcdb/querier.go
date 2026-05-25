@@ -12,26 +12,62 @@ import (
 )
 
 type Querier interface {
+	CountAvailableItems(ctx context.Context) (int64, error)
 	CountCustomers(ctx context.Context) (int64, error)
+	CountItems(ctx context.Context) (int64, error)
+	CountItemsByOwner(ctx context.Context, ownerID uuid.UUID) (int64, error)
+	CreateAddress(ctx context.Context, arg CreateAddressParams) (Address, error)
 	// ============================================
 	// CREATE
 	// ============================================
 	CreateCustomer(ctx context.Context, arg CreateCustomerParams) (CreateCustomerRow, error)
 	// ============================================
+	// CREATE
+	// ============================================
+	CreateItem(ctx context.Context, arg CreateItemParams) (Item, error)
+	// ============================================
+	// CREATE
+	// ============================================
+	CreateItemImage(ctx context.Context, arg CreateItemImageParams) (ItemImage, error)
+	// ============================================
 	// DELETE
 	// ============================================
 	DeleteCustomer(ctx context.Context, customerID uuid.UUID) error
+	// ============================================
+	// DELETE
+	// ============================================
+	DeleteItem(ctx context.Context, itemID uuid.UUID) error
+	// ============================================
+	// DELETE
+	// ============================================
+	DeleteItemImages(ctx context.Context, itemID uuid.UUID) error
 	ExistsCustomerByEmail(ctx context.Context, email string) (bool, error)
+	ExistsItemByID(ctx context.Context, itemID uuid.UUID) (bool, error)
+	GetAddressByID(ctx context.Context, addressID uuid.UUID) (Address, error)
+	GetAddressesByCustomer(ctx context.Context, customerID uuid.UUID) ([]Address, error)
 	GetCustomerByEmail(ctx context.Context, email string) (Customer, error)
 	// ============================================
 	// READ
 	// ============================================
 	GetCustomerByID(ctx context.Context, customerID uuid.UUID) (GetCustomerByIDRow, error)
 	GetCustomerByStripeID(ctx context.Context, stripeCustomerID pgtype.Text) (GetCustomerByStripeIDRow, error)
+	// ============================================
+	// READ
+	// ============================================
+	GetItemByID(ctx context.Context, itemID uuid.UUID) (Item, error)
+	// ============================================
+	// READ
+	// ============================================
+	GetItemImages(ctx context.Context, itemID uuid.UUID) ([]ItemImage, error)
 	ListCustomers(ctx context.Context, arg ListCustomersParams) ([]ListCustomersRow, error)
 	ListCustomersByStatus(ctx context.Context, arg ListCustomersByStatusParams) ([]ListCustomersByStatusRow, error)
+	ListItems(ctx context.Context, arg ListItemsParams) ([]Item, error)
+	ListItemsByCategory(ctx context.Context, arg ListItemsByCategoryParams) ([]Item, error)
+	ListItemsByOwner(ctx context.Context, arg ListItemsByOwnerParams) ([]Item, error)
 	SearchCustomers(ctx context.Context, arg SearchCustomersParams) ([]SearchCustomersRow, error)
+	SearchItems(ctx context.Context, arg SearchItemsParams) ([]Item, error)
 	SoftDeleteCustomer(ctx context.Context, customerID uuid.UUID) error
+	SoftDeleteItem(ctx context.Context, itemID uuid.UUID) error
 	UpdateCustomerAvatar(ctx context.Context, arg UpdateCustomerAvatarParams) error
 	UpdateCustomerEmail(ctx context.Context, arg UpdateCustomerEmailParams) (UpdateCustomerEmailRow, error)
 	UpdateCustomerPassword(ctx context.Context, arg UpdateCustomerPasswordParams) error
@@ -42,6 +78,12 @@ type Querier interface {
 	UpdateCustomerRole(ctx context.Context, arg UpdateCustomerRoleParams) (UpdateCustomerRoleRow, error)
 	UpdateCustomerStatus(ctx context.Context, arg UpdateCustomerStatusParams) (UpdateCustomerStatusRow, error)
 	UpdateCustomerStripeID(ctx context.Context, arg UpdateCustomerStripeIDParams) error
+	// ============================================
+	// UPDATE
+	// ============================================
+	UpdateItem(ctx context.Context, arg UpdateItemParams) (Item, error)
+	UpdateItemAvailability(ctx context.Context, arg UpdateItemAvailabilityParams) error
+	UpdateItemStatus(ctx context.Context, arg UpdateItemStatusParams) (UpdateItemStatusRow, error)
 }
 
 var _ Querier = (*Queries)(nil)

@@ -56,6 +56,144 @@ func (ns NullAccountStatus) Value() (driver.Value, error) {
 	return string(ns.AccountStatus), nil
 }
 
+type CategoryEnum string
+
+const (
+	CategoryEnumTools       CategoryEnum = "tools"
+	CategoryEnumElectronics CategoryEnum = "electronics"
+	CategoryEnumSports      CategoryEnum = "sports"
+	CategoryEnumVehicles    CategoryEnum = "vehicles"
+	CategoryEnumHome        CategoryEnum = "home"
+	CategoryEnumGardening   CategoryEnum = "gardening"
+	CategoryEnumClothing    CategoryEnum = "clothing"
+	CategoryEnumMusic       CategoryEnum = "music"
+	CategoryEnumPhotography CategoryEnum = "photography"
+	CategoryEnumCamping     CategoryEnum = "camping"
+	CategoryEnumOther       CategoryEnum = "other"
+)
+
+func (e *CategoryEnum) Scan(src interface{}) error {
+	switch s := src.(type) {
+	case []byte:
+		*e = CategoryEnum(s)
+	case string:
+		*e = CategoryEnum(s)
+	default:
+		return fmt.Errorf("unsupported scan type for CategoryEnum: %T", src)
+	}
+	return nil
+}
+
+type NullCategoryEnum struct {
+	CategoryEnum CategoryEnum `json:"category_enum"`
+	Valid        bool         `json:"valid"` // Valid is true if CategoryEnum is not NULL
+}
+
+// Scan implements the Scanner interface.
+func (ns *NullCategoryEnum) Scan(value interface{}) error {
+	if value == nil {
+		ns.CategoryEnum, ns.Valid = "", false
+		return nil
+	}
+	ns.Valid = true
+	return ns.CategoryEnum.Scan(value)
+}
+
+// Value implements the driver Valuer interface.
+func (ns NullCategoryEnum) Value() (driver.Value, error) {
+	if !ns.Valid {
+		return nil, nil
+	}
+	return string(ns.CategoryEnum), nil
+}
+
+type ItemCondition string
+
+const (
+	ItemConditionNew     ItemCondition = "new"
+	ItemConditionLikeNew ItemCondition = "like_new"
+	ItemConditionGood    ItemCondition = "good"
+	ItemConditionFair    ItemCondition = "fair"
+	ItemConditionPoor    ItemCondition = "poor"
+)
+
+func (e *ItemCondition) Scan(src interface{}) error {
+	switch s := src.(type) {
+	case []byte:
+		*e = ItemCondition(s)
+	case string:
+		*e = ItemCondition(s)
+	default:
+		return fmt.Errorf("unsupported scan type for ItemCondition: %T", src)
+	}
+	return nil
+}
+
+type NullItemCondition struct {
+	ItemCondition ItemCondition `json:"item_condition"`
+	Valid         bool          `json:"valid"` // Valid is true if ItemCondition is not NULL
+}
+
+func (ns *NullItemCondition) Scan(value interface{}) error {
+	if value == nil {
+		ns.ItemCondition, ns.Valid = "", false
+		return nil
+	}
+	ns.Valid = true
+	return ns.ItemCondition.Scan(value)
+}
+
+func (ns NullItemCondition) Value() (driver.Value, error) {
+	if !ns.Valid {
+		return nil, nil
+	}
+	return string(ns.ItemCondition), nil
+}
+
+type ItemStatus string
+
+const (
+	ItemStatusAvailable   ItemStatus = "available"
+	ItemStatusRented      ItemStatus = "rented"
+	ItemStatusMaintenance ItemStatus = "maintenance"
+	ItemStatusRetired     ItemStatus = "retired"
+)
+
+func (e *ItemStatus) Scan(src interface{}) error {
+	switch s := src.(type) {
+	case []byte:
+		*e = ItemStatus(s)
+	case string:
+		*e = ItemStatus(s)
+	default:
+		return fmt.Errorf("unsupported scan type for ItemStatus: %T", src)
+	}
+	return nil
+}
+
+type NullItemStatus struct {
+	ItemStatus ItemStatus `json:"item_status"`
+	Valid      bool       `json:"valid"` // Valid is true if ItemStatus is not NULL
+}
+
+// Scan implements the Scanner interface.
+func (ns *NullItemStatus) Scan(value interface{}) error {
+	if value == nil {
+		ns.ItemStatus, ns.Valid = "", false
+		return nil
+	}
+	ns.Valid = true
+	return ns.ItemStatus.Scan(value)
+}
+
+// Value implements the driver Valuer interface.
+func (ns NullItemStatus) Value() (driver.Value, error) {
+	if !ns.Valid {
+		return nil, nil
+	}
+	return string(ns.ItemStatus), nil
+}
+
 type UserRole string
 
 const (
@@ -98,6 +236,20 @@ func (ns NullUserRole) Value() (driver.Value, error) {
 	return string(ns.UserRole), nil
 }
 
+type Address struct {
+	AddressID  uuid.UUID      `json:"address_id"`
+	CustomerID uuid.UUID      `json:"customer_id"`
+	Street     string         `json:"street"`
+	Number     string         `json:"number"`
+	Floor      pgtype.Text    `json:"floor"`
+	City       string         `json:"city"`
+	Province   string         `json:"province"`
+	PostalCode string         `json:"postal_code"`
+	Country    string         `json:"country"`
+	Latitude   pgtype.Numeric `json:"latitude"`
+	Longitude  pgtype.Numeric `json:"longitude"`
+}
+
 type Customer struct {
 	CustomerID       uuid.UUID          `json:"customer_id"`
 	FirstName        string             `json:"first_name"`
@@ -110,4 +262,30 @@ type Customer struct {
 	AccountStatus    AccountStatus      `json:"account_status"`
 	UserRole         UserRole           `json:"user_role"`
 	StripeCustomerID pgtype.Text        `json:"stripe_customer_id"`
+}
+
+type Item struct {
+	ItemID      uuid.UUID          `json:"item_id"`
+	OwnerID     uuid.UUID          `json:"owner_id"`
+	AddressID   uuid.UUID          `json:"address_id"`
+	Category    CategoryEnum       `json:"category"`
+	Title       string             `json:"title"`
+	Description pgtype.Text        `json:"description"`
+	Brand       pgtype.Text        `json:"brand"`
+	Model       pgtype.Text        `json:"model"`
+	Condition   ItemCondition      `json:"condition"`
+	ItemStatus  ItemStatus         `json:"item_status"`
+	PricePerDay pgtype.Numeric     `json:"price_per_day"`
+	Deposit     pgtype.Numeric     `json:"deposit"`
+	MinDays     int32              `json:"min_days"`
+	MaxDays     pgtype.Int4        `json:"max_days"`
+	IsAvailable bool               `json:"is_available"`
+	PublishedAt pgtype.Timestamptz `json:"published_at"`
+}
+
+type ItemImage struct {
+	ImageID      uuid.UUID `json:"image_id"`
+	ItemID       uuid.UUID `json:"item_id"`
+	ImageUrl     string    `json:"image_url"`
+	DisplayOrder int32     `json:"display_order"`
 }

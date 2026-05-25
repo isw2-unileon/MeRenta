@@ -28,7 +28,11 @@ import { Info } from "@/pages/Info.tsx";
 import { NotFound } from "@/pages/NotFound.tsx";
 import { Forbidden } from "@/pages/Forbidden.tsx";
 import { ServerError } from "@/pages/ServerError.tsx";
+import { Error } from "@/pages/Error.tsx";
 
+/**
+ * Application route map and layout nesting for react-router.
+ */
 const router = createBrowserRouter([
   {
     element: <RootProvider />,
@@ -47,6 +51,7 @@ const router = createBrowserRouter([
         element: <BlankLayout />,
         children: [
           { path: "auth", element: <Auth /> },
+          { path: "error", element: <Error /> },
           { path: "payment/success", element: <PaymentSuccess /> },
           { path: "payment/error", element: <PaymentError /> },
           { path: "not-found", element: <NotFound /> },

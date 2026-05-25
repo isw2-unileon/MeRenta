@@ -1,5 +1,9 @@
 import { useNavigate } from "react-router-dom";
 
+/**
+ * Highlights the main value proposition and primary calls to action.
+ * @returns The landing hero section with CTA buttons and sample listings.
+ */
 function Hero() {
   const navigate = useNavigate();
 
@@ -27,14 +31,16 @@ function Hero() {
 
           <div className="flex items-center gap-3">
             <button
+              type="button"
               className="btn-primary btn--xl"
-              onClick={() => navigate("/auth")}
+              onClick={() => navigate("/auth", { state: { view: "register" } })}
             >
               Empieza ahora
             </button>
             <button
+              type="button"
               className="btn-secondary btn--xl"
-              onClick={() => navigate("/auth")}
+              onClick={() => navigate("/auth", { state: { view: "login" } })}
             >
               Identifícate
             </button>

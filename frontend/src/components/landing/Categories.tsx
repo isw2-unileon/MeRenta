@@ -1,5 +1,12 @@
+/**
+ * Featured categories shown on the landing page.
+ */
 const categories = ["Deporte", "Fotografía", "Herramientas", "Electronica", "Aventura", "Musica"];
 
+/**
+ * Lists quick category filters for browsing.
+ * @returns The category section for the landing page.
+ */
 function Categories() {
   return (
     <section
@@ -13,7 +20,12 @@ function Categories() {
         <ul className="category-list">
           {categories.map((cat) => (
             <li key={cat}>
-              <button className="btn-secondary btn--md">{cat}</button>
+              <button
+                type="button"
+                className="btn-secondary btn--md"
+              >
+                {cat}
+              </button>
             </li>
           ))}
         </ul>

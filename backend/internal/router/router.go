@@ -16,6 +16,10 @@ import (
 // Setup builds the Gin engine with public and protected routes.
 func Setup(
 	authH *handler.AuthHandler,
+	itemH *handler.ItemHandler,
+	itemImgH *handler.ItemImageHandler,
+	addrH *handler.AddressHandler,
+	favH *handler.FavoriteHandler,
 	jwtMgr *jwt.Manager,
 	corsAllowOrigin string,
 	readiness func(context.Context) error,
@@ -43,6 +47,7 @@ func Setup(
 	auth := api.Group("/auth")
 	auth.POST("/register", authH.Register)
 	auth.POST("/login", authH.Login)
+	auth.POST("/logout", authH.Logout)
 
 	// protected
 	protected := api.Group("/")
@@ -53,6 +58,31 @@ func Setup(
 
 	// authenticated user profile
 	protected.GET("/me", authH.Me)
+
+	// addresses
+	addresses := protected.Group("/addresses")
+	addresses.GET("", addrH.List)
+	addresses.POST("", addrH.Create)
+
+	// customers (public profiles only — sensitive data excluded)
+	customers := protected.Group("/customers")
+	customers.GET("/:id/profile", authH.ProfileByID)
+
+	// items
+	items := protected.Group("/items")
+	items.GET("", itemH.List)
+	items.POST("", itemH.Create)
+	items.GET("/:id", itemH.Get)
+	items.GET("/:id/images", itemImgH.ListImages)
+	items.POST("/:id/images", itemImgH.AddImages)
+	items.GET("/:id/images/:imageId/content", itemImgH.ProxyImage)
+
+	// favorites
+	favs := protected.Group("/favorites")
+	favs.GET("", favH.List)
+	favs.POST("/:id", favH.Add)
+	favs.DELETE("/:id", favH.Remove)
+	favs.GET("/:id/check", favH.Check)
 
 	// admin
 	admin := api.Group("/admin")

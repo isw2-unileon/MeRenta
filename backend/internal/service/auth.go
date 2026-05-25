@@ -23,6 +23,8 @@ var (
 	ErrInvalidCredentials = errors.New("invalid credentials")
 	// ErrAccountNotActive indicates the account is not active.
 	ErrAccountNotActive = errors.New("account is not active")
+	// ErrCustomerNotFound indicates no customer exists with the given ID.
+	ErrCustomerNotFound = errors.New("customer not found")
 )
 
 // AuthService handles authentication use cases.
@@ -156,6 +158,27 @@ func (s *AuthService) GetCustomerByID(ctx context.Context, id uuid.UUID) (*model
 		UserRole:         string(c.UserRole),
 	}
 	return &resp, nil
+}
+
+// GetPublicProfile returns the minimal public profile for any customer.
+// Returns ErrCustomerNotFound when the customer does not exist.
+func (s *AuthService) GetPublicProfile(ctx context.Context, id uuid.UUID) (*model.CustomerProfileResponse, error) {
+	c, err := s.q.GetCustomerByID(ctx, id)
+	if err != nil {
+		if errors.Is(err, pgx.ErrNoRows) {
+			return nil, ErrCustomerNotFound
+		}
+
+		return nil, err
+	}
+
+	return &model.CustomerProfileResponse{
+		CustomerID:       c.CustomerID.String(),
+		FirstName:        c.FirstName,
+		LastName:         c.LastName,
+		AvatarURL:        c.AvatarUrl.String,
+		RegistrationDate: c.RegistrationDate.Time,
+	}, nil
 }
 
 func isUniqueViolation(err error) bool {

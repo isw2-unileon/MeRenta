@@ -1,5 +1,8 @@
 import { useNavigate } from "react-router-dom";
 
+/**
+ * Trust signals showcased on the landing page.
+ */
 const cards = [
   {
     title: "Seguro incluido",
@@ -19,6 +22,10 @@ const cards = [
   },
 ];
 
+/**
+ * Highlights safety, support, and payment assurances.
+ * @returns The trust section with key guarantees.
+ */
 function Trust() {
   const navigate = useNavigate();
 
@@ -33,6 +40,7 @@ function Trust() {
           </p>
           <div className="pt-2">
             <button
+              type="button"
               className="btn-on-primary btn--xl"
               onClick={() => navigate("/more-info")}
             >

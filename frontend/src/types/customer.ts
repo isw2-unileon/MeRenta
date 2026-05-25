@@ -1,7 +1,16 @@
-export type AccountStatus = "active" | "inactive" | "suspended" | "banned";
-export type UserRole = "customer" | "admin";
+/**
+ * Allowed account lifecycle states.
+ */
+type AccountStatus = "active" | "inactive" | "suspended" | "banned";
+/**
+ * Roles supported by the platform.
+ */
+type UserRole = "customer" | "admin";
 
-export interface Customer {
+/**
+ * Full customer record including private fields.
+ */
+interface Customer {
   customer_id: string;
   first_name: string;
   last_name: string;
@@ -15,7 +24,10 @@ export interface Customer {
   stripe_customer_id: string | null;
 }
 
-export interface CustomerPublic {
+/**
+ * Public-facing customer data safe to expose to clients.
+ */
+interface CustomerPublic {
   customer_id: string;
   first_name: string;
   last_name: string;
@@ -27,7 +39,10 @@ export interface CustomerPublic {
   user_role: UserRole;
 }
 
-export interface CustomerProfile {
+/**
+ * Lightweight profile data used in listings and chats.
+ */
+interface CustomerProfile {
   customer_id: string;
   first_name: string;
   last_name: string;
@@ -35,12 +50,18 @@ export interface CustomerProfile {
   registration_date: string;
 }
 
-export interface LoginRequest {
+/**
+ * Login payload for authenticating a customer.
+ */
+interface LoginRequest {
   email: string;
   password: string;
 }
 
-export interface RegisterRequest {
+/**
+ * Registration payload used to create a new account.
+ */
+interface RegisterRequest {
   first_name: string;
   last_name: string;
   email: string;
@@ -49,19 +70,41 @@ export interface RegisterRequest {
   phone?: string;
 }
 
-export interface UpdateProfileRequest {
+/**
+ * Partial profile update payload.
+ */
+interface UpdateProfileRequest {
   first_name?: string;
   last_name?: string;
   phone?: string | null;
   avatar_url?: string | null;
 }
 
-export interface LoginResponse {
+/**
+ * Login response containing token and customer info.
+ */
+interface LoginResponse {
   token: string;
   customer: CustomerPublic;
 }
 
-export interface RegisterResponse {
+/**
+ * Registration response containing token and customer info.
+ */
+interface RegisterResponse {
   token: string;
   customer: CustomerPublic;
 }
+
+export type {
+  AccountStatus,
+  Customer,
+  CustomerProfile,
+  CustomerPublic,
+  LoginRequest,
+  LoginResponse,
+  RegisterRequest,
+  RegisterResponse,
+  UpdateProfileRequest,
+  UserRole,
+};

@@ -1,10 +1,14 @@
 import { useNavigate } from "react-router-dom";
 import { useAuth } from "@/hooks/useAuth";
-import { Heart, MessageSquare } from "lucide-react";
+import { Heart, MessageSquare, LogOut } from "lucide-react";
 
+/**
+ * Renders the authenticated navigation bar with profile shortcuts.
+ * @returns The private navigation UI or null while unauthenticated.
+ */
 function NavbarAuth() {
   const navigate = useNavigate();
-  const { user, isAuthenticated, isLoading } = useAuth();
+  const { user, isAuthenticated, isLoading, logout } = useAuth();
 
   if (isLoading) {
     return null;
@@ -25,45 +29,51 @@ function NavbarAuth() {
 
   const displayName = user.last_name ? `${user.first_name} ${user.last_name[0]}.` : user.first_name;
 
+  const handleLogout = async () => {
+    try {
+      await logout();
+    } finally {
+      void navigate("/", { replace: true });
+    }
+  };
+
   return (
     <nav className="h-navbar bg-page border-border-main fixed top-0 right-0 left-0 z-50 border-b">
       <div className="max-w-alert-width px-nav-margin mx-auto flex h-full items-center justify-between">
-        <button
-          className="text-logo text-ink cursor-pointer border-none bg-transparent p-0 font-bold"
-          onClick={() => navigate("/home")}
-        >
-          Me<span className="text-primary">Renta</span>
-        </button>
+        <div className="flex items-center gap-8">
+          <button
+            type="button"
+            className="text-logo text-ink cursor-pointer border-none bg-transparent p-0 font-bold"
+            onClick={() => navigate("/home")}
+          >
+            Me<span className="text-primary">Renta</span>
+          </button>
 
-        <ul className="nav-list">
-          <li>
-            <a
-              className="link-nav"
-              href="/search"
-            >
-              Explorar
-            </a>
-          </li>
-          <li>
-            <a
-              className="link-nav"
-              href="#categorias"
-            >
-              Categorías
-            </a>
-          </li>
-          <li>
-            <a
-              className="link-nav"
-              href="#como-funciona"
-            >
-              Cómo funciona
-            </a>
-          </li>
-        </ul>
+          <ul className="nav-list">
+            <li>
+              <button
+                type="button"
+                className="link-nav"
+                onClick={() => navigate("/search")}
+              >
+                Explorar
+              </button>
+            </li>
+            <li>
+              <button
+                type="button"
+                className="border-primary text-primary hover:bg-primary rounded-full border-2 p-2.5 hover:text-white"
+                onClick={() => navigate("/product/new")}
+              >
+                Publicar +
+              </button>
+            </li>
+          </ul>
+        </div>
 
         <div className="flex items-center gap-4">
           <button
+            type="button"
             className="btn-icon"
             onClick={() => navigate("/favs")}
             aria-label="Favoritos"
@@ -72,6 +82,7 @@ function NavbarAuth() {
           </button>
 
           <button
+            type="button"
             className="btn-icon"
             onClick={() => navigate("/chat")}
             aria-label="Mensajes"
@@ -80,6 +91,7 @@ function NavbarAuth() {
           </button>
 
           <button
+            type="button"
             className="flex cursor-pointer items-center gap-2 border-none bg-transparent p-0"
             onClick={() => navigate("/profile")}
           >
@@ -87,7 +99,7 @@ function NavbarAuth() {
               <img
                 src={user.avatar_url}
                 alt={fullName}
-                className="h-8 w-8 rounded-full object-cover"
+                className="size-8 rounded-full object-cover"
               />
             ) : (
               <div className="avatar-initials">{initials}</div>
@@ -97,10 +109,12 @@ function NavbarAuth() {
           </button>
 
           <button
-            className="btn-primary btn--md"
-            onClick={() => navigate("/product/new")}
+            type="button"
+            aria-label="Cerrar sesión"
+            title="Cerrar sesión"
+            onClick={handleLogout}
           >
-            + Publicar producto
+            <LogOut className="stroke-nav transition-all hover:scale-110 hover:stroke-red-700" />
           </button>
         </div>
       </div>

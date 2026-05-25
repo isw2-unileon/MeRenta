@@ -1,6 +1,11 @@
 type AuthView = "login" | "register" | "forgot";
 
-export function ForgotPassword({ onSwitch }: { onSwitch: (v: AuthView) => void }) {
+/**
+ * Displays password recovery instructions and the email capture form.
+ * @param onSwitch Callback to return to the login view.
+ * @returns The recovery UI for requesting reset instructions.
+ */
+function ForgotPassword({ onSwitch }: { onSwitch: (v: AuthView) => void }) {
   return (
     <div className="flex min-h-9/10 flex-col">
       <span className="eyebrow">RECUPERACIÓN DE ACCESO</span>
@@ -30,6 +35,7 @@ export function ForgotPassword({ onSwitch }: { onSwitch: (v: AuthView) => void }
             placeholder="tu@email.com"
             type="email"
             autoComplete="email"
+            aria-label="Email de tu cuenta"
           />
         </div>
 
@@ -51,3 +57,5 @@ export function ForgotPassword({ onSwitch }: { onSwitch: (v: AuthView) => void }
     </div>
   );
 }
+
+export { ForgotPassword };

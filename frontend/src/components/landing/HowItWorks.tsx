@@ -1,3 +1,6 @@
+/**
+ * Key onboarding steps shown on the landing page.
+ */
 const steps = [
   {
     number: "01",
@@ -16,6 +19,10 @@ const steps = [
   },
 ];
 
+/**
+ * Explains the rental flow in three short steps.
+ * @returns The "How it works" section for the landing page.
+ */
 function HowItWorks() {
   return (
     <section

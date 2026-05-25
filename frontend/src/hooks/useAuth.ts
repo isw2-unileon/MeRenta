@@ -1,19 +1,12 @@
-import { useContext } from "react";
+import { use } from "react";
 import { AuthContext } from "@/context/AuthContext";
 
 /**
- * Custom hook to access authentication context
- * Provides authentication state and methods
- *
- * @returns {Object} Auth context with isAuthenticated, isLoading, user, login, logout, accessToken
- *
- * @example
- * ```tsx
- * const { isAuthenticated, user, login, logout } = useAuth();
- * ```
+ * Provides the current authentication context and guards against missing provider usage.
+ * @returns Auth state and actions from the provider.
  */
-export function useAuth() {
-  const context = useContext(AuthContext);
+function useAuth() {
+  const context = use(AuthContext);
 
   if (!context) {
     throw new Error("useAuth must be used within an AuthProvider");
@@ -21,3 +14,5 @@ export function useAuth() {
 
   return context;
 }
+
+export { useAuth };

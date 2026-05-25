@@ -3,6 +3,9 @@ import { createRoot } from "react-dom/client";
 import "./index.css";
 import { App } from "./App";
 
+/**
+ * DOM element used to mount the React application.
+ */
 const root = document.getElementById("root");
 
 if (!root) {
