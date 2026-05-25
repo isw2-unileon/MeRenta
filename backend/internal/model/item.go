@@ -55,11 +55,11 @@ type SearchItemResponse struct {
 
 // SearchItemsResponse wraps paginated search results.
 type SearchItemsResponse struct {
-	Items          []SearchItemResponse `json:"items"`
-	Total          int64                `json:"total"`
-	Page           int                  `json:"page"`
-	Limit          int                  `json:"limit"`
-	CategoryCounts  map[string]int64 `json:"category_counts"`
-	CityCounts      map[string]int64 `json:"city_counts"`
-	ConditionCounts map[string]int64 `json:"condition_counts"`
+	Items           []SearchItemResponse `json:"items"`
+	Total           int64                `json:"total"`
+	Page            int                  `json:"page"`
+	Limit           int                  `json:"limit"`
+	CategoryCounts  map[string]int64     `json:"category_counts"`
+	CityCounts      map[string]int64     `json:"city_counts"`
+	ConditionCounts map[string]int64     `json:"condition_counts"`
 }

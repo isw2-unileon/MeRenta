@@ -212,10 +212,10 @@ func (s *ItemService) SearchItems(ctx context.Context, params sqlcdb.SearchItemC
 	}
 
 	return &model.SearchItemsResponse{
-		Items:          items,
-		Total:          total,
-		Page:           page,
-		Limit:          limit,
+		Items:           items,
+		Total:           total,
+		Page:            page,
+		Limit:           limit,
 		CategoryCounts:  categoryCounts,
 		CityCounts:      cityCounts,
 		ConditionCounts: conditionCounts,

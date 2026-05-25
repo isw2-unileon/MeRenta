@@ -123,7 +123,7 @@ function ProductCard({ item, onOpen }: ProductCardProps) {
 
         <span
           className={`absolute top-3 left-4 rounded-full px-3 py-1 text-[11px] font-medium ${
-            isAvailable ? "bg-[#e8faf3] text-primary" : "bg-[#fff0c4] text-[#9b7411]"
+            isAvailable ? "text-primary bg-[#e8faf3]" : "bg-[#fff0c4] text-[#9b7411]"
           }`}
         >
           {isAvailable ? "Disponible" : "No disponible"}
@@ -131,7 +131,7 @@ function ProductCard({ item, onOpen }: ProductCardProps) {
 
         <button
           type="button"
-          className="absolute top-3 right-3 flex size-8 items-center justify-center rounded-full bg-white p-0 text-subtle hover:text-heart-active"
+          className="text-subtle hover:text-heart-active absolute top-3 right-3 flex size-8 items-center justify-center rounded-full bg-white p-0"
           aria-label="Guardar favorito"
           onClick={(event) => event.stopPropagation()}
         >
@@ -145,12 +145,12 @@ function ProductCard({ item, onOpen }: ProductCardProps) {
           className="mb-5 block h-auto w-full p-0 text-left"
           onClick={onOpen}
         >
-          <h2 className="line-clamp-2 min-h-[38px] text-[15px] leading-snug font-medium text-ink">{item.title}</h2>
+          <h2 className="text-ink line-clamp-2 min-h-[38px] text-[15px] leading-snug font-medium">{item.title}</h2>
         </button>
 
         <div className="mb-6 flex items-center justify-between">
           <p className="text-card-loc text-subtle">{item.city || "Sin ubicacion"}</p>
-          <p className="flex items-center gap-1 text-card-loc text-rating">
+          <p className="text-card-loc text-rating flex items-center gap-1">
             <Star
               size={13}
               fill="currentColor"
@@ -160,7 +160,7 @@ function ProductCard({ item, onOpen }: ProductCardProps) {
         </div>
 
         <div className="flex items-center justify-between gap-3">
-          <p className="text-[17px] font-bold text-primary">{Math.round(item.price_per_day)} EUR/dia</p>
+          <p className="text-primary text-[17px] font-bold">{Math.round(item.price_per_day)} EUR/dia</p>
           <button
             type="button"
             className="btn-primary btn--sm min-w-[92px]"
@@ -329,7 +329,7 @@ function Search() {
           if (bIndex === -1) return -1;
           return aIndex - bIndex;
         }),
-    [state.categoryCounts],
+    [state.categoryCounts]
   );
 
   const cityOptions = useMemo(
@@ -337,7 +337,7 @@ function Search() {
       Object.entries(state.cityCounts)
         .map(([value, count]) => ({ value, label: value, count }))
         .sort((a, b) => b.count - a.count || a.label.localeCompare(b.label)),
-    [state.cityCounts],
+    [state.cityCounts]
   );
 
   const conditionOptions = useMemo(
@@ -352,7 +352,7 @@ function Search() {
           if (bIndex === -1) return -1;
           return aIndex - bIndex;
         }),
-    [state.conditionCounts],
+    [state.conditionCounts]
   );
 
   const activeChips = [
@@ -387,7 +387,7 @@ function Search() {
             />
             <button
               type="submit"
-              className="btn-primary h-8 rounded-lg px-4 text-card-sm"
+              className="btn-primary text-card-sm h-8 rounded-lg px-4"
             >
               Buscar
             </button>
@@ -395,12 +395,12 @@ function Search() {
 
           <div className="flex flex-col items-start justify-center gap-1">
             <p className="text-card-sm text-subtle">{resultLabel}</p>
-            <label className="mb-0 grid grid-cols-[auto_1fr] items-center gap-3 text-card-sm text-subtle">
+            <label className="text-card-sm text-subtle mb-0 grid grid-cols-[auto_1fr] items-center gap-3">
               Ordenar:
               <select
                 value={sort}
                 onChange={(event) => updateParam("sort", event.target.value)}
-                className="h-9 w-[160px] rounded-lg bg-white text-ink"
+                className="text-ink h-9 w-[160px] rounded-lg bg-white"
               >
                 {SORT_OPTIONS.map((option) => (
                   <option
@@ -422,7 +422,7 @@ function Search() {
             <button
               key={chip.key}
               type="button"
-              className="border-primary-border bg-primary-light text-primary h-7 rounded-full border px-3 text-card-loc"
+              className="border-primary-border bg-primary-light text-primary text-card-loc h-7 rounded-full border px-3"
               onClick={() => updateParam(chip.key, "")}
             >
               {chip.label}
@@ -432,13 +432,13 @@ function Search() {
           {hasFilters && (
             <button
               type="button"
-              className="h-7 px-0 text-card-loc text-report"
+              className="text-card-loc text-report h-7 px-0"
               onClick={clearFilters}
             >
               Limpiar filtros
             </button>
           )}
-          {!hasFilters && <span className="h-7 text-card-loc text-subtle">Usa los filtros para acotar resultados</span>}
+          {!hasFilters && <span className="text-card-loc text-subtle h-7">Usa los filtros para acotar resultados</span>}
         </div>
       </div>
 
@@ -449,7 +449,7 @@ function Search() {
               {categoryOptions.map((option) => (
                 <label
                   key={option.value}
-                  className="mb-0 flex items-center gap-2 text-body-color"
+                  className="text-body-color mb-0 flex items-center gap-2"
                 >
                   <input
                     type="checkbox"
@@ -467,7 +467,7 @@ function Search() {
 
           <FilterSection title="Precio por dia">
             <div className="grid grid-cols-2 gap-3">
-              <label className="mb-0 text-card-loc text-subtle">
+              <label className="text-card-loc text-subtle mb-0">
                 Min
                 <input
                   type="number"
@@ -478,7 +478,7 @@ function Search() {
                   className="mt-1 h-9"
                 />
               </label>
-              <label className="mb-0 text-card-loc text-subtle">
+              <label className="text-card-loc text-subtle mb-0">
                 Max
                 <input
                   type="number"
@@ -497,7 +497,7 @@ function Search() {
               {cityOptions.map((option) => (
                 <label
                   key={option.value}
-                  className="mb-0 flex items-center gap-2 text-body-color"
+                  className="text-body-color mb-0 flex items-center gap-2"
                 >
                   <input
                     type="checkbox"
@@ -515,7 +515,7 @@ function Search() {
 
           <FilterSection title="Disponibilidad">
             <div className="grid grid-cols-2 gap-4">
-              <label className="mb-0 text-card-loc text-subtle">
+              <label className="text-card-loc text-subtle mb-0">
                 Desde
                 <input
                   type="date"
@@ -524,7 +524,7 @@ function Search() {
                   className="mt-1 h-9"
                 />
               </label>
-              <label className="mb-0 text-card-loc text-subtle">
+              <label className="text-card-loc text-subtle mb-0">
                 Hasta
                 <input
                   type="date"
@@ -541,7 +541,7 @@ function Search() {
               {conditionOptions.map((option) => (
                 <label
                   key={option.value}
-                  className="mb-0 flex items-center gap-2 text-body-color"
+                  className="text-body-color mb-0 flex items-center gap-2"
                 >
                   <input
                     type="checkbox"
@@ -560,7 +560,7 @@ function Search() {
 
         <main className="px-9 pt-5 pb-8">
           {state.error && (
-            <div className="border-report bg-error-danger mb-5 rounded-lg border p-4 text-report">{state.error}</div>
+            <div className="border-report bg-error-danger text-report mb-5 rounded-lg border p-4">{state.error}</div>
           )}
 
           <div className="grid grid-cols-3 gap-x-5 gap-y-6">
@@ -601,7 +601,7 @@ function Search() {
                   className="flex items-center gap-2"
                 >
                   {index > 0 && pageNumber - pageWindow[index - 1] > 1 && (
-                    <span className="border-border-input flex h-10 min-w-10 items-center justify-center rounded-lg border bg-white px-3 text-subtle">
+                    <span className="border-border-input text-subtle flex h-10 min-w-10 items-center justify-center rounded-lg border bg-white px-3">
                       ...
                     </span>
                   )}

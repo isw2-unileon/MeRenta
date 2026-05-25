@@ -53,15 +53,15 @@ LIMIT $9 OFFSET $10
 
 type SearchItemCardsParams struct {
 	RequireAvailable bool     `json:"require_available"`
-	Query     string   `json:"query"`
-	Category  string   `json:"category"`
-	City      string   `json:"city"`
-	Condition string   `json:"condition"`
-	MinPrice  *float64 `json:"min_price"`
-	MaxPrice  *float64 `json:"max_price"`
-	Sort      string   `json:"sort"`
-	Limit     int32    `json:"limit"`
-	Offset    int32    `json:"offset"`
+	Query            string   `json:"query"`
+	Category         string   `json:"category"`
+	City             string   `json:"city"`
+	Condition        string   `json:"condition"`
+	MinPrice         *float64 `json:"min_price"`
+	MaxPrice         *float64 `json:"max_price"`
+	Sort             string   `json:"sort"`
+	Limit            int32    `json:"limit"`
+	Offset           int32    `json:"offset"`
 }
 
 type SearchItemCardsRow struct {
@@ -145,11 +145,11 @@ GROUP BY i.item_condition
 
 type CountItemCardsByCategoryParams struct {
 	RequireAvailable bool     `json:"require_available"`
-	Query     string   `json:"query"`
-	City      string   `json:"city"`
-	Condition string   `json:"condition"`
-	MinPrice  *float64 `json:"min_price"`
-	MaxPrice  *float64 `json:"max_price"`
+	Query            string   `json:"query"`
+	City             string   `json:"city"`
+	Condition        string   `json:"condition"`
+	MinPrice         *float64 `json:"min_price"`
+	MaxPrice         *float64 `json:"max_price"`
 }
 
 type CountItemCardsByCategoryRow struct {
@@ -159,11 +159,11 @@ type CountItemCardsByCategoryRow struct {
 
 type CountItemCardsByCityParams struct {
 	RequireAvailable bool     `json:"require_available"`
-	Query     string   `json:"query"`
-	Category  string   `json:"category"`
-	Condition string   `json:"condition"`
-	MinPrice  *float64 `json:"min_price"`
-	MaxPrice  *float64 `json:"max_price"`
+	Query            string   `json:"query"`
+	Category         string   `json:"category"`
+	Condition        string   `json:"condition"`
+	MinPrice         *float64 `json:"min_price"`
+	MaxPrice         *float64 `json:"max_price"`
 }
 
 type CountItemCardsByCityRow struct {
@@ -173,11 +173,11 @@ type CountItemCardsByCityRow struct {
 
 type CountItemCardsByConditionParams struct {
 	RequireAvailable bool     `json:"require_available"`
-	Query    string   `json:"query"`
-	Category string   `json:"category"`
-	City     string   `json:"city"`
-	MinPrice *float64 `json:"min_price"`
-	MaxPrice *float64 `json:"max_price"`
+	Query            string   `json:"query"`
+	Category         string   `json:"category"`
+	City             string   `json:"city"`
+	MinPrice         *float64 `json:"min_price"`
+	MaxPrice         *float64 `json:"max_price"`
 }
 
 type CountItemCardsByConditionRow struct {
