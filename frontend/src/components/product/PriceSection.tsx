@@ -73,10 +73,10 @@ function PriceSection({ data, errors, onChange }: PriceSectionProps) {
   const selectedMin = parseRentalPeriod(data.minRentalPeriod);
 
   const minPeriodOptions = MIN_PERIOD_OPTIONS.filter(
-    (opt) => isUnlimitedPeriod(data.maxRentalPeriod) || parseRentalPeriod(opt.value) <= selectedMax,
+    (opt) => isUnlimitedPeriod(data.maxRentalPeriod) || parseRentalPeriod(opt.value) <= selectedMax
   );
   const maxPeriodOptions = MAX_PERIOD_OPTIONS.filter(
-    (opt) => isUnlimitedPeriod(opt.value) || parseRentalPeriod(opt.value) >= selectedMin,
+    (opt) => isUnlimitedPeriod(opt.value) || parseRentalPeriod(opt.value) >= selectedMin
   );
 
   return (

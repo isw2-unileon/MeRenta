@@ -97,7 +97,9 @@ function BookingCard({
     <div className="booking-card p-5">
       {/* ── Price + rating ── */}
       <div className="mb-4 flex items-start justify-between">
-        <p className="booking-price">{pricePerDay} EUR</p>
+        <p className="booking-price">
+          {pricePerDay} EUR<span className="text-2xl">/día</span>
+        </p>
         {reviewCount > 0 && (
           <div className="flex items-center gap-1 pt-1">
             <StarRating

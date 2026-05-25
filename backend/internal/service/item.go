@@ -73,7 +73,10 @@ func (s *ItemService) CreateItem(ctx context.Context, ownerID uuid.UUID, req mod
 		return nil, fmt.Errorf("invalid deposit: %w", err)
 	}
 
-	maxDays := optionalIntToInt4(req.MaxDays)
+	maxDays, err := optionalIntToInt4(req.MaxDays)
+	if err != nil {
+		return nil, fmt.Errorf("invalid max_days: %w", err)
+	}
 
 	item, err := s.q.CreateItem(ctx, sqlcdb.CreateItemParams{
 		OwnerID:     ownerID,
@@ -189,11 +192,16 @@ func optionalFloat64ToNumeric(v *float64) (pgtype.Numeric, error) {
 	return float64ToNumeric(*v)
 }
 
-func optionalIntToInt4(v *int) pgtype.Int4 {
+func optionalIntToInt4(v *int) (pgtype.Int4, error) {
 	if v == nil {
-		return pgtype.Int4{}
+		return pgtype.Int4{}, nil
 	}
-	return pgtype.Int4{Int32: int32(*v), Valid: true}
+	const minInt32 = -2147483648
+	const maxInt32 = 2147483647
+	if *v < minInt32 || *v > maxInt32 {
+		return pgtype.Int4{}, fmt.Errorf("value %d overflows int32", *v)
+	}
+	return pgtype.Int4{Int32: int32(*v), Valid: true}, nil
 }
 
 // numericToFloat64 extracts the float64 value from a pgtype.Numeric.

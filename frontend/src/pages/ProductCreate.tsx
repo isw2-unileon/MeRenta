@@ -282,8 +282,7 @@ function ProductCreate() {
           price_per_day: parseFloat(state.data.pricePerDay),
           deposit: state.data.deposit ? parseFloat(state.data.deposit) : undefined,
           min_days: Number.parseInt(state.data.minRentalPeriod, 10),
-          max_days:
-            state.data.maxRentalPeriod === "0" ? undefined : Number.parseInt(state.data.maxRentalPeriod, 10),
+          max_days: state.data.maxRentalPeriod === "0" ? undefined : Number.parseInt(state.data.maxRentalPeriod, 10),
         });
 
         if (!asDraft && state.data.photos.length > 0) {
