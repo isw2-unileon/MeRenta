@@ -23,6 +23,32 @@ func NewItemHandler(svc *service.ItemService) *ItemHandler {
 	return &ItemHandler{svc: svc}
 }
 
+// Get handles GET /api/items/:id — returns a single item listing.
+//
+// Response 200: model.ItemResponse
+// Response 400: invalid UUID in path
+// Response 404: item not found
+func (h *ItemHandler) Get(c *gin.Context) {
+	itemID, ok := parseUUIDParam(c)
+	if !ok {
+		return
+	}
+
+	res, err := h.svc.GetItem(c.Request.Context(), itemID)
+	if err != nil {
+		if errors.Is(err, service.ErrItemNotFound) {
+			response.Error(c, http.StatusNotFound, err.Error())
+			return
+		}
+
+		response.Error(c, http.StatusInternalServerError, "internal server error")
+
+		return
+	}
+
+	response.OK(c, http.StatusOK, res)
+}
+
 // Create handles POST /api/items — creates a new item listing for the
 // authenticated customer.
 //

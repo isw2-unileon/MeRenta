@@ -2040,8 +2040,6 @@
     border-radius: var(--radius-panel);
     width: var(--spacing-booking-card);
     overflow: hidden;
-    position: sticky;
-    top: calc(var(--spacing-navbar) + 20px);
   }
   .booking-dates {
     border: 1.5px solid var(--color-border-booking-active);

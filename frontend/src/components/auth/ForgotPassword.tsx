@@ -35,6 +35,7 @@ function ForgotPassword({ onSwitch }: { onSwitch: (v: AuthView) => void }) {
             placeholder="tu@email.com"
             type="email"
             autoComplete="email"
+            aria-label="Email de tu cuenta"
           />
         </div>
 

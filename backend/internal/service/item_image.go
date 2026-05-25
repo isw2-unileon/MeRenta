@@ -6,6 +6,7 @@ import (
 	"errors"
 	"fmt"
 	"mime/multipart"
+	"net/url"
 	"path/filepath"
 	"strings"
 	"time"
@@ -22,6 +23,8 @@ var (
 	ErrItemNotFound = errors.New("item not found")
 	// ErrForbidden indicates the caller does not own the resource.
 	ErrForbidden = errors.New("forbidden")
+	// ErrImageNotFound is returned when no image with the given ID exists for the item.
+	ErrImageNotFound = errors.New("image not found")
 )
 
 // signedURLTTL is how long (in seconds) a signed URL remains valid.
@@ -99,6 +102,70 @@ func (s *ItemImageService) AddItemImages(
 	}
 
 	return results, nil
+}
+
+// GetImages returns all images for an item ordered by display_order.
+// Returns an empty slice when the item has no images yet.
+func (s *ItemImageService) GetImages(ctx context.Context, itemID uuid.UUID) ([]model.ItemImageResponse, error) {
+	rows, err := s.q.GetItemImages(ctx, itemID)
+	if err != nil {
+		return nil, err
+	}
+
+	result := make([]model.ItemImageResponse, 0, len(rows))
+	for _, img := range rows {
+		result = append(result, model.ItemImageResponse{
+			ImageID:      img.ImageID.String(),
+			ItemID:       img.ItemID.String(),
+			ImageURL:     img.ImageUrl,
+			DisplayOrder: img.DisplayOrder,
+		})
+	}
+
+	return result, nil
+}
+
+// GetImageURL returns the Supabase signed URL for the given image.
+// It is intentionally not exposed in the API response; callers should proxy
+// the image through the backend rather than giving the URL directly to clients.
+//
+// Older records may have been stored with a missing /storage/v1 path segment
+// (a bug in the original SignURL implementation). normalizeStorageURL fixes
+// those on the fly so no DB migration is required.
+//
+// It loads all images for the item (max 10) and scans for the matching ID.
+func (s *ItemImageService) GetImageURL(ctx context.Context, itemID, imageID uuid.UUID) (string, error) {
+	rows, err := s.q.GetItemImages(ctx, itemID)
+	if err != nil {
+		return "", err
+	}
+
+	for _, img := range rows {
+		if img.ImageID == imageID {
+			return normalizeStorageURL(img.ImageUrl), nil
+		}
+	}
+
+	return "", ErrImageNotFound
+}
+
+// normalizeStorageURL ensures the URL contains the /storage/v1 path segment
+// that Supabase requires. Older URLs stored in the DB were generated before the
+// bug in SignURL was fixed and are missing this prefix, e.g.:
+//
+//	https://<project>.supabase.co/object/sign/<bucket>/<path>?token=…
+//	→ https://<project>.supabase.co/storage/v1/object/sign/<bucket>/<path>?token=…
+//
+// Already-correct URLs are returned unchanged.
+func normalizeStorageURL(rawURL string) string {
+	u, err := url.Parse(rawURL)
+	if err != nil || !strings.HasPrefix(u.Path, "/object/") {
+		return rawURL
+	}
+
+	u.Path = "/storage/v1" + u.Path
+
+	return u.String()
 }
 
 // uploadAndSign uploads a single file to storage and returns its signed URL.

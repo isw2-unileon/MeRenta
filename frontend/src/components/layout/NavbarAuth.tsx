@@ -42,6 +42,7 @@ function NavbarAuth() {
       <div className="max-w-alert-width px-nav-margin mx-auto flex h-full items-center justify-between">
         <div className="flex items-center gap-8">
           <button
+            type="button"
             className="text-logo text-ink cursor-pointer border-none bg-transparent p-0 font-bold"
             onClick={() => navigate("/home")}
           >
@@ -51,6 +52,7 @@ function NavbarAuth() {
           <ul className="nav-list">
             <li>
               <button
+                type="button"
                 className="link-nav"
                 onClick={() => navigate("/search")}
               >
@@ -59,6 +61,7 @@ function NavbarAuth() {
             </li>
             <li>
               <button
+                type="button"
                 className="border-primary text-primary hover:bg-primary rounded-full border-2 p-2.5 hover:text-white"
                 onClick={() => navigate("/product/new")}
               >
@@ -70,6 +73,7 @@ function NavbarAuth() {
 
         <div className="flex items-center gap-4">
           <button
+            type="button"
             className="btn-icon"
             onClick={() => navigate("/favs")}
             aria-label="Favoritos"
@@ -78,6 +82,7 @@ function NavbarAuth() {
           </button>
 
           <button
+            type="button"
             className="btn-icon"
             onClick={() => navigate("/chat")}
             aria-label="Mensajes"
@@ -86,6 +91,7 @@ function NavbarAuth() {
           </button>
 
           <button
+            type="button"
             className="flex cursor-pointer items-center gap-2 border-none bg-transparent p-0"
             onClick={() => navigate("/profile")}
           >

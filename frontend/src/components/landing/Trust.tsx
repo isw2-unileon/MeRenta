@@ -40,6 +40,7 @@ function Trust() {
           </p>
           <div className="pt-2">
             <button
+              type="button"
               className="btn-on-primary btn--xl"
               onClick={() => navigate("/more-info")}
             >

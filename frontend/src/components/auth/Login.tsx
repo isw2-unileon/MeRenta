@@ -89,6 +89,7 @@ function Login({ onSwitch }: { onSwitch: (v: AuthView) => void }) {
             type="email"
             placeholder="tu@email.com"
             autoComplete="email"
+            aria-label="Email"
             value={formData.email}
             onChange={updateLoginField}
             required
@@ -110,6 +111,7 @@ function Login({ onSwitch }: { onSwitch: (v: AuthView) => void }) {
               type={showPassword ? "text" : "password"}
               placeholder="••••••••"
               autoComplete="current-password"
+              aria-label="Contraseña"
               value={formData.password}
               onChange={updateLoginField}
               required

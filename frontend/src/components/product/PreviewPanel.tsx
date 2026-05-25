@@ -99,7 +99,7 @@ function PreviewPanel({ formData }: PreviewPanelProps) {
               </p>
             ) : (
               <p className="text-primary/30 text-[28px] leading-none font-bold">
-                — EUR<span className="text-[14px] font-medium">/día</span>
+                - EUR<span className="text-[14px] font-medium">/día</span>
               </p>
             )}
 

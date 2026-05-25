@@ -20,7 +20,12 @@ function Categories() {
         <ul className="category-list">
           {categories.map((cat) => (
             <li key={cat}>
-              <button className="btn-secondary btn--md">{cat}</button>
+              <button
+                type="button"
+                className="btn-secondary btn--md"
+              >
+                {cat}
+              </button>
             </li>
           ))}
         </ul>

@@ -13,6 +13,7 @@ function NavbarPublic() {
     <nav className="h-navbar bg-page border-border-main fixed top-0 right-0 left-0 z-50 border-b">
       <div className="max-w-alert-width px-nav-margin mx-auto flex h-full items-center justify-between">
         <button
+          type="button"
           className="text-logo text-ink cursor-pointer border-none bg-transparent p-0 font-bold"
           onClick={() => navigate("/")}
         >
@@ -44,12 +45,14 @@ function NavbarPublic() {
 
             <div className="flex items-center gap-2.5">
               <button
+                type="button"
                 className="btn-secondary btn--md"
                 onClick={() => navigate("/auth", { state: { view: "login" } })}
               >
                 Iniciar sesion
               </button>
               <button
+                type="button"
                 className="btn-primary btn--md"
                 onClick={() => navigate("/auth", { state: { view: "register" } })}
               >

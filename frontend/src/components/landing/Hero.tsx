@@ -31,12 +31,14 @@ function Hero() {
 
           <div className="flex items-center gap-3">
             <button
+              type="button"
               className="btn-primary btn--xl"
               onClick={() => navigate("/auth", { state: { view: "register" } })}
             >
               Empieza ahora
             </button>
             <button
+              type="button"
               className="btn-secondary btn--xl"
               onClick={() => navigate("/auth", { state: { view: "login" } })}
             >

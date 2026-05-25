@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useReducer, useState } from "react";
 import { useNavigate } from "react-router-dom";
 
 import { BasicInfoSection } from "@/components/product/BasicInfoSection";
@@ -42,6 +42,59 @@ const STEP_LABELS: Record<SubmitStep, string> = {
   uploading: "Subiendo fotos...",
   done: "¡Publicado!",
 };
+
+interface FormState {
+  data: ProductFormData;
+  errors: FormErrors;
+  submitStep: SubmitStep;
+  submitError: string;
+}
+
+type FormAction =
+  | { type: "update-field"; field: keyof ProductFormData; value: string | boolean }
+  | { type: "set-errors"; errors: FormErrors }
+  | { type: "clear-error"; field: keyof ProductFormData }
+  | { type: "add-photos"; files: File[] }
+  | { type: "remove-photo"; index: number }
+  | { type: "set-submit-step"; step: SubmitStep }
+  | { type: "set-submit-error"; message: string };
+
+const INITIAL_STATE: FormState = {
+  data: INITIAL_FORM,
+  errors: {},
+  submitStep: "idle",
+  submitError: "",
+};
+
+function formReducer(state: FormState, action: FormAction): FormState {
+  switch (action.type) {
+    case "update-field": {
+      const nextErrors = state.errors[action.field] ? { ...state.errors, [action.field]: undefined } : state.errors;
+      return {
+        ...state,
+        data: { ...state.data, [action.field]: action.value },
+        errors: nextErrors,
+      };
+    }
+    case "set-errors":
+      return { ...state, errors: action.errors };
+    case "clear-error":
+      return { ...state, errors: { ...state.errors, [action.field]: undefined } };
+    case "add-photos":
+      return { ...state, data: { ...state.data, photos: [...state.data.photos, ...action.files] } };
+    case "remove-photo":
+      return {
+        ...state,
+        data: { ...state.data, photos: state.data.photos.filter((_, i) => i !== action.index) },
+      };
+    case "set-submit-step":
+      return { ...state, submitStep: action.step };
+    case "set-submit-error":
+      return { ...state, submitError: action.message };
+    default:
+      return state;
+  }
+}
 
 /**
  * Validates the form and returns a map of field-level errors.
@@ -158,38 +211,29 @@ async function createAddress(req: CreateAddressRequest): Promise<AddressResponse
  */
 function ProductCreate() {
   const navigate = useNavigate();
-  const [formData, setFormData] = useState<ProductFormData>(INITIAL_FORM);
-  const [errors, setErrors] = useState<FormErrors>({});
-  const [submitStep, setSubmitStep] = useState<SubmitStep>("idle");
-  const [submitError, setSubmitError] = useState("");
+  const [state, dispatch] = useReducer(formReducer, INITIAL_STATE);
   const [addresses, setAddresses] = useState<AddressResponse[]>([]);
 
-  const isSubmitting = submitStep !== "idle" && submitStep !== "done";
+  const isSubmitting = state.submitStep !== "idle" && state.submitStep !== "done";
 
   // Load the user's saved addresses once on mount.
   useEffect(() => {
     void fetchAddresses().then(setAddresses);
   }, []);
 
-  const handleChange = (field: keyof ProductFormData, value: string | boolean) => {
-    setFormData((prev) => ({ ...prev, [field]: value }));
-    if (errors[field]) {
-      setErrors((prev) => ({ ...prev, [field]: undefined }));
+  const updateFormField = (field: keyof ProductFormData, value: string | boolean) => {
+    dispatch({ type: "update-field", field, value });
+  };
+
+  const addPhotosToForm = (files: File[]) => {
+    dispatch({ type: "add-photos", files });
+    if (state.errors.photos) {
+      dispatch({ type: "clear-error", field: "photos" });
     }
   };
 
-  const handleAddPhotos = (files: File[]) => {
-    setFormData((prev) => ({ ...prev, photos: [...prev.photos, ...files] }));
-    if (errors.photos) {
-      setErrors((prev) => ({ ...prev, photos: undefined }));
-    }
-  };
-
-  const handleRemovePhoto = (index: number) => {
-    setFormData((prev) => ({
-      ...prev,
-      photos: prev.photos.filter((_, i) => i !== index),
-    }));
+  const removePhotoFromForm = (index: number) => {
+    dispatch({ type: "remove-photo", index });
   };
 
   /**
@@ -198,7 +242,7 @@ function ProductCreate() {
   const handleAddressCreated = async (req: CreateAddressRequest): Promise<void> => {
     const newAddr = await createAddress(req);
     setAddresses((prev) => [...prev, newAddr]);
-    handleChange("address", newAddr.address_id);
+    updateFormField("address", newAddr.address_id);
   };
 
   /**
@@ -208,40 +252,43 @@ function ProductCreate() {
    *
    * When `asDraft` is true only the item record is created (no image upload).
    */
-  const handleSubmit = (asDraft = false) => {
-    const newErrors = validateForm(formData);
+  const submitProduct = (asDraft = false) => {
+    const newErrors = validateForm(state.data);
     if (Object.keys(newErrors).length > 0) {
-      setErrors(newErrors);
+      dispatch({ type: "set-errors", errors: newErrors });
       const firstKey = Object.keys(newErrors)[0] ?? "";
       document.getElementById(firstKey)?.scrollIntoView({ behavior: "smooth", block: "center" });
       return;
     }
 
-    setSubmitError("");
+    dispatch({ type: "set-submit-error", message: "" });
 
     const run = async () => {
       try {
-        setSubmitStep("creating");
+        dispatch({ type: "set-submit-step", step: "creating" });
 
         const item = await createItem({
-          address_id: formData.address,
-          category: formData.category,
-          title: formData.title.trim(),
-          description: formData.description.trim() || undefined,
-          price_per_day: parseFloat(formData.pricePerDay),
-          deposit: formData.deposit ? parseFloat(formData.deposit) : undefined,
+          address_id: state.data.address,
+          category: state.data.category,
+          title: state.data.title.trim(),
+          description: state.data.description.trim() || undefined,
+          price_per_day: parseFloat(state.data.pricePerDay),
+          deposit: state.data.deposit ? parseFloat(state.data.deposit) : undefined,
         });
 
-        if (!asDraft && formData.photos.length > 0) {
-          setSubmitStep("uploading");
-          await uploadItemImages(item.item_id, formData.photos);
+        if (!asDraft && state.data.photos.length > 0) {
+          dispatch({ type: "set-submit-step", step: "uploading" });
+          await uploadItemImages(item.item_id, state.data.photos);
         }
 
-        setSubmitStep("done");
+        dispatch({ type: "set-submit-step", step: "done" });
         await navigate(`/product/${item.item_id}`);
       } catch (err) {
-        setSubmitStep("idle");
-        setSubmitError(err instanceof Error ? err.message : "Error al publicar el anuncio. Inténtalo de nuevo.");
+        dispatch({ type: "set-submit-step", step: "idle" });
+        dispatch({
+          type: "set-submit-error",
+          message: err instanceof Error ? err.message : "Error al publicar el anuncio. Inténtalo de nuevo.",
+        });
       }
     };
 
@@ -259,43 +306,43 @@ function ProductCreate() {
         <div className="grid grid-cols-[1fr_360px] items-start gap-8 xl:grid-cols-[1fr_380px]">
           <div className="flex flex-col gap-6">
             <BasicInfoSection
-              data={formData}
-              errors={errors}
-              onChange={handleChange}
+              data={state.data}
+              errors={state.errors}
+              onChange={updateFormField}
             />
 
             <PhotosSection
-              photos={formData.photos}
-              error={errors.photos}
-              onAddPhotos={handleAddPhotos}
-              onRemovePhoto={handleRemovePhoto}
+              photos={state.data.photos}
+              error={state.errors.photos}
+              onAddPhotos={addPhotosToForm}
+              onRemovePhoto={removePhotoFromForm}
             />
 
             <PriceSection
-              data={formData}
-              errors={errors}
-              onChange={handleChange}
+              data={state.data}
+              errors={state.errors}
+              onChange={updateFormField}
             />
 
             <LocationSection
-              data={formData}
-              errors={errors}
+              data={state.data}
+              errors={state.errors}
               addresses={addresses}
-              onChange={handleChange}
+              onChange={updateFormField}
               onAddressCreated={handleAddressCreated}
             />
 
             <ConditionsSection
-              value={formData.usageRules}
-              onChange={(v) => handleChange("usageRules", v)}
+              value={state.data.usageRules}
+              onChange={(v) => updateFormField("usageRules", v)}
             />
 
-            {submitError && (
+            {state.submitError && (
               <div
                 role="alert"
                 className="rounded-lg border border-red-200 bg-red-50 p-4 text-sm text-red-600"
               >
-                {submitError}
+                {state.submitError}
               </div>
             )}
 
@@ -303,13 +350,13 @@ function ProductCreate() {
               <button
                 type="button"
                 className="btn-primary btn--lg min-w-[200px]"
-                onClick={() => handleSubmit(false)}
+                onClick={() => submitProduct(false)}
                 disabled={isSubmitting}
               >
                 {isSubmitting ? (
                   <span className="flex items-center gap-2">
                     <span className="size-4 animate-spin rounded-full border-2 border-white/30 border-t-white" />
-                    {STEP_LABELS[submitStep]}
+                    {STEP_LABELS[state.submitStep]}
                   </span>
                 ) : (
                   "Crear producto"
@@ -318,7 +365,7 @@ function ProductCreate() {
             </div>
           </div>
 
-          <PreviewPanel formData={formData} />
+          <PreviewPanel formData={state.data} />
         </div>
       </div>
     </div>

@@ -130,8 +130,15 @@ func (c *SupabaseClient) SignURL(
 		return "", fmt.Errorf("storage sign: decode response: %w", err)
 	}
 
-	// Supabase returns a relative path — prepend the base URL.
+	// Supabase returns a path relative to the storage API root, e.g.:
+	//   /object/sign/<bucket>/<path>?token=...
+	// The /storage/v1 prefix is intentionally omitted from the sign response
+	// but is required to access the object. Prepend it when it is absent.
 	if len(result.SignedURL) > 0 && result.SignedURL[0] == '/' {
+		if !strings.HasPrefix(result.SignedURL, "/storage/v1") {
+			return c.baseURL + "/storage/v1" + result.SignedURL, nil
+		}
+
 		return c.baseURL + result.SignedURL, nil
 	}
 

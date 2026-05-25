@@ -51,7 +51,7 @@ function Auth() {
             Forma parte de la comunidad que comparte.
           </p>
 
-          <p className="text-body-lg mt-8 max-w-md self-center text-center text-white/60">— o —</p>
+          <p className="text-body-lg mt-8 max-w-md self-center text-center text-white/60">o</p>
 
           <Link
             to="/"
