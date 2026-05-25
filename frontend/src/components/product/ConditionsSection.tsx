@@ -12,7 +12,7 @@ interface ConditionsSectionProps {
  * @returns The conditions-for-tenant section JSX.
  */
 function ConditionsSection({ value, onChange }: ConditionsSectionProps) {
-  const handleChange = (e: ChangeEvent<HTMLTextAreaElement>) => {
+  const updateUsageRules = (e: ChangeEvent<HTMLTextAreaElement>) => {
     onChange(e.target.value);
   };
 
@@ -29,7 +29,8 @@ function ConditionsSection({ value, onChange }: ConditionsSectionProps) {
           rows={4}
           placeholder="Ej: No usar en competición. Devolver limpio. Notificar cualquier desperfecto inmediatamente..."
           value={value}
-          onChange={handleChange}
+          aria-label="Normas de uso"
+          onChange={updateUsageRules}
           className="min-h-[112px]"
         />
         <p className="field-hint mt-1">Opcional pero muy recomendable. Protege tu producto.</p>

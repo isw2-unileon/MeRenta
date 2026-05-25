@@ -34,7 +34,7 @@ interface PriceSectionProps {
  * @returns The price-and-conditions section JSX.
  */
 function PriceSection({ data, errors, onChange }: PriceSectionProps) {
-  const handleChange = (e: ChangeEvent<HTMLInputElement | HTMLSelectElement>) => {
+  const updatePricingField = (e: ChangeEvent<HTMLInputElement | HTMLSelectElement>) => {
     onChange(e.target.name as keyof ProductFormData, e.target.value);
   };
 
@@ -60,8 +60,9 @@ function PriceSection({ data, errors, onChange }: PriceSectionProps) {
               min="0"
               step="0.01"
               placeholder="18"
+              aria-label="Precio por día"
               value={data.pricePerDay}
-              onChange={handleChange}
+              onChange={updatePricingField}
               className={errors.pricePerDay ? "input-error" : ""}
             />
             {errors.pricePerDay && <p className="field-error mt-1">{errors.pricePerDay}</p>}
@@ -76,8 +77,9 @@ function PriceSection({ data, errors, onChange }: PriceSectionProps) {
               min="0"
               step="0.01"
               placeholder="100"
+              aria-label="Precio por semana"
               value={data.pricePerWeek}
-              onChange={handleChange}
+              onChange={updatePricingField}
             />
             <p className="field-hint mt-1">Si lo dejas vacío se calcula automáticamente x7</p>
           </div>
@@ -91,8 +93,9 @@ function PriceSection({ data, errors, onChange }: PriceSectionProps) {
               min="0"
               step="0.01"
               placeholder="50"
+              aria-label="Depósito de garantía"
               value={data.deposit}
-              onChange={handleChange}
+              onChange={updatePricingField}
             />
             <p className="field-hint mt-1">Descuento al finalizar sin incidencias</p>
           </div>
@@ -106,7 +109,7 @@ function PriceSection({ data, errors, onChange }: PriceSectionProps) {
               id="minRentalPeriod"
               name="minRentalPeriod"
               value={data.minRentalPeriod}
-              onChange={handleChange}
+              onChange={updatePricingField}
             >
               {MIN_PERIOD_OPTIONS.map((opt) => (
                 <option
@@ -125,7 +128,7 @@ function PriceSection({ data, errors, onChange }: PriceSectionProps) {
               id="maxRentalPeriod"
               name="maxRentalPeriod"
               value={data.maxRentalPeriod}
-              onChange={handleChange}
+              onChange={updatePricingField}
             >
               {MAX_PERIOD_OPTIONS.map((opt) => (
                 <option

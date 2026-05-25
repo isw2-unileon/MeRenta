@@ -123,6 +123,7 @@ function Register({ onSwitch }: { onSwitch: (v: AuthView) => void }) {
             type="text"
             placeholder="Tu nombre"
             autoComplete="given-name"
+            aria-label="Nombre"
             value={formData.firstName}
             onChange={updateRegisterField}
             required
@@ -142,6 +143,7 @@ function Register({ onSwitch }: { onSwitch: (v: AuthView) => void }) {
             type="text"
             placeholder="Tu apellido"
             autoComplete="family-name"
+            aria-label="Apellido"
             value={formData.lastName}
             onChange={updateRegisterField}
             required
@@ -161,6 +163,7 @@ function Register({ onSwitch }: { onSwitch: (v: AuthView) => void }) {
             type="email"
             placeholder="tu@email.com"
             autoComplete="email"
+            aria-label="Email"
             value={formData.email}
             onChange={updateRegisterField}
             required
@@ -182,6 +185,7 @@ function Register({ onSwitch }: { onSwitch: (v: AuthView) => void }) {
               type={showPassword ? "text" : "password"}
               placeholder="Crea una contraseña"
               autoComplete="new-password"
+              aria-label="Contraseña"
               value={formData.password}
               onChange={updateRegisterField}
               required
@@ -213,6 +217,7 @@ function Register({ onSwitch }: { onSwitch: (v: AuthView) => void }) {
               type={showRepeat ? "text" : "password"}
               placeholder="Repite la contraseña"
               autoComplete="new-password"
+              aria-label="Repetir contraseña"
               value={formData.repeatPassword}
               onChange={updateRegisterField}
               required

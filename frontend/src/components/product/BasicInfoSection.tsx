@@ -85,7 +85,7 @@ interface BasicInfoSectionProps {
 function BasicInfoSection({ data, errors, onChange }: BasicInfoSectionProps) {
   const selectedCategory = CATEGORIES.find((c) => c.value === data.category);
 
-  const handleChange = (e: ChangeEvent<HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement>) => {
+  const updateBasicInfoField = (e: ChangeEvent<HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement>) => {
     const { name, value } = e.target;
     if (name === "category") {
       onChange("subcategory", "");
@@ -113,8 +113,9 @@ function BasicInfoSection({ data, errors, onChange }: BasicInfoSectionProps) {
             type="text"
             placeholder="Ej: Bicicleta de montaña Trek X-Caliber 8"
             maxLength={80}
+            aria-label="Título del anuncio"
             value={data.title}
-            onChange={handleChange}
+            onChange={updateBasicInfoField}
             className={errors.title ? "input-error" : ""}
           />
           <div className="mt-1 flex items-start justify-between gap-4">
@@ -142,7 +143,7 @@ function BasicInfoSection({ data, errors, onChange }: BasicInfoSectionProps) {
               id="category"
               name="category"
               value={data.category}
-              onChange={handleChange}
+              onChange={updateBasicInfoField}
               className={errors.category ? "input-error" : ""}
             >
               <option value="">Selecciona una categoría</option>
@@ -164,7 +165,7 @@ function BasicInfoSection({ data, errors, onChange }: BasicInfoSectionProps) {
               id="subcategory"
               name="subcategory"
               value={data.subcategory}
-              onChange={handleChange}
+              onChange={updateBasicInfoField}
               disabled={!data.category}
             >
               <option value="">Selecciona subcategoría</option>
@@ -192,7 +193,7 @@ function BasicInfoSection({ data, errors, onChange }: BasicInfoSectionProps) {
             id="condition"
             name="condition"
             value={data.condition}
-            onChange={handleChange}
+            onChange={updateBasicInfoField}
             className={errors.condition ? "input-error" : ""}
           >
             <option value="">Selecciona el estado</option>
@@ -221,8 +222,9 @@ function BasicInfoSection({ data, errors, onChange }: BasicInfoSectionProps) {
             name="description"
             rows={5}
             placeholder="Describe el producto con detalle: características técnicas, accesorios incluidos, historial de uso, condiciones de alquiler..."
+            aria-label="Descripción completa"
             value={data.description}
-            onChange={handleChange}
+            onChange={updateBasicInfoField}
             className={`min-h-[128px] ${errors.description ? "input-error" : ""}`}
           />
           <div className="mt-1 flex items-start justify-between gap-4">

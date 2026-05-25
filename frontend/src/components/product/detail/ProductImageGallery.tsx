@@ -2,6 +2,8 @@ import { useState } from "react";
 
 import type { ItemImageResponse } from "@/types/item";
 
+const PLACEHOLDER_IMAGE = "data:image/gif;base64,R0lGODlhAQABAIAAAAAAAP///ywAAAAAAQABAAACAUwAOw==";
+
 interface ProductImageGalleryProps {
   /** Ordered list of images returned by the API. */
   images: ItemImageResponse[];
@@ -44,10 +46,10 @@ function ProductImageGallery({ images, title, isAvailable, isFavorite, onToggleF
             alt={title}
           />
         ) : (
-          <div
+          <img
             className="product-main-img bg-primary-light rounded-lg"
-            role="img"
-            aria-label={title}
+            src={PLACEHOLDER_IMAGE}
+            alt={title}
           />
         )}
 
@@ -72,14 +74,20 @@ function ProductImageGallery({ images, title, isAvailable, isFavorite, onToggleF
       {images.length > 1 && (
         <div className="mt-3 flex gap-2 overflow-x-auto pb-1">
           {images.map((img, i) => (
-            <img
+            <button
               key={img.image_id}
-              className={`product-thumb flex-shrink-0 ${i === activeIndex ? "active" : ""}`}
-              src={img.image_url}
-              alt={`${title} — imagen ${i + 1}`}
-              aria-selected={i === activeIndex}
+              type="button"
+              className="flex-shrink-0 p-0"
+              aria-pressed={i === activeIndex}
+              aria-label={`${title} - imagen ${i + 1}`}
               onClick={() => setActiveIndex(i)}
-            />
+            >
+              <img
+                className={`product-thumb ${i === activeIndex ? "active" : ""}`}
+                src={img.image_url}
+                alt=""
+              />
+            </button>
           ))}
         </div>
       )}

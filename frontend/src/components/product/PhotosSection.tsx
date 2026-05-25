@@ -46,12 +46,12 @@ function PhotosSection({ photos, error, onAddPhotos, onRemovePhoto }: PhotosSect
     [photos.length, onAddPhotos]
   );
 
-  const handleDrop = (e: DragEvent<HTMLDivElement>) => {
+  const handleDrop = (e: DragEvent<HTMLButtonElement>) => {
     e.preventDefault();
     processFiles(e.dataTransfer.files);
   };
 
-  const handleDragOver = (e: DragEvent<HTMLDivElement>) => {
+  const handleDragOver = (e: DragEvent<HTMLButtonElement>) => {
     e.preventDefault();
   };
 
@@ -78,16 +78,15 @@ function PhotosSection({ photos, error, onAddPhotos, onRemovePhoto }: PhotosSect
       <p className="field-hint mb-6">Sube entre 1 y 10 fotos. La primera será la imagen principal.</p>
 
       {/* Drop zone */}
-      <div
-        role="button"
-        tabIndex={0}
+      <button
+        type="button"
         aria-label="Área de carga de fotos"
         onClick={!isFull ? openFilePicker : undefined}
-        onKeyDown={(e) => !isFull && e.key === "Enter" && openFilePicker()}
         onDrop={!isFull ? handleDrop : undefined}
         onDragOver={!isFull ? handleDragOver : undefined}
+        disabled={isFull}
         className={[
-          "flex flex-col items-center justify-center gap-3 rounded-xl border-2 border-dashed px-6 py-10 transition-colors",
+          "flex w-full flex-col items-center justify-center gap-3 rounded-xl border-2 border-dashed px-6 py-10 transition-colors",
           error ? "border-heart-active bg-[#fff8f8]" : "border-border-input hover:border-primary hover:bg-primary-bg",
           isFull ? "cursor-not-allowed opacity-50" : "cursor-pointer",
         ].join(" ")}
@@ -99,7 +98,7 @@ function PhotosSection({ photos, error, onAddPhotos, onRemovePhoto }: PhotosSect
           <p className="text-ink text-[14px] font-medium">Arrastra tus fotos aquí o haz clic para seleccionar</p>
           <p className="field-hint mt-1">JPG, PNG o WEBP · Máximo 5 MB por imagen · Hasta 10 fotos</p>
         </div>
-      </div>
+      </button>
 
       <input
         ref={fileInputRef}
@@ -107,6 +106,7 @@ function PhotosSection({ photos, error, onAddPhotos, onRemovePhoto }: PhotosSect
         accept=".jpg,.jpeg,.png,.webp"
         multiple
         className="hidden"
+        aria-label="Subir fotos del producto"
         onChange={handleFileChange}
       />
 

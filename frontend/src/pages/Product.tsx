@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useReducer } from "react";
 import { useNavigate, useParams } from "react-router-dom";
 
 import { BookingCard } from "@/components/product/detail/BookingCard";
@@ -67,6 +67,56 @@ async function fetchOwnerProfile(ownerId: string): Promise<CustomerProfile> {
 interface DateRange {
   start: Date | null;
   end: Date | null;
+}
+
+interface ProductState {
+  item: ItemResponse | null;
+  images: ItemImageResponse[];
+  owner: CustomerProfile | null;
+  loading: boolean;
+  error: string;
+  isFavorite: boolean;
+  dateRange: DateRange;
+}
+
+type ProductAction =
+  | { type: "set-loading"; value: boolean }
+  | { type: "set-error"; value: string }
+  | { type: "set-item"; value: ItemResponse | null }
+  | { type: "set-images"; value: ItemImageResponse[] }
+  | { type: "set-owner"; value: CustomerProfile | null }
+  | { type: "toggle-favorite" }
+  | { type: "set-date-range"; value: DateRange };
+
+const INITIAL_STATE: ProductState = {
+  item: null,
+  images: [],
+  owner: null,
+  loading: true,
+  error: "",
+  isFavorite: false,
+  dateRange: { start: null, end: null },
+};
+
+function productReducer(state: ProductState, action: ProductAction): ProductState {
+  switch (action.type) {
+    case "set-loading":
+      return { ...state, loading: action.value };
+    case "set-error":
+      return { ...state, error: action.value };
+    case "set-item":
+      return { ...state, item: action.value };
+    case "set-images":
+      return { ...state, images: action.value };
+    case "set-owner":
+      return { ...state, owner: action.value };
+    case "toggle-favorite":
+      return { ...state, isFavorite: !state.isFavorite };
+    case "set-date-range":
+      return { ...state, dateRange: action.value };
+    default:
+      return state;
+  }
 }
 
 // ── Skeleton ─────────────────────────────────────────────────────────────────
@@ -150,13 +200,7 @@ function Product() {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
 
-  const [item, setItem] = useState<ItemResponse | null>(null);
-  const [images, setImages] = useState<ItemImageResponse[]>([]);
-  const [owner, setOwner] = useState<CustomerProfile | null>(null);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState("");
-  const [isFavorite, setIsFavorite] = useState(false);
-  const [dateRange, setDateRange] = useState<DateRange>({ start: null, end: null });
+  const [state, dispatch] = useReducer(productReducer, INITIAL_STATE);
 
   // Placeholder — a real implementation would fetch from /api/items/:id/bookings
   const occupiedDates = new Set<string>();
@@ -164,26 +208,26 @@ function Product() {
   useEffect(() => {
     if (!id) return;
 
-    setLoading(true);
-    setError("");
+    dispatch({ type: "set-loading", value: true });
+    dispatch({ type: "set-error", value: "" });
 
     const load = async () => {
       try {
         const [itemData, imagesData] = await Promise.all([fetchItem(id), fetchImages(id)]);
-        setItem(itemData);
-        setImages(imagesData);
+        dispatch({ type: "set-item", value: itemData });
+        dispatch({ type: "set-images", value: imagesData });
 
         // Owner profile is non-critical; ignore failures
         try {
           const ownerData = await fetchOwnerProfile(itemData.owner_id);
-          setOwner(ownerData);
+          dispatch({ type: "set-owner", value: ownerData });
         } catch {
           // silently omit owner card if profile endpoint is unavailable
         }
       } catch (err) {
-        setError(err instanceof Error ? err.message : "Error al cargar el producto");
+        dispatch({ type: "set-error", value: err instanceof Error ? err.message : "Error al cargar el producto" });
       } finally {
-        setLoading(false);
+        dispatch({ type: "set-loading", value: false });
       }
     };
 
@@ -197,30 +241,33 @@ function Product() {
    * - Both set → any click resets to a new start.
    */
   const handleDateSelect = (date: Date) => {
-    setDateRange((prev) => {
-      if (!prev.start || prev.end !== null) {
-        return { start: date, end: null };
-      }
-      if (date <= prev.start) {
-        return { start: date, end: null };
-      }
-      return { start: prev.start, end: date };
+    dispatch({
+      type: "set-date-range",
+      value: (() => {
+        if (!state.dateRange.start || state.dateRange.end !== null) {
+          return { start: date, end: null };
+        }
+        if (date <= state.dateRange.start) {
+          return { start: date, end: null };
+        }
+        return { start: state.dateRange.start, end: date };
+      })(),
     });
   };
 
   const rentalDays =
-    dateRange.start && dateRange.end
-      ? Math.round((dateRange.end.getTime() - dateRange.start.getTime()) / (1000 * 60 * 60 * 24))
+    state.dateRange.start && state.dateRange.end
+      ? Math.round((state.dateRange.end.getTime() - state.dateRange.start.getTime()) / (1000 * 60 * 60 * 24))
       : 0;
 
   // ── Derived display values ────────────────────────────────────────────────
 
-  const categoryLabel = item ? (CATEGORY_LABELS[item.category] ?? item.category) : "";
+  const categoryLabel = state.item ? (CATEGORY_LABELS[state.item.category] ?? state.item.category) : "";
 
   // The backend does not currently expose a condition field in ItemResponse.
   // Access it defensively so the badge appears when the API is extended.
-  const condition = item
-    ? CONDITION_LABELS[(item as ItemResponse & { condition?: string }).condition ?? ""]
+  const condition = state.item
+    ? CONDITION_LABELS[(state.item as ItemResponse & { condition?: string }).condition ?? ""]
     : undefined;
 
   // ── Render ─────────────────────────────────────────────────────────────────
@@ -228,37 +275,39 @@ function Product() {
   return (
     <div className="bg-surface min-h-screen py-8">
       <div className="px-layout-margin mx-auto max-w-[1280px]">
-        {loading && <ProductSkeleton />}
+        {state.loading && <ProductSkeleton />}
 
-        {!loading && (error || !item) && (
+        {!state.loading && (state.error || !state.item) && (
           <ProductError
-            message={error || "Este producto no existe o ha sido eliminado."}
+            message={state.error || "Este producto no existe o ha sido eliminado."}
             onBack={() => void navigate(-1)}
           />
         )}
 
-        {!loading && item && (
+        {!state.loading && state.item && (
           <div className="grid grid-cols-[1fr_392px] items-start gap-8">
             {/* ════════════════════════════════════ Left column */}
             <div className="flex min-w-0 flex-col gap-6">
               {/* Image gallery */}
               <ProductImageGallery
-                images={images}
-                title={item.title}
-                isAvailable={item.is_available}
-                isFavorite={isFavorite}
-                onToggleFavorite={() => setIsFavorite((f) => !f)}
+                images={state.images}
+                title={state.item.title}
+                isAvailable={state.item.is_available}
+                isFavorite={state.isFavorite}
+                onToggleFavorite={() => dispatch({ type: "toggle-favorite" })}
               />
 
               {/* Title, badges and rating */}
               <div>
-                <h2 className="text-ink mb-2 text-[22px] leading-tight font-bold">{item.title}</h2>
+                <h2 className="text-ink mb-2 text-[22px] leading-tight font-bold">{state.item.title}</h2>
 
                 <div className="mb-2 flex flex-wrap items-center gap-2">
                   {categoryLabel && <span className="product-estado-badge">{categoryLabel}</span>}
                   {condition && <span className="product-estado-badge">Estado: {condition}</span>}
-                  {(item.brand ?? item.model) && (
-                    <span className="product-estado-badge">{[item.brand, item.model].filter(Boolean).join(" ")}</span>
+                  {(state.item.brand ?? state.item.model) && (
+                    <span className="product-estado-badge">
+                      {[state.item.brand, state.item.model].filter(Boolean).join(" ")}
+                    </span>
                   )}
                 </div>
 
@@ -276,11 +325,11 @@ function Product() {
               <hr className="divider-product" />
 
               {/* Description */}
-              {item.description && (
+              {state.item.description && (
                 <>
                   <div>
                     <h3 className="heading-section mb-3">Descripcion</h3>
-                    <p className="product-desc">{item.description}</p>
+                    <p className="product-desc">{state.item.description}</p>
                   </div>
                   <hr className="divider-product" />
                 </>
@@ -291,8 +340,8 @@ function Product() {
                 <h3 className="heading-section mb-1">Disponibilidad</h3>
                 <ProductCalendar
                   occupiedDates={occupiedDates}
-                  selectedStart={dateRange.start}
-                  selectedEnd={dateRange.end}
+                  selectedStart={state.dateRange.start}
+                  selectedEnd={state.dateRange.end}
                   onDateSelect={handleDateSelect}
                 />
               </div>
@@ -301,19 +350,19 @@ function Product() {
             {/* ════════════════════════════════════ Right column */}
             <div className="top-8 flex flex-col gap-5">
               <BookingCard
-                itemId={item.item_id}
-                pricePerDay={item.price_per_day}
+                itemId={state.item.item_id}
+                pricePerDay={state.item.price_per_day}
                 rating={4.9}
                 reviewCount={48}
-                selectedStart={dateRange.start}
-                selectedEnd={dateRange.end}
+                selectedStart={state.dateRange.start}
+                selectedEnd={state.dateRange.end}
               />
 
               <InsuranceCard days={rentalDays} />
 
-              {owner && (
+              {state.owner && (
                 <OwnerCard
-                  owner={owner}
+                  owner={state.owner}
                   rating={4.8}
                   reviewCount={32}
                 />

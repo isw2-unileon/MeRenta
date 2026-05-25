@@ -21,7 +21,6 @@ function StarRating({ rating, max = 5, className = "" }: StarRatingProps) {
     <span
       className={`inline-flex items-center ${className}`}
       aria-label={`${rating} de ${max} estrellas`}
-      role="img"
     >
       {Array.from({ length: max }, (_, i) => (
         <span

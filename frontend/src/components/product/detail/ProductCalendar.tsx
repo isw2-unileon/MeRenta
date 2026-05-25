@@ -153,7 +153,7 @@ function ProductCalendar({ occupiedDates, selectedStart, selectedEnd, onDateSele
             const isSelected = isStart || isEnd;
             const inRange = isInRange(date, selectedStart, selectedEnd);
 
-            let cellClass = "calendar-day-cell";
+            let cellClass = "calendar-day-cell p-0";
             let textClass = "calendar-day";
 
             if (isOccupied) {
@@ -168,23 +168,18 @@ function ProductCalendar({ occupiedDates, selectedStart, selectedEnd, onDateSele
             }
 
             return (
-              <div
+              <button
                 key={`day-${day}`}
+                type="button"
                 className={cellClass}
                 onClick={() => {
                   if (!isOccupied) handleDayClick(day);
                 }}
-                role={isOccupied ? undefined : "button"}
-                tabIndex={isOccupied ? undefined : 0}
-                aria-label={isOccupied ? undefined : `${day} de ${MONTH_NAMES[month]}`}
-                onKeyDown={(e) => {
-                  if (!isOccupied && (e.key === "Enter" || e.key === " ")) {
-                    handleDayClick(day);
-                  }
-                }}
+                disabled={isOccupied}
+                aria-label={`${day} de ${MONTH_NAMES[month]}`}
               >
                 <p className={textClass}>{day}</p>
-              </div>
+              </button>
             );
           })}
         </div>

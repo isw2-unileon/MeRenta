@@ -11,6 +11,7 @@ function Footer() {
     <footer className="h-footer bg-page border-border-main px-layout-margin border-t">
       <div className="max-w-alert-width mx-auto flex h-full items-center">
         <button
+          type="button"
           className="text-logo-footer text-ink cursor-pointer border-none bg-transparent p-0 font-bold"
           onClick={() => navigate("/")}
         >
