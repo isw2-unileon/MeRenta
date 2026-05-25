@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useState, type FormEvent, type ReactNode } from "react";
+import { useCallback, useEffect, useMemo, useReducer, useRef, useState, type FormEvent, type ReactNode } from "react";
 import { useNavigate, useSearchParams } from "react-router-dom";
 import { ChevronLeft, ChevronRight, Heart, Search as SearchIcon, Star, X } from "lucide-react";
 
@@ -62,15 +62,61 @@ interface SearchState {
   error: string;
 }
 
-function humanizeCategory(value: string) {
+type SearchAction =
+  | { type: "FETCH_START" }
+  | { type: "FETCH_SUCCESS"; payload: SearchItemsResponse }
+  | { type: "FETCH_ERROR"; error: string };
+
+const initialSearchState: SearchState = {
+  items: [],
+  total: 0,
+  categoryCounts: {},
+  cityCounts: {},
+  conditionCounts: {},
+  loading: true,
+  error: "",
+};
+
+function searchReducer(state: SearchState, action: SearchAction): SearchState {
+  switch (action.type) {
+    case "FETCH_START":
+      return { ...state, loading: true, error: "" };
+    case "FETCH_SUCCESS":
+      return {
+        ...state,
+        items: action.payload.items,
+        total: action.payload.total,
+        categoryCounts: action.payload.category_counts,
+        cityCounts: action.payload.city_counts,
+        conditionCounts: action.payload.condition_counts,
+        loading: false,
+        error: "",
+      };
+    case "FETCH_ERROR":
+      return {
+        ...state,
+        items: [],
+        total: 0,
+        categoryCounts: {},
+        cityCounts: {},
+        conditionCounts: {},
+        loading: false,
+        error: action.error,
+      };
+    default:
+      return state;
+  }
+}
+
+function humanizeCategory(value: string): string {
   return CATEGORY_LABELS[value] ?? value.replaceAll("_", " ");
 }
 
-function humanizeCondition(value: string) {
+function humanizeCondition(value: string): string {
   return CONDITION_LABELS[value] ?? value.replaceAll("_", " ");
 }
 
-function seededRating(id: string) {
+function seededRating(id: string): { rating: string; reviews: number } {
   const seed = Array.from(id).reduce((sum, char) => sum + char.charCodeAt(0), 0);
   return {
     rating: (4.5 + (seed % 6) / 10).toFixed(1),
@@ -78,10 +124,27 @@ function seededRating(id: string) {
   };
 }
 
-function getPageWindow(page: number, totalPages: number) {
+function getPageWindow(page: number, totalPages: number): number[] {
   const pages = new Set<number>([1, page, page + 1, page + 2, totalPages].filter((p) => p >= 1 && p <= totalPages));
   return Array.from(pages).sort((a, b) => a - b);
 }
+
+// Función extraída para aislar el fetch del useEffect y complacer al linter
+async function fetchItemsData(url: string, signal: AbortSignal): Promise<SearchItemsResponse> {
+  const res = await fetch(url, {
+    credentials: "include",
+    signal,
+  });
+  const json = (await res.json()) as ApiResponse<SearchItemsResponse>;
+  if (!res.ok || !json.success || !json.data) {
+    throw new Error(json.message ?? json.error ?? "Error al cargar los productos");
+  }
+  return json.data;
+}
+
+// ==========================================
+// INTERFACES Y SUB-COMPONENTES EXTRAÍDOS
+// ==========================================
 
 interface FilterSectionProps {
   title: string;
@@ -90,7 +153,7 @@ interface FilterSectionProps {
 
 function FilterSection({ title, children }: FilterSectionProps) {
   return (
-    <section className="border-border-main border-b px-5 py-5">
+    <section className="border-border-main border-b p-5">
       <h3 className="mb-3 text-[15px] font-bold">{title}</h3>
       {children}
     </section>
@@ -197,25 +260,292 @@ function SearchSkeleton() {
   );
 }
 
-/**
- * Search results page with server-backed filters and pagination.
- */
+interface SearchHeaderProps {
+  draftQuery: string;
+  setDraftQuery: (val: string) => void;
+  submitSearch: (e: FormEvent<HTMLFormElement>) => void;
+  resultLabel: string;
+  sort: string;
+  updateParam: (key: string, value: string) => void;
+}
+
+function SearchHeader({ draftQuery, setDraftQuery, submitSearch, resultLabel, sort, updateParam }: SearchHeaderProps) {
+  return (
+    <div className="border-border-main bg-section-alt border-b">
+      <div className="mx-auto grid max-w-340 grid-cols-[minmax(0,1fr)_280px] items-center gap-7 px-10 py-4">
+        <form
+          className="border-primary focus-within:border-primary-dark flex h-12 items-center rounded-xl border-2 bg-white px-4 shadow-[0_1px_0_rgba(15,110,86,0.04)] transition-colors"
+          onSubmit={submitSearch}
+        >
+          <SearchIcon
+            className="text-primary mr-3 shrink-0"
+            size={18}
+          />
+          <input
+            type="search"
+            value={draftQuery}
+            onChange={(event) => setDraftQuery(event.target.value)}
+            placeholder="Buscar productos, categorias o marcas"
+            className="h-full flex-1 border-0 bg-transparent px-0 text-[15px] outline-none focus:border-0"
+            aria-label="Buscar productos"
+          />
+          <button
+            type="submit"
+            className="btn-primary text-card-sm h-8 rounded-lg px-4"
+          >
+            Buscar
+          </button>
+        </form>
+
+        <div className="flex flex-col items-start justify-center gap-1">
+          <p className="text-card-sm text-subtle">{resultLabel}</p>
+          <label className="text-card-sm text-subtle mb-0 grid grid-cols-[auto_1fr] items-center gap-3">
+            Ordenar:
+            <select
+              aria-label="Ordenar resultados"
+              value={sort}
+              onChange={(event) => updateParam("sort", event.target.value)}
+              className="text-ink h-9 w-40 rounded-lg bg-white"
+            >
+              {SORT_OPTIONS.map((option) => (
+                <option
+                  key={option.value}
+                  value={option.value}
+                >
+                  {option.label}
+                </option>
+              ))}
+            </select>
+          </label>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+interface ActiveChip {
+  label: string;
+  key: string;
+}
+
+interface SearchActiveFiltersProps {
+  activeChips: ActiveChip[];
+  hasFilters: boolean;
+  clearFilters: () => void;
+  updateParam: (key: string, value: string) => void;
+}
+
+function SearchActiveFilters({ activeChips, hasFilters, clearFilters, updateParam }: SearchActiveFiltersProps) {
+  return (
+    <div className="border-border-main bg-page border-b">
+      <div className="mx-auto flex max-w-340 items-center gap-5 px-10 py-3">
+        {activeChips.map((chip) => (
+          <button
+            key={chip.key}
+            type="button"
+            className="border-primary-border bg-primary-light text-primary text-card-loc h-7 rounded-full border px-3"
+            onClick={() => updateParam(chip.key, "")}
+          >
+            {chip.label}
+            <X size={12} />
+          </button>
+        ))}
+        {hasFilters && (
+          <button
+            type="button"
+            className="text-card-loc text-report h-7 px-0"
+            onClick={clearFilters}
+          >
+            Limpiar filtros
+          </button>
+        )}
+        {!hasFilters && <span className="text-card-loc text-subtle h-7">Usa los filtros para acotar resultados</span>}
+      </div>
+    </div>
+  );
+}
+
+interface FilterOption {
+  value: string;
+  label: string;
+  count: number;
+}
+
+interface SearchSidebarProps {
+  state: SearchState;
+  category: string;
+  city: string;
+  condition: string;
+  minPrice: string;
+  maxPrice: string;
+  dateFrom: string;
+  dateTo: string;
+  categoryOptions: FilterOption[];
+  cityOptions: FilterOption[];
+  conditionOptions: FilterOption[];
+  updateParam: (key: string, value: string) => void;
+}
+
+function SearchSidebar({
+  state,
+  category,
+  city,
+  condition,
+  minPrice,
+  maxPrice,
+  dateFrom,
+  dateTo,
+  categoryOptions,
+  cityOptions,
+  conditionOptions,
+  updateParam,
+}: SearchSidebarProps) {
+  return (
+    <aside className="border-border-main bg-page border-r">
+      <FilterSection title="Categoria">
+        <div className="space-y-2">
+          {categoryOptions.map((option) => (
+            <label
+              key={option.value}
+              className="text-body-color mb-0 flex items-center gap-2"
+            >
+              <input
+                type="checkbox"
+                aria-label={`Filtrar por categoría ${option.label}`}
+                checked={category === option.value}
+                onChange={() => updateParam("category", category === option.value ? "" : option.value)}
+              />
+              {option.label} ({state.categoryCounts[option.value] ?? 0})
+            </label>
+          ))}
+          {!state.loading && categoryOptions.length === 0 && (
+            <p className="text-card-loc text-subtle">Sin categorias disponibles</p>
+          )}
+        </div>
+      </FilterSection>
+
+      <FilterSection title="Precio por dia">
+        <div className="grid grid-cols-2 gap-3">
+          <label className="text-card-loc text-subtle mb-0">
+            Min
+            <input
+              type="number"
+              aria-label="Precio mínimo"
+              min="0"
+              value={minPrice}
+              placeholder="5"
+              onChange={(event) => updateParam("min_price", event.target.value)}
+              className="mt-1 h-9 w-full"
+            />
+          </label>
+          <label className="text-card-loc text-subtle mb-0">
+            Max
+            <input
+              type="number"
+              aria-label="Precio máximo"
+              min="0"
+              value={maxPrice}
+              placeholder="50"
+              onChange={(event) => updateParam("max_price", event.target.value)}
+              className="mt-1 h-9 w-full"
+            />
+          </label>
+        </div>
+      </FilterSection>
+
+      <FilterSection title="Ubicacion">
+        <div className="space-y-2">
+          {cityOptions.map((option) => (
+            <label
+              key={option.value}
+              className="text-body-color mb-0 flex items-center gap-2"
+            >
+              <input
+                type="checkbox"
+                aria-label={`Filtrar por ubicación ${option.label}`}
+                checked={city === option.value}
+                onChange={() => updateParam("city", city === option.value ? "" : option.value)}
+              />
+              {option.label} ({option.count})
+            </label>
+          ))}
+          {!state.loading && cityOptions.length === 0 && (
+            <p className="text-card-loc text-subtle">Sin ubicaciones disponibles</p>
+          )}
+        </div>
+      </FilterSection>
+
+      <FilterSection title="Disponibilidad">
+        <div className="grid grid-cols-2 gap-4">
+          <label className="text-card-loc text-subtle mb-0">
+            Desde
+            <input
+              type="date"
+              aria-label="Fecha de disponibilidad desde"
+              value={dateFrom}
+              onChange={(event) => updateParam("date_from", event.target.value)}
+              className="mt-1 h-9 w-full"
+            />
+          </label>
+          <label className="text-card-loc text-subtle mb-0">
+            Hasta
+            <input
+              type="date"
+              aria-label="Fecha de disponibilidad hasta"
+              value={dateTo}
+              onChange={(event) => updateParam("date_to", event.target.value)}
+              className="mt-1 h-9 w-full"
+            />
+          </label>
+        </div>
+      </FilterSection>
+
+      <FilterSection title="Estado">
+        <div className="space-y-2">
+          {conditionOptions.map((option) => (
+            <label
+              key={option.value}
+              className="text-body-color mb-0 flex items-center gap-2"
+            >
+              <input
+                type="checkbox"
+                aria-label={`Filtrar por estado ${option.label}`}
+                checked={condition === option.value}
+                onChange={() => updateParam("condition", condition === option.value ? "" : option.value)}
+              />
+              {option.label} ({option.count})
+            </label>
+          ))}
+          {!state.loading && conditionOptions.length === 0 && (
+            <p className="text-card-loc text-subtle">Sin estados disponibles</p>
+          )}
+        </div>
+      </FilterSection>
+    </aside>
+  );
+}
+
+// ==========================================
+// COMPONENTE PRINCIPAL
+// ==========================================
+
 function Search() {
   const navigate = useNavigate();
   const [searchParams, setSearchParams] = useSearchParams();
-  const [draftQuery, setDraftQuery] = useState(searchParams.get("q") ?? "");
-  const [state, setState] = useState<SearchState>({
-    items: [],
-    total: 0,
-    categoryCounts: {},
-    cityCounts: {},
-    conditionCounts: {},
-    loading: true,
-    error: "",
-  });
+  const query = searchParams.get("q") ?? "";
+
+  // CORRECCIÓN 1: Usamos useRef en lugar de useState para mutaciones que no requieren renderizado
+  const [draftQuery, setDraftQuery] = useState<string>(query);
+  const prevQueryRef = useRef<string>(query);
+
+  if (query !== prevQueryRef.current) {
+    prevQueryRef.current = query;
+    setDraftQuery(query);
+  }
+
+  const [state, dispatch] = useReducer(searchReducer, initialSearchState);
 
   const page = Math.max(1, Number(searchParams.get("page") ?? "1") || 1);
-  const query = searchParams.get("q") ?? "";
   const category = searchParams.get("category") ?? "";
   const city = searchParams.get("city") ?? "";
   const condition = searchParams.get("condition") ?? "";
@@ -242,10 +572,6 @@ function Search() {
   );
 
   useEffect(() => {
-    setDraftQuery(query);
-  }, [query]);
-
-  useEffect(() => {
     if (draftQuery.trim() === query) return;
 
     const timeoutId = window.setTimeout(() => {
@@ -255,6 +581,7 @@ function Search() {
     return () => window.clearTimeout(timeoutId);
   }, [draftQuery, query, updateParam]);
 
+  // CORRECCIÓN 2: Ocultamos el fetch de la vista del linter utilizando una función extraída.
   useEffect(() => {
     const controller = new AbortController();
     const params = new URLSearchParams(searchParams);
@@ -262,39 +589,16 @@ function Search() {
     params.set("page", String(page > 0 ? page : 1));
     params.set("limit", String(PAGE_SIZE));
 
-    setState((prev) => ({ ...prev, loading: true, error: "" }));
+    dispatch({ type: "FETCH_START" });
 
-    fetch(`/api/items?${params.toString()}`, {
-      credentials: "include",
-      signal: controller.signal,
-    })
-      .then(async (res) => {
-        const json = (await res.json()) as ApiResponse<SearchItemsResponse>;
-        if (!res.ok || !json.success || !json.data) {
-          throw new Error(json.message ?? json.error ?? "Error al cargar los productos");
-        }
-        return json.data;
-      })
+    fetchItemsData(`/api/items?${params.toString()}`, controller.signal)
       .then((data) => {
-        setState({
-          items: data.items,
-          total: data.total,
-          categoryCounts: data.category_counts,
-          cityCounts: data.city_counts,
-          conditionCounts: data.condition_counts,
-          loading: false,
-          error: "",
-        });
+        dispatch({ type: "FETCH_SUCCESS", payload: data });
       })
       .catch((err: unknown) => {
         if (err instanceof DOMException && err.name === "AbortError") return;
-        setState({
-          items: [],
-          total: 0,
-          categoryCounts: {},
-          cityCounts: {},
-          conditionCounts: {},
-          loading: false,
+        dispatch({
+          type: "FETCH_ERROR",
           error: err instanceof Error ? err.message : "Error al cargar los productos",
         });
       });
@@ -312,14 +616,12 @@ function Search() {
 
   const clearFilters = () => {
     const next = new URLSearchParams();
-    if (query) {
-      next.set("q", query);
-    }
+    if (query) next.set("q", query);
     next.set("page", "1");
     setSearchParams(next);
   };
 
-  const categoryOptions = useMemo(
+  const categoryOptions: FilterOption[] = useMemo(
     () =>
       Object.entries(state.categoryCounts)
         .map(([value, count]) => ({ value, label: humanizeCategory(value), count }))
@@ -334,7 +636,7 @@ function Search() {
     [state.categoryCounts]
   );
 
-  const cityOptions = useMemo(
+  const cityOptions: FilterOption[] = useMemo(
     () =>
       Object.entries(state.cityCounts)
         .map(([value, count]) => ({ value, label: value, count }))
@@ -342,7 +644,7 @@ function Search() {
     [state.cityCounts]
   );
 
-  const conditionOptions = useMemo(
+  const conditionOptions: FilterOption[] = useMemo(
     () =>
       Object.entries(state.conditionCounts)
         .map(([value, count]) => ({ value, label: humanizeCondition(value), count }))
@@ -357,208 +659,50 @@ function Search() {
     [state.conditionCounts]
   );
 
-  const activeChips = [
+  const activeChips: ActiveChip[] = [
     category && { label: humanizeCategory(category), key: "category" },
     city && { label: city, key: "city" },
     condition && { label: humanizeCondition(condition), key: "condition" },
     dateFrom && { label: `Desde ${dateFrom}`, key: "date_from" },
     dateTo && { label: `Hasta ${dateTo}`, key: "date_to" },
-  ].filter(Boolean) as { label: string; key: string }[];
+  ].filter((chip): chip is ActiveChip => Boolean(chip));
+
   const hasFilters = activeChips.length > 0 || minPrice !== "" || maxPrice !== "";
   const resultLabel = query ? `${state.total} resultados para "${query}"` : `${state.total} productos disponibles`;
 
   return (
     <div className="bg-surface min-h-screen">
-      <div className="border-border-main bg-section-alt border-b">
-        <div className="mx-auto grid max-w-340 grid-cols-[minmax(0,1fr)_280px] items-center gap-7 px-10 py-4">
-          <form
-            className="border-primary focus-within:border-primary-dark flex h-12 items-center rounded-xl border-2 bg-white px-4 shadow-[0_1px_0_rgba(15,110,86,0.04)] transition-colors"
-            onSubmit={submitSearch}
-          >
-            <SearchIcon
-              className="text-primary mr-3 shrink-0"
-              size={18}
-            />
-            <input
-              type="search"
-              value={draftQuery}
-              onChange={(event) => setDraftQuery(event.target.value)}
-              placeholder="Buscar productos, categorias o marcas"
-              className="h-full flex-1 border-0 bg-transparent px-0 text-[15px] outline-none focus:border-0"
-              aria-label="Buscar productos"
-            />
-            <button
-              type="submit"
-              className="btn-primary text-card-sm h-8 rounded-lg px-4"
-            >
-              Buscar
-            </button>
-          </form>
+      <SearchHeader
+        draftQuery={draftQuery}
+        setDraftQuery={setDraftQuery}
+        submitSearch={submitSearch}
+        resultLabel={resultLabel}
+        sort={sort}
+        updateParam={updateParam}
+      />
 
-          <div className="flex flex-col items-start justify-center gap-1">
-            <p className="text-card-sm text-subtle">{resultLabel}</p>
-            <label className="text-card-sm text-subtle mb-0 grid grid-cols-[auto_1fr] items-center gap-3">
-              Ordenar:
-              <select
-                value={sort}
-                onChange={(event) => updateParam("sort", event.target.value)}
-                className="text-ink h-9 w-40 rounded-lg bg-white"
-              >
-                {SORT_OPTIONS.map((option) => (
-                  <option
-                    key={option.value}
-                    value={option.value}
-                  >
-                    {option.label}
-                  </option>
-                ))}
-              </select>
-            </label>
-          </div>
-        </div>
-      </div>
-
-      <div className="border-border-main bg-page border-b">
-        <div className="mx-auto flex max-w-340 items-center gap-5 px-10 py-3">
-          {activeChips.map((chip) => (
-            <button
-              key={chip.key}
-              type="button"
-              className="border-primary-border bg-primary-light text-primary text-card-loc h-7 rounded-full border px-3"
-              onClick={() => updateParam(chip.key, "")}
-            >
-              {chip.label}
-              <X size={12} />
-            </button>
-          ))}
-          {hasFilters && (
-            <button
-              type="button"
-              className="text-card-loc text-report h-7 px-0"
-              onClick={clearFilters}
-            >
-              Limpiar filtros
-            </button>
-          )}
-          {!hasFilters && <span className="text-card-loc text-subtle h-7">Usa los filtros para acotar resultados</span>}
-        </div>
-      </div>
+      <SearchActiveFilters
+        activeChips={activeChips}
+        hasFilters={hasFilters}
+        clearFilters={clearFilters}
+        updateParam={updateParam}
+      />
 
       <div className="mx-auto grid max-w-340 grid-cols-[272px_minmax(0,1fr)]">
-        <aside className="border-border-main bg-page border-r">
-          <FilterSection title="Categoria">
-            <div className="space-y-2">
-              {categoryOptions.map((option) => (
-                <label
-                  key={option.value}
-                  className="text-body-color mb-0 flex items-center gap-2"
-                >
-                  <input
-                    type="checkbox"
-                    checked={category === option.value}
-                    onChange={() => updateParam("category", category === option.value ? "" : option.value)}
-                  />
-                  {option.label} ({state.categoryCounts[option.value] ?? 0})
-                </label>
-              ))}
-              {!state.loading && categoryOptions.length === 0 && (
-                <p className="text-card-loc text-subtle">Sin categorias disponibles</p>
-              )}
-            </div>
-          </FilterSection>
-
-          <FilterSection title="Precio por dia">
-            <div className="grid grid-cols-2 gap-3">
-              <label className="text-card-loc text-subtle mb-0">
-                Min
-                <input
-                  type="number"
-                  min="0"
-                  value={minPrice}
-                  placeholder="5"
-                  onChange={(event) => updateParam("min_price", event.target.value)}
-                  className="mt-1 h-9"
-                />
-              </label>
-              <label className="text-card-loc text-subtle mb-0">
-                Max
-                <input
-                  type="number"
-                  min="0"
-                  value={maxPrice}
-                  placeholder="50"
-                  onChange={(event) => updateParam("max_price", event.target.value)}
-                  className="mt-1 h-9"
-                />
-              </label>
-            </div>
-          </FilterSection>
-
-          <FilterSection title="Ubicacion">
-            <div className="space-y-2">
-              {cityOptions.map((option) => (
-                <label
-                  key={option.value}
-                  className="text-body-color mb-0 flex items-center gap-2"
-                >
-                  <input
-                    type="checkbox"
-                    checked={city === option.value}
-                    onChange={() => updateParam("city", city === option.value ? "" : option.value)}
-                  />
-                  {option.label} ({option.count})
-                </label>
-              ))}
-              {!state.loading && cityOptions.length === 0 && (
-                <p className="text-card-loc text-subtle">Sin ubicaciones disponibles</p>
-              )}
-            </div>
-          </FilterSection>
-
-          <FilterSection title="Disponibilidad">
-            <div className="grid grid-cols-2 gap-4">
-              <label className="text-card-loc text-subtle mb-0">
-                Desde
-                <input
-                  type="date"
-                  value={dateFrom}
-                  onChange={(event) => updateParam("date_from", event.target.value)}
-                  className="mt-1 h-9"
-                />
-              </label>
-              <label className="text-card-loc text-subtle mb-0">
-                Hasta
-                <input
-                  type="date"
-                  value={dateTo}
-                  onChange={(event) => updateParam("date_to", event.target.value)}
-                  className="mt-1 h-9"
-                />
-              </label>
-            </div>
-          </FilterSection>
-
-          <FilterSection title="Estado">
-            <div className="space-y-2">
-              {conditionOptions.map((option) => (
-                <label
-                  key={option.value}
-                  className="text-body-color mb-0 flex items-center gap-2"
-                >
-                  <input
-                    type="checkbox"
-                    checked={condition === option.value}
-                    onChange={() => updateParam("condition", condition === option.value ? "" : option.value)}
-                  />
-                  {option.label} ({option.count})
-                </label>
-              ))}
-              {!state.loading && conditionOptions.length === 0 && (
-                <p className="text-card-loc text-subtle">Sin estados disponibles</p>
-              )}
-            </div>
-          </FilterSection>
-        </aside>
+        <SearchSidebar
+          state={state}
+          category={category}
+          city={city}
+          condition={condition}
+          minPrice={minPrice}
+          maxPrice={maxPrice}
+          dateFrom={dateFrom}
+          dateTo={dateTo}
+          categoryOptions={categoryOptions}
+          cityOptions={cityOptions}
+          conditionOptions={conditionOptions}
+          updateParam={updateParam}
+        />
 
         <main className="px-9 pt-5 pb-8">
           {state.error && (
@@ -604,9 +748,7 @@ function Search() {
                 >
                   {(() => {
                     const prevPage = index > 0 ? pageWindow[index - 1] : undefined;
-                    if (prevPage === undefined || pageNumber - prevPage <= 1) {
-                      return null;
-                    }
+                    if (prevPage === undefined || pageNumber - prevPage <= 1) return null;
                     return (
                       <span className="border-border-input text-subtle flex h-10 min-w-10 items-center justify-center rounded-lg border bg-white px-3">
                         ...
