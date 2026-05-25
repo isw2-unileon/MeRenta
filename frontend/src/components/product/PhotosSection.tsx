@@ -1,4 +1,4 @@
-import { useCallback, useRef, type ChangeEvent, type DragEvent } from "react";
+import { useCallback, useRef, useEffect, useState, type ChangeEvent, type DragEvent } from "react";
 import { Plus, X } from "lucide-react";
 
 import type { ProductFormData } from "@/types/item";
@@ -13,6 +13,51 @@ interface PhotosSectionProps {
   error?: string;
   onAddPhotos: (files: File[]) => void;
   onRemovePhoto: (index: number) => void;
+}
+
+/**
+ * Subcomponente para gestionar la vista previa de la imagen de forma eficiente
+ * y evitar fugas de memoria al crear URLs de objetos.
+ */
+function Thumbnail({ file, index, onRemove }: { file: File; index: number; onRemove: () => void }) {
+  const [previewUrl, setPreviewUrl] = useState<string>("");
+
+  useEffect(() => {
+    const url = URL.createObjectURL(file);
+    setPreviewUrl(url);
+
+    return () => {
+      URL.revokeObjectURL(url);
+    };
+  }, [file]);
+
+  if (!previewUrl) return <div className="h-24 w-28 animate-pulse rounded-lg bg-gray-100" />;
+
+  return (
+    <div className="group relative h-24 w-28">
+      <img
+        src={previewUrl}
+        alt={`Foto ${index + 1}`}
+        className="border-border-thumb h-full w-full rounded-lg border object-cover"
+      />
+      {index === 0 && (
+        <span className="bg-primary absolute top-1.5 left-1.5 rounded-full px-2 py-0.5 text-[10px] font-bold text-white">
+          Principal
+        </span>
+      )}
+      <button
+        type="button"
+        onClick={onRemove}
+        aria-label={`Eliminar foto ${index + 1}`}
+        className="absolute -top-1.5 -right-1.5 z-10 flex size-5 cursor-pointer items-center justify-center rounded-full border border-gray-500 bg-white text-white opacity-0 transition-opacity group-hover:opacity-100"
+      >
+        <X
+          className="text-heart-active size-3 shrink-0"
+          strokeWidth={2.5}
+        />
+      </button>
+    </div>
+  );
 }
 
 /**
@@ -59,7 +104,6 @@ function PhotosSection({ photos, error, onAddPhotos, onRemovePhoto }: PhotosSect
     if (e.target.files) {
       processFiles(e.target.files);
     }
-    // Reset so the same file can be re-selected if removed
     e.target.value = "";
   };
 
@@ -68,8 +112,6 @@ function PhotosSection({ photos, error, onAddPhotos, onRemovePhoto }: PhotosSect
   };
 
   const isFull = photos.length >= MAX_PHOTOS;
-
-  // Number of visible thumbnail slots: photos + at least 2 empty, minimum MIN_VISIBLE_SLOTS
   const visibleSlots = Math.min(MAX_PHOTOS, Math.max(MIN_VISIBLE_SLOTS, photos.length + 2));
 
   return (
@@ -119,29 +161,12 @@ function PhotosSection({ photos, error, onAddPhotos, onRemovePhoto }: PhotosSect
 
           if (file) {
             return (
-              <div
+              <Thumbnail
                 key={idx}
-                className="group relative"
-              >
-                <img
-                  src={URL.createObjectURL(file)}
-                  alt={`Foto ${idx + 1}`}
-                  className="border-border-thumb h-24 w-28 rounded-lg border object-cover"
-                />
-                {idx === 0 && (
-                  <span className="bg-primary absolute top-1.5 left-1.5 rounded-full px-2 py-0.5 text-[10px] font-bold text-white">
-                    Principal
-                  </span>
-                )}
-                <button
-                  type="button"
-                  onClick={() => onRemovePhoto(idx)}
-                  aria-label={`Eliminar foto ${idx + 1}`}
-                  className="bg-ink absolute -top-1.5 -right-1.5 flex size-5 items-center justify-center rounded-full text-white opacity-0 transition-opacity group-hover:opacity-100"
-                >
-                  <X className="size-3" />
-                </button>
-              </div>
+                file={file}
+                index={idx}
+                onRemove={() => onRemovePhoto(idx)}
+              />
             );
           }
 
