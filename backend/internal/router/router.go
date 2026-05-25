@@ -63,10 +63,17 @@ func Setup(
 	addresses.GET("", addrH.List)
 	addresses.POST("", addrH.Create)
 
+	// customers (public profiles only — sensitive data excluded)
+	customers := protected.Group("/customers")
+	customers.GET("/:id/profile", authH.ProfileByID)
+
 	// items
 	items := protected.Group("/items")
 	items.POST("", itemH.Create)
+	items.GET("/:id", itemH.Get)
+	items.GET("/:id/images", itemImgH.ListImages)
 	items.POST("/:id/images", itemImgH.AddImages)
+	items.GET("/:id/images/:imageId/content", itemImgH.ProxyImage)
 
 	// admin
 	admin := api.Group("/admin")

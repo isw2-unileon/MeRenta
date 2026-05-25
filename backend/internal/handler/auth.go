@@ -85,6 +85,30 @@ func (h *AuthHandler) Me(c *gin.Context) {
 	respondWithCurrentCustomer(c, h.svc)
 }
 
+// ProfileByID handles GET /api/customers/:id/profile — returns the public
+// profile of any customer. Sensitive fields (email, phone, stripe ID) are
+// omitted from the response.
+//
+// Response 200: model.CustomerProfileResponse
+// Response 400: invalid UUID in path
+// Response 404: customer not found
+func (h *AuthHandler) ProfileByID(c *gin.Context) {
+	id, ok := parseUUIDParam(c)
+	if !ok {
+		return
+	}
+
+	res, err := h.svc.GetPublicProfile(c.Request.Context(), id)
+	switch {
+	case err == nil:
+		response.OK(c, http.StatusOK, res)
+	case errors.Is(err, service.ErrCustomerNotFound):
+		response.Error(c, http.StatusNotFound, err.Error())
+	default:
+		response.Error(c, http.StatusInternalServerError, "internal server error")
+	}
+}
+
 // Logout clears the authentication cookie.
 func (h *AuthHandler) Logout(c *gin.Context) {
 	clearAuthCookie(c)

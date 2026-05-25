@@ -36,3 +36,14 @@ type AuthResponse struct {
 	Token    string           `json:"token"`
 	Customer CustomerResponse `json:"customer"`
 }
+
+// CustomerProfileResponse is the minimal public profile shown on listing pages
+// (e.g. the owner card on a product detail page). It deliberately omits
+// sensitive fields such as email, phone and stripe_customer_id.
+type CustomerProfileResponse struct {
+	CustomerID       string    `json:"customer_id"`
+	FirstName        string    `json:"first_name"`
+	LastName         string    `json:"last_name"`
+	AvatarURL        string    `json:"avatar_url,omitempty"`
+	RegistrationDate time.Time `json:"registration_date"`
+}
