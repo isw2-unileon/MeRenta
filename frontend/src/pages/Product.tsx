@@ -18,12 +18,12 @@ const CATEGORY_LABELS: Record<string, string> = {
   electronics: "Electronica",
   tools: "Herramientas",
   music: "Musica",
-  photography: "Fotografia",
+  photography: "Fotografía",
   camping: "Camping",
   home: "Hogar",
   clothing: "Ropa",
-  vehicles: "Vehiculos",
-  gardening: "Jardineria",
+  vehicles: "Vehículos",
+  gardening: "Jardinería",
   other: "Otros",
 };
 
@@ -128,12 +128,12 @@ function ProductSkeleton() {
       <div className="grid grid-cols-[1fr_392px] items-start gap-8">
         {/* Left */}
         <div className="flex flex-col gap-6">
-          <div className="bg-primary-light h-[480px] rounded-lg" />
+          <div className="bg-primary-light h-main-img rounded-lg" />
           <div className="flex gap-2">
             {Array.from({ length: 5 }, (_, i) => (
               <div
                 key={i}
-                className="bg-primary-light h-24 w-[154px] flex-shrink-0 rounded-lg"
+                className="bg-primary-light w-thumb-w h-24 shrink-0 rounded-lg"
               />
             ))}
           </div>
@@ -152,7 +152,7 @@ function ProductSkeleton() {
 
         {/* Right */}
         <div className="flex flex-col gap-5">
-          <div className="rounded-panel bg-primary-light h-[360px]" />
+          <div className="rounded-panel bg-primary-light h-90" />
           <div className="rounded-panel bg-primary-light h-56" />
           <div className="rounded-panel bg-primary-light h-40" />
         </div>
@@ -267,9 +267,11 @@ function Product() {
 
   // The backend does not currently expose a condition field in ItemResponse.
   // Access it defensively so the badge appears when the API is extended.
-  const condition = state.item
-    ? CONDITION_LABELS[(state.item as ItemResponse & { condition?: string }).condition ?? ""]
-    : undefined;
+  const conditionKey =
+    state.item && "condition" in state.item
+      ? (state.item as ItemResponse & { condition?: string }).condition
+      : undefined;
+  const condition = conditionKey ? (CONDITION_LABELS[conditionKey] ?? conditionKey) : undefined;
 
   // ── Render ─────────────────────────────────────────────────────────────────
 

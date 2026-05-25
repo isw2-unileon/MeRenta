@@ -61,8 +61,8 @@ func (h *ItemHandler) List(c *gin.Context) {
 		MinPrice:         minPrice,
 		MaxPrice:         maxPrice,
 		Sort:             sort,
-		Limit:            int32(limit),
-		Offset:           int32(offset),
+		Limit:            limit,
+		Offset:           offset,
 	}, page, limit)
 	if err != nil {
 		slog.Error("list items failed", "error", err)
@@ -146,13 +146,13 @@ func (h *ItemHandler) Create(c *gin.Context) {
 	response.OK(c, http.StatusCreated, res)
 }
 
-func parsePositiveInt(raw string, fallback int, max int) int {
+func parsePositiveInt(raw string, fallback int, maxValue int) int {
 	value, err := strconv.Atoi(raw)
 	if err != nil || value < 1 {
 		return fallback
 	}
-	if value > max {
-		return max
+	if value > maxValue {
+		return maxValue
 	}
 	return value
 }

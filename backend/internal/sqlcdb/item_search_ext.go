@@ -4,6 +4,7 @@ import (
 	"context"
 
 	"github.com/google/uuid"
+	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgtype"
 )
 
@@ -19,7 +20,7 @@ SELECT
     i.is_available,
     i.published_at,
     a.city,
-    COALESCE(img.image_url, '') AS primary_image_url,
+    img.image_url AS primary_image_url,
     COUNT(*) OVER() AS total_count
 FROM item i
 JOIN address a ON a.address_id = i.address_id
@@ -27,7 +28,7 @@ LEFT JOIN LATERAL (
     SELECT image_url
     FROM item_image
     WHERE item_id = i.item_id
-    ORDER BY display_order ASC, image_id ASC
+    ORDER BY display_order , image_id
     LIMIT 1
 ) img ON true
 WHERE ($1 = false OR i.is_available = true)
@@ -44,13 +45,14 @@ WHERE ($1 = false OR i.is_available = true)
   AND ($6::numeric IS NULL OR i.price_per_day >= $6::numeric)
   AND ($7::numeric IS NULL OR i.price_per_day <= $7::numeric)
 ORDER BY
-    CASE WHEN $8 = 'price_asc' THEN i.price_per_day END ASC,
+    CASE WHEN $8 = 'price_asc' THEN i.price_per_day END ,
     CASE WHEN $8 = 'price_desc' THEN i.price_per_day END DESC,
-    CASE WHEN $8 = 'oldest' THEN i.published_at END ASC,
+    CASE WHEN $8 = 'oldest' THEN i.published_at END ,
     i.published_at DESC
 LIMIT $9 OFFSET $10
 `
 
+// SearchItemCardsParams defines filters and pagination for SearchItemCards.
 type SearchItemCardsParams struct {
 	RequireAvailable bool     `json:"require_available"`
 	Query            string   `json:"query"`
@@ -60,10 +62,11 @@ type SearchItemCardsParams struct {
 	MinPrice         *float64 `json:"min_price"`
 	MaxPrice         *float64 `json:"max_price"`
 	Sort             string   `json:"sort"`
-	Limit            int32    `json:"limit"`
-	Offset           int32    `json:"offset"`
+	Limit            int      `json:"limit"`
+	Offset           int      `json:"offset"`
 }
 
+// SearchItemCardsRow represents a lightweight item card with a total count.
 type SearchItemCardsRow struct {
 	ItemID          uuid.UUID          `json:"item_id"`
 	OwnerID         uuid.UUID          `json:"owner_id"`
@@ -119,7 +122,7 @@ WHERE ($1 = false OR i.is_available = true)
   AND ($5::numeric IS NULL OR i.price_per_day >= $5::numeric)
   AND ($6::numeric IS NULL OR i.price_per_day <= $6::numeric)
 GROUP BY a.city
-ORDER BY total_count DESC, a.city ASC
+ORDER BY total_count DESC, a.city
 `
 
 const countItemCardsByCondition = `
@@ -143,6 +146,7 @@ WHERE ($1 = false OR i.is_available = true)
 GROUP BY i.item_condition
 `
 
+// CountItemCardsByCategoryParams defines filters for category aggregation.
 type CountItemCardsByCategoryParams struct {
 	RequireAvailable bool     `json:"require_available"`
 	Query            string   `json:"query"`
@@ -152,11 +156,13 @@ type CountItemCardsByCategoryParams struct {
 	MaxPrice         *float64 `json:"max_price"`
 }
 
+// CountItemCardsByCategoryRow aggregates item counts by category.
 type CountItemCardsByCategoryRow struct {
 	Category   CategoryEnum `json:"category"`
 	TotalCount int64        `json:"total_count"`
 }
 
+// CountItemCardsByCityParams defines filters for city aggregation.
 type CountItemCardsByCityParams struct {
 	RequireAvailable bool     `json:"require_available"`
 	Query            string   `json:"query"`
@@ -166,11 +172,13 @@ type CountItemCardsByCityParams struct {
 	MaxPrice         *float64 `json:"max_price"`
 }
 
+// CountItemCardsByCityRow aggregates item counts by city.
 type CountItemCardsByCityRow struct {
 	City       string `json:"city"`
 	TotalCount int64  `json:"total_count"`
 }
 
+// CountItemCardsByConditionParams defines filters for condition aggregation.
 type CountItemCardsByConditionParams struct {
 	RequireAvailable bool     `json:"require_available"`
 	Query            string   `json:"query"`
@@ -180,11 +188,13 @@ type CountItemCardsByConditionParams struct {
 	MaxPrice         *float64 `json:"max_price"`
 }
 
+// CountItemCardsByConditionRow aggregates item counts by condition.
 type CountItemCardsByConditionRow struct {
 	Condition  ItemCondition `json:"condition"`
 	TotalCount int64         `json:"total_count"`
 }
 
+// SearchItemCards returns a paginated list of item cards matching filters.
 func (q *Queries) SearchItemCards(ctx context.Context, arg SearchItemCardsParams) ([]SearchItemCardsRow, error) {
 	rows, err := q.db.Query(
 		ctx,
@@ -233,10 +243,41 @@ func (q *Queries) SearchItemCards(ctx context.Context, arg SearchItemCardsParams
 	return items, nil
 }
 
+func countItemCardsRows[T any](ctx context.Context, db DBTX, sql string, scan func(pgx.Rows) (T, error), args ...any) ([]T, error) {
+	rows, err := db.Query(ctx, sql, args...)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+
+	var counts []T
+	for rows.Next() {
+		row, err := scan(rows)
+		if err != nil {
+			return nil, err
+		}
+		counts = append(counts, row)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+
+	return counts, nil
+}
+
+// CountItemCardsByCategory returns item counts grouped by category.
 func (q *Queries) CountItemCardsByCategory(ctx context.Context, arg CountItemCardsByCategoryParams) ([]CountItemCardsByCategoryRow, error) {
-	rows, err := q.db.Query(
+	return countItemCardsRows(
 		ctx,
+		q.db,
 		countItemCardsByCategory,
+		func(rows pgx.Rows) (CountItemCardsByCategoryRow, error) {
+			var row CountItemCardsByCategoryRow
+			if err := rows.Scan(&row.Category, &row.TotalCount); err != nil {
+				return row, err
+			}
+			return row, nil
+		},
 		arg.RequireAvailable,
 		arg.Query,
 		arg.City,
@@ -244,30 +285,21 @@ func (q *Queries) CountItemCardsByCategory(ctx context.Context, arg CountItemCar
 		arg.MinPrice,
 		arg.MaxPrice,
 	)
-	if err != nil {
-		return nil, err
-	}
-	defer rows.Close()
-
-	var counts []CountItemCardsByCategoryRow
-	for rows.Next() {
-		var row CountItemCardsByCategoryRow
-		if err := rows.Scan(&row.Category, &row.TotalCount); err != nil {
-			return nil, err
-		}
-		counts = append(counts, row)
-	}
-	if err := rows.Err(); err != nil {
-		return nil, err
-	}
-
-	return counts, nil
 }
 
+// CountItemCardsByCity returns item counts grouped by city.
 func (q *Queries) CountItemCardsByCity(ctx context.Context, arg CountItemCardsByCityParams) ([]CountItemCardsByCityRow, error) {
-	rows, err := q.db.Query(
+	return countItemCardsRows(
 		ctx,
+		q.db,
 		countItemCardsByCity,
+		func(rows pgx.Rows) (CountItemCardsByCityRow, error) {
+			var row CountItemCardsByCityRow
+			if err := rows.Scan(&row.City, &row.TotalCount); err != nil {
+				return row, err
+			}
+			return row, nil
+		},
 		arg.RequireAvailable,
 		arg.Query,
 		arg.Category,
@@ -275,30 +307,21 @@ func (q *Queries) CountItemCardsByCity(ctx context.Context, arg CountItemCardsBy
 		arg.MinPrice,
 		arg.MaxPrice,
 	)
-	if err != nil {
-		return nil, err
-	}
-	defer rows.Close()
-
-	var counts []CountItemCardsByCityRow
-	for rows.Next() {
-		var row CountItemCardsByCityRow
-		if err := rows.Scan(&row.City, &row.TotalCount); err != nil {
-			return nil, err
-		}
-		counts = append(counts, row)
-	}
-	if err := rows.Err(); err != nil {
-		return nil, err
-	}
-
-	return counts, nil
 }
 
+// CountItemCardsByCondition returns item counts grouped by condition.
 func (q *Queries) CountItemCardsByCondition(ctx context.Context, arg CountItemCardsByConditionParams) ([]CountItemCardsByConditionRow, error) {
-	rows, err := q.db.Query(
+	return countItemCardsRows(
 		ctx,
+		q.db,
 		countItemCardsByCondition,
+		func(rows pgx.Rows) (CountItemCardsByConditionRow, error) {
+			var row CountItemCardsByConditionRow
+			if err := rows.Scan(&row.Condition, &row.TotalCount); err != nil {
+				return row, err
+			}
+			return row, nil
+		},
 		arg.RequireAvailable,
 		arg.Query,
 		arg.Category,
@@ -306,22 +329,4 @@ func (q *Queries) CountItemCardsByCondition(ctx context.Context, arg CountItemCa
 		arg.MinPrice,
 		arg.MaxPrice,
 	)
-	if err != nil {
-		return nil, err
-	}
-	defer rows.Close()
-
-	var counts []CountItemCardsByConditionRow
-	for rows.Next() {
-		var row CountItemCardsByConditionRow
-		if err := rows.Scan(&row.Condition, &row.TotalCount); err != nil {
-			return nil, err
-		}
-		counts = append(counts, row)
-	}
-	if err := rows.Err(); err != nil {
-		return nil, err
-	}
-
-	return counts, nil
 }

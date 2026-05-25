@@ -1,5 +1,4 @@
-import { FormEvent, useEffect, useMemo, useState } from "react";
-import type { ReactNode } from "react";
+import { useCallback, useEffect, useMemo, useState, type FormEvent, type ReactNode } from "react";
 import { useNavigate, useSearchParams } from "react-router-dom";
 import { ChevronLeft, ChevronRight, Heart, Search as SearchIcon, Star, X } from "lucide-react";
 
@@ -12,11 +11,11 @@ const CATEGORY_LABELS: Record<string, string> = {
   electronics: "Electronica",
   tools: "Herramientas",
   sports: "Deportes",
-  vehicles: "Vehiculos",
+  vehicles: "Vehículos",
   home: "Hogar",
-  gardening: "Jardineria",
+  gardening: "Jardinería",
   music: "Musica",
-  photography: "Fotografia",
+  photography: "Fotografía",
   camping: "Camping",
   clothing: "Ropa",
   other: "Otros",
@@ -110,7 +109,7 @@ function ProductCard({ item, onOpen }: ProductCardProps) {
 
   return (
     <article className="border-border-main bg-page overflow-hidden rounded-xl border">
-      <div className="bg-primary-light relative h-[168px] overflow-hidden">
+      <div className="bg-primary-light relative h-42 overflow-hidden">
         {item.primary_image_url ? (
           <img
             src={item.primary_image_url}
@@ -145,11 +144,11 @@ function ProductCard({ item, onOpen }: ProductCardProps) {
           className="mb-5 block h-auto w-full p-0 text-left"
           onClick={onOpen}
         >
-          <h2 className="text-ink line-clamp-2 min-h-[38px] text-[15px] leading-snug font-medium">{item.title}</h2>
+          <h2 className="text-ink line-clamp-2 min-h-9.5 text-[15px] leading-snug font-medium">{item.title}</h2>
         </button>
 
         <div className="mb-6 flex items-center justify-between">
-          <p className="text-card-loc text-subtle">{item.city || "Sin ubicacion"}</p>
+          <p className="text-card-loc text-subtle">{item.city || "Sin ubicación"}</p>
           <p className="text-card-loc text-rating flex items-center gap-1">
             <Star
               size={13}
@@ -163,7 +162,7 @@ function ProductCard({ item, onOpen }: ProductCardProps) {
           <p className="text-primary text-[17px] font-bold">{Math.round(item.price_per_day)} EUR/dia</p>
           <button
             type="button"
-            className="btn-primary btn--sm min-w-[92px]"
+            className="btn-primary btn--sm min-w-23"
             disabled={!isAvailable}
             onClick={onOpen}
           >
@@ -183,7 +182,7 @@ function SearchSkeleton() {
           key={index}
           className="border-border-main bg-page animate-pulse overflow-hidden rounded-xl border"
         >
-          <div className="bg-primary-light h-[168px]" />
+          <div className="bg-primary-light h-42" />
           <div className="space-y-5 p-4">
             <div className="bg-border-main h-4 w-4/5 rounded" />
             <div className="bg-border-main h-3 w-1/2 rounded" />
@@ -226,6 +225,22 @@ function Search() {
   const minPrice = searchParams.get("min_price") ?? "";
   const maxPrice = searchParams.get("max_price") ?? "";
 
+  const updateParam = useCallback(
+    (key: string, value: string, resetPage = true) => {
+      const next = new URLSearchParams(searchParams);
+      if (value) {
+        next.set(key, value);
+      } else {
+        next.delete(key);
+      }
+      if (resetPage) {
+        next.set("page", "1");
+      }
+      setSearchParams(next);
+    },
+    [searchParams, setSearchParams]
+  );
+
   useEffect(() => {
     setDraftQuery(query);
   }, [query]);
@@ -238,7 +253,7 @@ function Search() {
     }, 350);
 
     return () => window.clearTimeout(timeoutId);
-  }, [draftQuery, query]);
+  }, [draftQuery, query, updateParam]);
 
   useEffect(() => {
     const controller = new AbortController();
@@ -289,19 +304,6 @@ function Search() {
 
   const totalPages = Math.max(1, Math.ceil(state.total / PAGE_SIZE));
   const pageWindow = useMemo(() => getPageWindow(page, totalPages), [page, totalPages]);
-
-  const updateParam = (key: string, value: string, resetPage = true) => {
-    const next = new URLSearchParams(searchParams);
-    if (value) {
-      next.set(key, value);
-    } else {
-      next.delete(key);
-    }
-    if (resetPage) {
-      next.set("page", "1");
-    }
-    setSearchParams(next);
-  };
 
   const submitSearch = (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault();
@@ -368,7 +370,7 @@ function Search() {
   return (
     <div className="bg-surface min-h-screen">
       <div className="border-border-main bg-section-alt border-b">
-        <div className="mx-auto grid max-w-[1360px] grid-cols-[minmax(0,1fr)_280px] items-center gap-7 px-10 py-4">
+        <div className="mx-auto grid max-w-340 grid-cols-[minmax(0,1fr)_280px] items-center gap-7 px-10 py-4">
           <form
             className="border-primary focus-within:border-primary-dark flex h-12 items-center rounded-xl border-2 bg-white px-4 shadow-[0_1px_0_rgba(15,110,86,0.04)] transition-colors"
             onSubmit={submitSearch}
@@ -400,7 +402,7 @@ function Search() {
               <select
                 value={sort}
                 onChange={(event) => updateParam("sort", event.target.value)}
-                className="text-ink h-9 w-[160px] rounded-lg bg-white"
+                className="text-ink h-9 w-40 rounded-lg bg-white"
               >
                 {SORT_OPTIONS.map((option) => (
                   <option
@@ -417,7 +419,7 @@ function Search() {
       </div>
 
       <div className="border-border-main bg-page border-b">
-        <div className="mx-auto flex max-w-[1360px] items-center gap-5 px-10 py-3">
+        <div className="mx-auto flex max-w-340 items-center gap-5 px-10 py-3">
           {activeChips.map((chip) => (
             <button
               key={chip.key}
@@ -442,7 +444,7 @@ function Search() {
         </div>
       </div>
 
-      <div className="mx-auto grid max-w-[1360px] grid-cols-[272px_minmax(0,1fr)]">
+      <div className="mx-auto grid max-w-340 grid-cols-[272px_minmax(0,1fr)]">
         <aside className="border-border-main bg-page border-r">
           <FilterSection title="Categoria">
             <div className="space-y-2">
@@ -578,7 +580,7 @@ function Search() {
           </div>
 
           {!state.loading && state.items.length === 0 && !state.error && (
-            <div className="flex min-h-[360px] flex-col items-center justify-center text-center">
+            <div className="flex min-h-90 flex-col items-center justify-center text-center">
               <h2 className="text-section-hd font-bold">No hay productos con estos filtros</h2>
               <p className="text-body-color mt-2">Prueba con otra busqueda o limpia los filtros activos.</p>
             </div>
@@ -600,11 +602,17 @@ function Search() {
                   key={pageNumber}
                   className="flex items-center gap-2"
                 >
-                  {index > 0 && pageNumber - pageWindow[index - 1] > 1 && (
-                    <span className="border-border-input text-subtle flex h-10 min-w-10 items-center justify-center rounded-lg border bg-white px-3">
-                      ...
-                    </span>
-                  )}
+                  {(() => {
+                    const prevPage = index > 0 ? pageWindow[index - 1] : undefined;
+                    if (prevPage === undefined || pageNumber - prevPage <= 1) {
+                      return null;
+                    }
+                    return (
+                      <span className="border-border-input text-subtle flex h-10 min-w-10 items-center justify-center rounded-lg border bg-white px-3">
+                        ...
+                      </span>
+                    );
+                  })()}
                   <button
                     type="button"
                     className={`${pageNumber === page ? "btn-primary" : "btn-secondary"} btn--sm min-w-10 p-0`}
