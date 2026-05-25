@@ -232,6 +232,8 @@ type Item struct {
 	ItemStatus  ItemStatus         `json:"item_status"`
 	PricePerDay pgtype.Numeric     `json:"price_per_day"`
 	Deposit     pgtype.Numeric     `json:"deposit"`
+	MinDays     int32              `json:"min_days"`
+	MaxDays     pgtype.Int4        `json:"max_days"`
 	IsAvailable bool               `json:"is_available"`
 	PublishedAt pgtype.Timestamptz `json:"published_at"`
 }
