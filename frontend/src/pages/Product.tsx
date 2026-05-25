@@ -356,6 +356,8 @@ function Product() {
                 reviewCount={48}
                 selectedStart={state.dateRange.start}
                 selectedEnd={state.dateRange.end}
+                minDays={state.item.min_days}
+                maxDay={state.item.max_days}
               />
 
               <InsuranceCard days={rentalDays} />

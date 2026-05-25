@@ -3,6 +3,7 @@ package handler
 
 import (
 	"errors"
+	"log/slog"
 	"net/http"
 
 	"github.com/gin-gonic/gin"
@@ -80,9 +81,12 @@ func (h *ItemHandler) Create(c *gin.Context) {
 		switch {
 		case errors.Is(err, service.ErrInvalidCategory):
 			response.Error(c, http.StatusBadRequest, err.Error())
+		case errors.Is(err, service.ErrInvalidRentalPeriod):
+			response.Error(c, http.StatusBadRequest, err.Error())
 		case errors.Is(err, service.ErrAddressNotFound):
 			response.Error(c, http.StatusUnprocessableEntity, err.Error())
 		default:
+			slog.Error("create item failed", "error", err)
 			response.Error(c, http.StatusInternalServerError, "internal server error")
 		}
 		return

@@ -56,9 +56,11 @@ INSERT INTO item (
     brand,
     model,
     price_per_day,
-    deposit
+    deposit,
+    min_days,
+    max_days
 ) VALUES (
-    $1, $2, $3, $4, $5, $6, $7, $8, $9
+    $1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11
 )
 RETURNING
     item_id,
@@ -72,6 +74,8 @@ RETURNING
     item_status,
     price_per_day,
     deposit,
+    min_days,
+    max_days,
     is_available,
     published_at
 `
@@ -86,6 +90,8 @@ type CreateItemParams struct {
 	Model       pgtype.Text    `json:"model"`
 	PricePerDay pgtype.Numeric `json:"price_per_day"`
 	Deposit     pgtype.Numeric `json:"deposit"`
+	MinDays     int32          `json:"min_days"`
+	MaxDays     pgtype.Int4    `json:"max_days"`
 }
 
 // ============================================
@@ -102,6 +108,8 @@ func (q *Queries) CreateItem(ctx context.Context, arg CreateItemParams) (Item, e
 		arg.Model,
 		arg.PricePerDay,
 		arg.Deposit,
+		arg.MinDays,
+		arg.MaxDays,
 	)
 	var i Item
 	err := row.Scan(
@@ -116,6 +124,8 @@ func (q *Queries) CreateItem(ctx context.Context, arg CreateItemParams) (Item, e
 		&i.ItemStatus,
 		&i.PricePerDay,
 		&i.Deposit,
+		&i.MinDays,
+		&i.MaxDays,
 		&i.IsAvailable,
 		&i.PublishedAt,
 	)
@@ -163,6 +173,8 @@ SELECT
     item_status,
     price_per_day,
     deposit,
+    min_days,
+    max_days,
     is_available,
     published_at
 FROM item
@@ -188,6 +200,8 @@ func (q *Queries) GetItemByID(ctx context.Context, itemID uuid.UUID) (Item, erro
 		&i.ItemStatus,
 		&i.PricePerDay,
 		&i.Deposit,
+		&i.MinDays,
+		&i.MaxDays,
 		&i.IsAvailable,
 		&i.PublishedAt,
 	)
@@ -207,6 +221,8 @@ SELECT
     item_status,
     price_per_day,
     deposit,
+    min_days,
+    max_days,
     is_available,
     published_at
 FROM item
@@ -241,6 +257,8 @@ func (q *Queries) ListItems(ctx context.Context, arg ListItemsParams) ([]Item, e
 			&i.ItemStatus,
 			&i.PricePerDay,
 			&i.Deposit,
+			&i.MinDays,
+			&i.MaxDays,
 			&i.IsAvailable,
 			&i.PublishedAt,
 		); err != nil {
@@ -267,6 +285,8 @@ SELECT
     item_status,
     price_per_day,
     deposit,
+    min_days,
+    max_days,
     is_available,
     published_at
 FROM item
@@ -303,6 +323,8 @@ func (q *Queries) ListItemsByCategory(ctx context.Context, arg ListItemsByCatego
 			&i.ItemStatus,
 			&i.PricePerDay,
 			&i.Deposit,
+			&i.MinDays,
+			&i.MaxDays,
 			&i.IsAvailable,
 			&i.PublishedAt,
 		); err != nil {
@@ -329,6 +351,8 @@ SELECT
     item_status,
     price_per_day,
     deposit,
+    min_days,
+    max_days,
     is_available,
     published_at
 FROM item
@@ -364,6 +388,8 @@ func (q *Queries) ListItemsByOwner(ctx context.Context, arg ListItemsByOwnerPara
 			&i.ItemStatus,
 			&i.PricePerDay,
 			&i.Deposit,
+			&i.MinDays,
+			&i.MaxDays,
 			&i.IsAvailable,
 			&i.PublishedAt,
 		); err != nil {
@@ -390,6 +416,8 @@ SELECT
     item_status,
     price_per_day,
     deposit,
+    min_days,
+    max_days,
     is_available,
     published_at
 FROM item
@@ -426,6 +454,8 @@ func (q *Queries) SearchItems(ctx context.Context, arg SearchItemsParams) ([]Ite
 			&i.ItemStatus,
 			&i.PricePerDay,
 			&i.Deposit,
+			&i.MinDays,
+			&i.MaxDays,
 			&i.IsAvailable,
 			&i.PublishedAt,
 		); err != nil {
@@ -461,7 +491,9 @@ SET
     model         = $5,
     category      = $6,
     price_per_day = $7,
-    deposit       = $8
+    deposit       = $8,
+    min_days      = $9,
+    max_days       = $10
 WHERE item_id = $1
 RETURNING
     item_id,
@@ -475,6 +507,8 @@ RETURNING
     item_status,
     price_per_day,
     deposit,
+    min_days,
+    max_days,
     is_available,
     published_at
 `
@@ -488,6 +522,8 @@ type UpdateItemParams struct {
 	Category    CategoryEnum   `json:"category"`
 	PricePerDay pgtype.Numeric `json:"price_per_day"`
 	Deposit     pgtype.Numeric `json:"deposit"`
+	MinDays     int32          `json:"min_days"`
+	MaxDays     pgtype.Int4    `json:"max_days"`
 }
 
 // ============================================
@@ -503,6 +539,8 @@ func (q *Queries) UpdateItem(ctx context.Context, arg UpdateItemParams) (Item, e
 		arg.Category,
 		arg.PricePerDay,
 		arg.Deposit,
+		arg.MinDays,
+		arg.MaxDays,
 	)
 	var i Item
 	err := row.Scan(
@@ -517,6 +555,8 @@ func (q *Queries) UpdateItem(ctx context.Context, arg UpdateItemParams) (Item, e
 		&i.ItemStatus,
 		&i.PricePerDay,
 		&i.Deposit,
+		&i.MinDays,
+		&i.MaxDays,
 		&i.IsAvailable,
 		&i.PublishedAt,
 	)

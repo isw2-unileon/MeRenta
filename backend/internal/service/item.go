@@ -21,6 +21,8 @@ var (
 	ErrInvalidCategory = errors.New("invalid category")
 	// ErrAddressNotFound indicates the provided address_id does not exist.
 	ErrAddressNotFound = errors.New("address not found")
+	// ErrInvalidRentalPeriod indicates an invalid min/max rental-day range.
+	ErrInvalidRentalPeriod = errors.New("invalid rental period")
 )
 
 // itemQuerier is the minimal DB interface needed by ItemService.
@@ -47,6 +49,15 @@ func (s *ItemService) CreateItem(ctx context.Context, ownerID uuid.UUID, req mod
 		return nil, ErrInvalidCategory
 	}
 
+	minDays := req.MinDays
+	if minDays == 0 {
+		minDays = 1
+	}
+
+	if req.MaxDays != nil && *req.MaxDays < minDays {
+		return nil, ErrInvalidRentalPeriod
+	}
+
 	addressID, err := uuid.Parse(req.AddressID)
 	if err != nil {
 		return nil, fmt.Errorf("parsing address_id: %w", err)
@@ -62,6 +73,11 @@ func (s *ItemService) CreateItem(ctx context.Context, ownerID uuid.UUID, req mod
 		return nil, fmt.Errorf("invalid deposit: %w", err)
 	}
 
+	maxDays, err := optionalIntToInt4(req.MaxDays)
+	if err != nil {
+		return nil, fmt.Errorf("invalid max_days: %w", err)
+	}
+
 	item, err := s.q.CreateItem(ctx, sqlcdb.CreateItemParams{
 		OwnerID:     ownerID,
 		AddressID:   addressID,
@@ -72,10 +88,15 @@ func (s *ItemService) CreateItem(ctx context.Context, ownerID uuid.UUID, req mod
 		Model:       pgtype.Text{String: req.Model, Valid: req.Model != ""},
 		PricePerDay: pricePerDay,
 		Deposit:     deposit,
+		MinDays:     int32(minDays),
+		MaxDays:     maxDays,
 	})
 	if err != nil {
 		if isForeignKeyViolation(err) {
 			return nil, ErrAddressNotFound
+		}
+		if isInvalidTextRepresentation(err) {
+			return nil, ErrInvalidCategory
 		}
 		return nil, err
 	}
@@ -113,6 +134,11 @@ func toItemResponse(item sqlcdb.Item) (*model.ItemResponse, error) {
 		deposit = &d
 	}
 
+	var maxDays *int32
+	if item.MaxDays.Valid {
+		maxDays = &item.MaxDays.Int32
+	}
+
 	return &model.ItemResponse{
 		ItemID:      item.ItemID.String(),
 		OwnerID:     item.OwnerID.String(),
@@ -125,6 +151,8 @@ func toItemResponse(item sqlcdb.Item) (*model.ItemResponse, error) {
 		ItemStatus:  string(item.ItemStatus),
 		PricePerDay: pricePerDay,
 		Deposit:     deposit,
+		MinDays:     item.MinDays,
+		MaxDays:     maxDays,
 		IsAvailable: item.IsAvailable,
 		PublishedAt: item.PublishedAt.Time,
 	}, nil
@@ -164,6 +192,18 @@ func optionalFloat64ToNumeric(v *float64) (pgtype.Numeric, error) {
 	return float64ToNumeric(*v)
 }
 
+func optionalIntToInt4(v *int) (pgtype.Int4, error) {
+	if v == nil {
+		return pgtype.Int4{}, nil
+	}
+	const minInt32 = -2147483648
+	const maxInt32 = 2147483647
+	if *v < minInt32 || *v > maxInt32 {
+		return pgtype.Int4{}, fmt.Errorf("value %d overflows int32", *v)
+	}
+	return pgtype.Int4{Int32: int32(*v), Valid: true}, nil
+}
+
 // numericToFloat64 extracts the float64 value from a pgtype.Numeric.
 func numericToFloat64(n pgtype.Numeric) (float64, error) {
 	f, err := n.Float64Value()
@@ -177,4 +217,10 @@ func numericToFloat64(n pgtype.Numeric) (float64, error) {
 func isForeignKeyViolation(err error) bool {
 	var pgErr *pgconn.PgError
 	return errors.As(err, &pgErr) && pgErr.Code == "23503"
+}
+
+// isInvalidTextRepresentation reports PostgreSQL enum/value cast failures (22P02).
+func isInvalidTextRepresentation(err error) bool {
+	var pgErr *pgconn.PgError
+	return errors.As(err, &pgErr) && pgErr.Code == "22P02"
 }

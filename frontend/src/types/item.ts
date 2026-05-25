@@ -40,6 +40,8 @@ interface CreateItemRequest {
   model?: string;
   price_per_day: number;
   deposit?: number;
+  min_days: number;
+  max_days?: number;
 }
 
 /**
@@ -58,6 +60,8 @@ interface ItemResponse {
   item_status: string;
   price_per_day: number;
   deposit?: number;
+  min_days: number;
+  max_days?: number | null;
   is_available: boolean;
   published_at: string;
 }

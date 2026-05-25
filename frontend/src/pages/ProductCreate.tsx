@@ -126,6 +126,13 @@ function validateForm(data: ProductFormData): FormErrors {
     errors.pricePerDay = "El precio por día debe ser mayor que 0";
   }
 
+  const minRentalPeriod = Number.parseInt(data.minRentalPeriod, 10);
+  const maxRentalPeriod = Number.parseInt(data.maxRentalPeriod, 10);
+  if (data.maxRentalPeriod !== "0" && minRentalPeriod > maxRentalPeriod) {
+    errors.minRentalPeriod = "El período mínimo no puede superar el máximo";
+    errors.maxRentalPeriod = "El período máximo debe ser igual o mayor que el mínimo";
+  }
+
   if (!data.address) {
     errors.address = "Selecciona una dirección de recogida";
   }
@@ -274,6 +281,8 @@ function ProductCreate() {
           description: state.data.description.trim() || undefined,
           price_per_day: parseFloat(state.data.pricePerDay),
           deposit: state.data.deposit ? parseFloat(state.data.deposit) : undefined,
+          min_days: Number.parseInt(state.data.minRentalPeriod, 10),
+          max_days: state.data.maxRentalPeriod === "0" ? undefined : Number.parseInt(state.data.maxRentalPeriod, 10),
         });
 
         if (!asDraft && state.data.photos.length > 0) {

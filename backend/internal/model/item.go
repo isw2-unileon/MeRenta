@@ -13,6 +13,8 @@ type CreateItemRequest struct {
 	Model       string   `json:"model"         binding:"omitempty,max=100"`
 	PricePerDay float64  `json:"price_per_day" binding:"required,gt=0"`
 	Deposit     *float64 `json:"deposit"       binding:"omitempty,gte=0"`
+	MinDays     int      `json:"min_days"      binding:"omitempty,gte=1"`
+	MaxDays     *int     `json:"max_days"      binding:"omitempty,gte=1"`
 }
 
 // ItemResponse is the API representation of an item listing.
@@ -28,6 +30,8 @@ type ItemResponse struct {
 	ItemStatus  string    `json:"item_status"`
 	PricePerDay float64   `json:"price_per_day"`
 	Deposit     *float64  `json:"deposit,omitempty"`
+	MinDays     int32     `json:"min_days"`
+	MaxDays     *int32    `json:"max_days,omitempty"`
 	IsAvailable bool      `json:"is_available"`
 	PublishedAt time.Time `json:"published_at"`
 }

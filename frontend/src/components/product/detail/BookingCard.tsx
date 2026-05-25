@@ -21,6 +21,10 @@ interface BookingCardProps {
   selectedStart: Date | null;
   /** Currently selected rental end date. */
   selectedEnd: Date | null;
+  /** Minimum number of rental days configured by the owner. */
+  minDays: number;
+  /** Maximum number of rental days configured by the owner. Null means unlimited. */
+  maxDay?: number | null;
 }
 
 /** Formats a Date as localised Spanish short date, e.g. "15 may 2025". */
@@ -49,9 +53,20 @@ function fmtPrice(value: number): string {
  * @param reviewCount Number of reviews.
  * @param selectedStart Rental start date or null.
  * @param selectedEnd Rental end date or null.
+ * @param minDays Minimum rental days configured for the listing.
+ * @param maxDay Maximum rental days configured for the listing. Null means unlimited.
  * @returns Booking card JSX.
  */
-function BookingCard({ itemId, pricePerDay, rating, reviewCount, selectedStart, selectedEnd }: BookingCardProps) {
+function BookingCard({
+  itemId,
+  pricePerDay,
+  rating,
+  reviewCount,
+  selectedStart,
+  selectedEnd,
+  minDays,
+  maxDay,
+}: BookingCardProps) {
   const navigate = useNavigate();
 
   const days =
@@ -62,7 +77,10 @@ function BookingCard({ itemId, pricePerDay, rating, reviewCount, selectedStart, 
   const subtotal = pricePerDay * days;
   const insurance = Math.round(INSURANCE_DAILY_RATE * days * 100) / 100;
   const total = subtotal + SERVICE_FEE + insurance;
-  const canBook = days > 0;
+  const isBelowMinimum = days > 0 && days < minDays;
+  const isAboveMaximum = days > 0 && maxDay !== null && maxDay !== undefined && days > maxDay;
+  const canBook = days > 0 && !isBelowMinimum && !isAboveMaximum;
+  const periodHint = maxDay ? `Min. ${minDays} días · Max. ${maxDay} días` : `Min. ${minDays} días`;
 
   const handleBook = () => {
     if (!canBook || !selectedStart || !selectedEnd) return;
@@ -79,7 +97,9 @@ function BookingCard({ itemId, pricePerDay, rating, reviewCount, selectedStart, 
     <div className="booking-card p-5">
       {/* ── Price + rating ── */}
       <div className="mb-4 flex items-start justify-between">
-        <p className="booking-price">{pricePerDay} EUR</p>
+        <p className="booking-price">
+          {pricePerDay} EUR<span className="text-2xl">/día</span>
+        </p>
         {reviewCount > 0 && (
           <div className="flex items-center gap-1 pt-1">
             <StarRating
@@ -106,6 +126,7 @@ function BookingCard({ itemId, pricePerDay, rating, reviewCount, selectedStart, 
           <p className="booking-date-value">{selectedEnd ? formatDateEs(selectedEnd) : "Selecciona fecha"}</p>
         </div>
       </div>
+      <p className="booking-row-label -mt-2 mb-4">{periodHint}</p>
 
       {/* ── Price breakdown (only when dates are selected) ── */}
       {canBook && (
@@ -130,6 +151,14 @@ function BookingCard({ itemId, pricePerDay, rating, reviewCount, selectedStart, 
             <p className="booking-total-value">{fmtPrice(total)} EUR</p>
           </div>
         </div>
+      )}
+
+      {(isBelowMinimum || isAboveMaximum) && (
+        <p className="field-error mb-4">
+          {isBelowMinimum
+            ? `El alquiler mínimo es de ${minDays} ${minDays === 1 ? "día" : "días"}.`
+            : `El alquiler máximo es de ${maxDay} días.`}
+        </p>
       )}
 
       {/* ── Actions ── */}

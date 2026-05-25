@@ -26,6 +26,10 @@ interface PriceSectionProps {
   onChange: (field: keyof ProductFormData, value: string) => void;
 }
 
+const parseRentalPeriod = (value: string) => Number.parseInt(value, 10);
+
+const isUnlimitedPeriod = (value: string) => value === "0";
+
 /**
  * Form section for pricing, deposit and rental period configuration.
  * @param data Current price field values.
@@ -35,8 +39,45 @@ interface PriceSectionProps {
  */
 function PriceSection({ data, errors, onChange }: PriceSectionProps) {
   const updatePricingField = (e: ChangeEvent<HTMLInputElement | HTMLSelectElement>) => {
-    onChange(e.target.name as keyof ProductFormData, e.target.value);
+    const field = e.target.name as keyof ProductFormData;
+    const { value } = e.target;
+
+    if (field === "minRentalPeriod") {
+      onChange(field, value);
+
+      const nextMin = parseRentalPeriod(value);
+      const currentMax = parseRentalPeriod(data.maxRentalPeriod);
+      if (!isUnlimitedPeriod(data.maxRentalPeriod) && currentMax < nextMin) {
+        onChange("maxRentalPeriod", value);
+      }
+
+      return;
+    }
+
+    if (field === "maxRentalPeriod") {
+      onChange(field, value);
+
+      const currentMin = parseRentalPeriod(data.minRentalPeriod);
+      const nextMax = parseRentalPeriod(value);
+      if (!isUnlimitedPeriod(value) && currentMin > nextMax) {
+        onChange("minRentalPeriod", value);
+      }
+
+      return;
+    }
+
+    onChange(field, value);
   };
+
+  const selectedMax = parseRentalPeriod(data.maxRentalPeriod);
+  const selectedMin = parseRentalPeriod(data.minRentalPeriod);
+
+  const minPeriodOptions = MIN_PERIOD_OPTIONS.filter(
+    (opt) => isUnlimitedPeriod(data.maxRentalPeriod) || parseRentalPeriod(opt.value) <= selectedMax
+  );
+  const maxPeriodOptions = MAX_PERIOD_OPTIONS.filter(
+    (opt) => isUnlimitedPeriod(opt.value) || parseRentalPeriod(opt.value) >= selectedMin
+  );
 
   return (
     <section className="border-border-main rounded-xl border bg-white p-6">
@@ -110,8 +151,9 @@ function PriceSection({ data, errors, onChange }: PriceSectionProps) {
               name="minRentalPeriod"
               value={data.minRentalPeriod}
               onChange={updatePricingField}
+              className={errors.minRentalPeriod ? "input-error" : ""}
             >
-              {MIN_PERIOD_OPTIONS.map((opt) => (
+              {minPeriodOptions.map((opt) => (
                 <option
                   key={opt.value}
                   value={opt.value}
@@ -120,6 +162,7 @@ function PriceSection({ data, errors, onChange }: PriceSectionProps) {
                 </option>
               ))}
             </select>
+            {errors.minRentalPeriod && <p className="field-error mt-1">{errors.minRentalPeriod}</p>}
           </div>
 
           <div>
@@ -129,8 +172,9 @@ function PriceSection({ data, errors, onChange }: PriceSectionProps) {
               name="maxRentalPeriod"
               value={data.maxRentalPeriod}
               onChange={updatePricingField}
+              className={errors.maxRentalPeriod ? "input-error" : ""}
             >
-              {MAX_PERIOD_OPTIONS.map((opt) => (
+              {maxPeriodOptions.map((opt) => (
                 <option
                   key={opt.value}
                   value={opt.value}
@@ -139,6 +183,7 @@ function PriceSection({ data, errors, onChange }: PriceSectionProps) {
                 </option>
               ))}
             </select>
+            {errors.maxRentalPeriod && <p className="field-error mt-1">{errors.maxRentalPeriod}</p>}
           </div>
         </div>
 

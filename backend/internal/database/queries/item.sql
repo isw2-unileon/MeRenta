@@ -12,9 +12,11 @@ INSERT INTO item (
     brand,
     model,
     price_per_day,
-    deposit
+    deposit,
+    min_days,
+    max_days
 ) VALUES (
-    $1, $2, $3, $4, $5, $6, $7, $8, $9
+    $1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11
 )
 RETURNING
     item_id,
@@ -28,6 +30,8 @@ RETURNING
     item_status,
     price_per_day,
     deposit,
+    min_days,
+    max_days,
     is_available,
     published_at;
 
@@ -48,6 +52,8 @@ SELECT
     item_status,
     price_per_day,
     deposit,
+    min_days,
+    max_days,
     is_available,
     published_at
 FROM item
@@ -72,6 +78,8 @@ SELECT
     item_status,
     price_per_day,
     deposit,
+    min_days,
+    max_days,
     is_available,
     published_at
 FROM item
@@ -92,6 +100,8 @@ SELECT
     item_status,
     price_per_day,
     deposit,
+    min_days,
+    max_days,
     is_available,
     published_at
 FROM item
@@ -112,6 +122,8 @@ SELECT
     item_status,
     price_per_day,
     deposit,
+    min_days,
+    max_days,
     is_available,
     published_at
 FROM item
@@ -133,6 +145,8 @@ SELECT
     item_status,
     price_per_day,
     deposit,
+    min_days,
+    max_days,
     is_available,
     published_at
 FROM item
@@ -163,7 +177,9 @@ SET
     model         = $5,
     category      = $6,
     price_per_day = $7,
-    deposit       = $8
+    deposit       = $8,
+    min_days      = $9,
+    max_days      = $10
 WHERE item_id = $1
 RETURNING
     item_id,
@@ -177,6 +193,8 @@ RETURNING
     item_status,
     price_per_day,
     deposit,
+    min_days,
+    max_days,
     is_available,
     published_at;
 
