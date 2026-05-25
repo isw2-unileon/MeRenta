@@ -39,4 +39,3 @@ func getCustomerID(c *gin.Context) (uuid.UUID, bool) {
 	}
 	return id, true
 }
-

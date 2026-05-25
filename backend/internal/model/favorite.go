@@ -19,7 +19,7 @@ type FavoriteItemResponse struct {
 // FavoritesResponse wraps the list of favorited items.
 type FavoritesResponse struct {
 	Items []FavoriteItemResponse `json:"items"`
-	Total int                   `json:"total"`
+	Total int                    `json:"total"`
 }
 
 // FavoriteCheckResponse reports whether an item is saved by the current customer.

@@ -4,8 +4,7 @@ import { Heart, Star } from "lucide-react";
 
 import type { ApiResponse } from "@/types/common";
 import type { FavoriteItemResponse, FavoritesResponse } from "@/types/item";
-
-// ─── Constants ───────────────────────────────────────────────────────────────
+import * as React from "react";
 
 const CATEGORY_LABELS: Record<string, string> = {
   electronics: "Electronica",
@@ -26,8 +25,6 @@ const SORT_OPTIONS = [
   { value: "price_asc", label: "Precio: menor a mayor" },
   { value: "price_desc", label: "Precio: mayor a menor" },
 ];
-
-// ─── State ───────────────────────────────────────────────────────────────────
 
 interface FavsState {
   items: FavoriteItemResponse[];
@@ -74,8 +71,6 @@ function favsReducer(state: FavsState, action: FavsAction): FavsState {
   }
 }
 
-// ─── Helpers ─────────────────────────────────────────────────────────────────
-
 function seededRating(id: string): string {
   const seed = Array.from(id).reduce((sum, char) => sum + char.charCodeAt(0), 0);
   return (4.5 + (seed % 6) / 10).toFixed(1);
@@ -95,10 +90,13 @@ function timeAgo(iso: string): string {
 }
 
 function sortItems(items: FavoriteItemResponse[], sort: string): FavoriteItemResponse[] {
-  return [...items].sort((a, b) => {
+  interface Sortable {
+    toSorted(compareFn: (a: FavoriteItemResponse, b: FavoriteItemResponse) => number): FavoriteItemResponse[];
+  }
+
+  return (items as unknown as Sortable).toSorted((a, b) => {
     if (sort === "price_asc") return a.price_per_day - b.price_per_day;
     if (sort === "price_desc") return b.price_per_day - a.price_per_day;
-    // default: recent (newest saved_at first — already from the API, but re-sort for safety)
     return new Date(b.saved_at).getTime() - new Date(a.saved_at).getTime();
   });
 }
@@ -121,8 +119,6 @@ async function removeFavorite(itemId: string): Promise<void> {
     throw new Error("Error al eliminar el favorito");
   }
 }
-
-// ─── Sub-components ──────────────────────────────────────────────────────────
 
 interface StatusBadgeProps {
   item: FavoriteItemResponse;
@@ -220,7 +216,6 @@ function FavCard({ item, onRemove }: FavCardProps) {
 
   return (
     <article className="border-border-main bg-page overflow-hidden rounded-xl border">
-      {/* Image area */}
       <div className="bg-primary-light relative h-42 overflow-hidden">
         {item.primary_image_url ? (
           <img
@@ -249,16 +244,13 @@ function FavCard({ item, onRemove }: FavCardProps) {
         </button>
       </div>
 
-      {/* Body */}
       <div className="p-4">
         <button
           type="button"
           className="mb-3 block h-auto w-full p-0 text-left"
           onClick={handleOpen}
         >
-          <h2 className="text-ink line-clamp-2 min-h-9.5 text-[15px] font-medium leading-snug">
-            {item.title}
-          </h2>
+          <h2 className="text-ink line-clamp-2 min-h-9.5 text-[15px] leading-snug font-medium">{item.title}</h2>
         </button>
 
         <div className="mb-1 flex items-center justify-between">
@@ -294,10 +286,8 @@ function EmptySlot() {
   const navigate = useNavigate();
   return (
     <article className="border-border-main bg-page overflow-hidden rounded-xl border">
-      {/* Same image-zone height as a real FavCard */}
       <div className="bg-primary-light h-42" />
-      {/* Same body padding as a real FavCard */}
-      <div className="flex min-h-[176px] flex-col items-center justify-center gap-3 p-4">
+      <div className="flex min-h-44 flex-col items-center justify-center gap-3 p-4">
         <Heart
           size={32}
           className="text-subtle"
@@ -340,8 +330,6 @@ function FavsSkeleton() {
   );
 }
 
-// ─── Page ────────────────────────────────────────────────────────────────────
-
 /**
  * Lists the authenticated user's saved favorite products.
  */
@@ -351,7 +339,6 @@ function Favs() {
   const [sort, setSort] = useState("recent");
   const [removing, setRemoving] = useState<Set<string>>(new Set());
 
-  // Fetch favorites on mount
   useEffect(() => {
     let cancelled = false;
     dispatch({ type: "FETCH_START" });
@@ -370,32 +357,25 @@ function Favs() {
     };
   }, []);
 
-  // Remove a favorite optimistically
   const handleRemove = useCallback((itemId: string) => {
     setRemoving((prev) => new Set(prev).add(itemId));
     dispatch({ type: "REMOVE", itemId });
-    removeFavorite(itemId).catch(() => {
-      // on error we could re-add the item, but for simplicity we leave it removed
-    });
+    removeFavorite(itemId).catch(() => {});
   }, []);
 
-  // Compute unique categories present in the list
   const categories = Array.from(new Set(state.items.map((i) => i.category)));
 
-  // Filter + sort
   const filtered = sortItems(
     activeCategory === "all" ? state.items : state.items.filter((i) => i.category === activeCategory),
-    sort,
+    sort
   );
 
-  // Fill with empty slots to complete the last row of 4
   const GRID_COLS = 4;
   const remainder = filtered.length % GRID_COLS;
   const emptySlots = remainder === 0 ? 0 : GRID_COLS - remainder;
 
   return (
     <div className="mx-auto max-w-340 px-10 py-8">
-      {/* Header */}
       <div className="mb-6">
         <h1 className="text-ink text-2xl font-semibold">Tus favoritos</h1>
         {!state.loading && (
@@ -407,15 +387,10 @@ function Favs() {
         )}
       </div>
 
-      {/* Error */}
-      {state.error && (
-        <p className="mb-6 rounded-lg bg-red-50 p-4 text-[14px] text-red-600">{state.error}</p>
-      )}
+      {state.error && <p className="mb-6 rounded-lg bg-red-50 p-4 text-[14px] text-red-600">{state.error}</p>}
 
-      {/* Filters + sort bar */}
       {!state.loading && state.total > 0 && (
         <div className="mb-6 flex items-center justify-between gap-4">
-          {/* Category chips */}
           <div className="flex flex-wrap gap-2">
             <button
               type="button"
@@ -444,8 +419,7 @@ function Favs() {
             ))}
           </div>
 
-          {/* Sort */}
-          <div className="flex items-center gap-2 shrink-0">
+          <div className="flex shrink-0 items-center gap-2">
             <span className="text-subtle text-[13px]">Ordenar:</span>
             <select
               value={sort}
@@ -465,13 +439,11 @@ function Favs() {
         </div>
       )}
 
-      {/* Grid */}
       {state.loading ? (
         <div className="grid grid-cols-4 gap-5">
           <FavsSkeleton />
         </div>
       ) : state.total === 0 ? (
-        /* Empty state (no favorites at all) */
         <div className="flex flex-col items-center justify-center py-24 text-center">
           <Heart
             size={48}
@@ -497,7 +469,6 @@ function Favs() {
               onRemove={removing.has(item.item_id) ? () => undefined : handleRemove}
             />
           ))}
-          {/* Empty slots to fill last row */}
           {Array.from({ length: emptySlots }, (_, i) => (
             <EmptySlot key={`empty-${i}`} />
           ))}

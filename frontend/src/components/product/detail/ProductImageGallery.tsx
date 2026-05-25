@@ -33,13 +33,14 @@ interface ProductImageGalleryProps {
 function ProductImageGallery({ images, title, isAvailable, isFavorite, onToggleFavorite }: ProductImageGalleryProps) {
   const [activeIndex, setActiveIndex] = useState(0);
 
-  const mainImage = images[activeIndex];
+  const hasImages = images.length > 0;
+  const mainImage = hasImages ? images[activeIndex] : undefined;
 
   return (
     <div>
       {/* ── Main image ── */}
       <div className="relative">
-        {mainImage ? (
+        {hasImages && mainImage ? (
           <img
             className="product-main-img"
             src={mainImage.image_url}
@@ -71,13 +72,13 @@ function ProductImageGallery({ images, title, isAvailable, isFavorite, onToggleF
       </div>
 
       {/* ── Thumbnails ── */}
-      {images.length > 1 && (
+      {hasImages && images.length > 1 && (
         <div className="mt-3 flex gap-2 overflow-x-auto pb-1">
           {images.map((img, i) => (
             <button
               key={img.image_id}
               type="button"
-              className="flex-shrink-0 p-0"
+              className="shrink-0 p-0"
               aria-pressed={i === activeIndex}
               aria-label={`${title} - imagen ${i + 1}`}
               onClick={() => setActiveIndex(i)}
@@ -93,12 +94,12 @@ function ProductImageGallery({ images, title, isAvailable, isFavorite, onToggleF
       )}
 
       {/* Placeholder thumbnails when no images */}
-      {images.length === 0 && (
+      {!hasImages && (
         <div className="mt-3 flex gap-2">
           {Array.from({ length: 5 }, (_, i) => (
             <div
               key={i}
-              className="product-thumb bg-primary-light flex-shrink-0"
+              className="product-thumb bg-primary-light shrink-0"
             />
           ))}
         </div>
