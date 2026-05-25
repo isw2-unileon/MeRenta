@@ -38,11 +38,7 @@ function toISODate(date: Date): string {
 
 /** Returns true when two Date objects refer to the same calendar day. */
 function isSameDay(a: Date, b: Date): boolean {
-  return (
-    a.getFullYear() === b.getFullYear() &&
-    a.getMonth() === b.getMonth() &&
-    a.getDate() === b.getDate()
-  );
+  return a.getFullYear() === b.getFullYear() && a.getMonth() === b.getMonth() && a.getDate() === b.getDate();
 }
 
 /** Returns true when date falls strictly between start and end. */
@@ -64,12 +60,7 @@ function isInRange(date: Date, start: Date | null, end: Date | null): boolean {
  * @param onDateSelect Called with the clicked Date when the user taps a valid cell.
  * @returns Calendar JSX.
  */
-function ProductCalendar({
-  occupiedDates,
-  selectedStart,
-  selectedEnd,
-  onDateSelect,
-}: ProductCalendarProps) {
+function ProductCalendar({ occupiedDates, selectedStart, selectedEnd, onDateSelect }: ProductCalendarProps) {
   const today = new Date();
   today.setHours(0, 0, 0, 0);
 
@@ -102,22 +93,19 @@ function ProductCalendar({
     onDateSelect(date);
   };
 
-  const canGoPrev =
-    year > today.getFullYear() || month > today.getMonth();
+  const canGoPrev = year > today.getFullYear() || month > today.getMonth();
 
   return (
     <div>
       <p className="calendar-hint mb-3">Los días en gris están ocupados</p>
 
-      <div className="rounded-xl border border-border-main bg-surface p-4">
+      <div className="border-border-main bg-surface rounded-xl border p-4">
         {/* Month navigation */}
         <div className="mb-3 flex items-center justify-between">
           <button
             type="button"
             className="btn-ghost btn--sm"
-            onClick={() =>
-              setViewMonth((prev) => new Date(prev.getFullYear(), prev.getMonth() - 1, 1))
-            }
+            onClick={() => setViewMonth((prev) => new Date(prev.getFullYear(), prev.getMonth() - 1, 1))}
             disabled={!canGoPrev}
             aria-label="Mes anterior"
           >
@@ -129,9 +117,7 @@ function ProductCalendar({
           <button
             type="button"
             className="btn-ghost btn--sm"
-            onClick={() =>
-              setViewMonth((prev) => new Date(prev.getFullYear(), prev.getMonth() + 1, 1))
-            }
+            onClick={() => setViewMonth((prev) => new Date(prev.getFullYear(), prev.getMonth() + 1, 1))}
             aria-label="Mes siguiente"
           >
             ›

@@ -28,13 +28,7 @@ interface ProductImageGalleryProps {
  * @param onToggleFavorite Called when the user clicks the heart button.
  * @returns Gallery JSX.
  */
-function ProductImageGallery({
-  images,
-  title,
-  isAvailable,
-  isFavorite,
-  onToggleFavorite,
-}: ProductImageGalleryProps) {
+function ProductImageGallery({ images, title, isAvailable, isFavorite, onToggleFavorite }: ProductImageGalleryProps) {
   const [activeIndex, setActiveIndex] = useState(0);
 
   const mainImage = images[activeIndex];
@@ -58,16 +52,14 @@ function ProductImageGallery({
         )}
 
         {/* Availability badge */}
-        <div className="absolute left-4 top-4">
-          <span className="product-status-badge">
-            {isAvailable ? "Disponible" : "No disponible"}
-          </span>
+        <div className="absolute top-4 left-4">
+          <span className="product-status-badge">{isAvailable ? "Disponible" : "No disponible"}</span>
         </div>
 
         {/* Favourite button */}
         <button
           type="button"
-          className={`btn-fav btn-fav--lg absolute right-4 top-4 shadow-sm ${isFavorite ? "active" : ""}`}
+          className={`btn-fav btn-fav--lg absolute top-4 right-4 shadow-sm ${isFavorite ? "active" : ""}`}
           aria-pressed={isFavorite}
           aria-label={isFavorite ? "Quitar de favoritos" : "Añadir a favoritos"}
           onClick={onToggleFavorite}

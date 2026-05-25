@@ -39,7 +39,8 @@ playwright-report/
 test-results/
 backend/.air.toml
 
-# Claude
+# IA Agents
+*agents*
 *claude*
 
 # Configuration

@@ -77,33 +77,33 @@ function ProductSkeleton() {
       <div className="grid grid-cols-[1fr_392px] items-start gap-8">
         {/* Left */}
         <div className="flex flex-col gap-6">
-          <div className="h-[480px] rounded-lg bg-primary-light" />
+          <div className="bg-primary-light h-[480px] rounded-lg" />
           <div className="flex gap-2">
             {Array.from({ length: 5 }, (_, i) => (
               <div
                 key={i}
-                className="h-24 w-[154px] flex-shrink-0 rounded-lg bg-primary-light"
+                className="bg-primary-light h-24 w-[154px] flex-shrink-0 rounded-lg"
               />
             ))}
           </div>
           <div className="flex flex-col gap-3">
-            <div className="h-7 w-3/4 rounded bg-primary-light" />
-            <div className="h-4 w-1/3 rounded bg-primary-light" />
+            <div className="bg-primary-light h-7 w-3/4 rounded" />
+            <div className="bg-primary-light h-4 w-1/3 rounded" />
           </div>
-          <div className="h-px bg-border-main" />
+          <div className="bg-border-main h-px" />
           <div className="flex flex-col gap-2">
-            <div className="h-5 w-1/4 rounded bg-primary-light" />
-            <div className="h-4 rounded bg-primary-light" />
-            <div className="h-4 rounded bg-primary-light" />
-            <div className="h-4 w-5/6 rounded bg-primary-light" />
+            <div className="bg-primary-light h-5 w-1/4 rounded" />
+            <div className="bg-primary-light h-4 rounded" />
+            <div className="bg-primary-light h-4 rounded" />
+            <div className="bg-primary-light h-4 w-5/6 rounded" />
           </div>
         </div>
 
         {/* Right */}
         <div className="flex flex-col gap-5">
-          <div className="h-[360px] rounded-panel bg-primary-light" />
-          <div className="h-56 rounded-panel bg-primary-light" />
-          <div className="h-40 rounded-panel bg-primary-light" />
+          <div className="rounded-panel bg-primary-light h-[360px]" />
+          <div className="rounded-panel bg-primary-light h-56" />
+          <div className="rounded-panel bg-primary-light h-40" />
         </div>
       </div>
     </div>
@@ -120,7 +120,7 @@ interface ProductErrorProps {
 function ProductError({ message, onBack }: ProductErrorProps) {
   return (
     <div className="flex min-h-[60vh] flex-col items-center justify-center gap-4 text-center">
-      <p className="text-xl font-bold text-ink">Producto no encontrado</p>
+      <p className="text-ink text-xl font-bold">Producto no encontrado</p>
       <p className="text-body-color">{message}</p>
       <button
         type="button"
@@ -169,10 +169,7 @@ function Product() {
 
     const load = async () => {
       try {
-        const [itemData, imagesData] = await Promise.all([
-          fetchItem(id),
-          fetchImages(id),
-        ]);
+        const [itemData, imagesData] = await Promise.all([fetchItem(id), fetchImages(id)]);
         setItem(itemData);
         setImages(imagesData);
 
@@ -184,9 +181,7 @@ function Product() {
           // silently omit owner card if profile endpoint is unavailable
         }
       } catch (err) {
-        setError(
-          err instanceof Error ? err.message : "Error al cargar el producto",
-        );
+        setError(err instanceof Error ? err.message : "Error al cargar el producto");
       } finally {
         setLoading(false);
       }
@@ -215,17 +210,12 @@ function Product() {
 
   const rentalDays =
     dateRange.start && dateRange.end
-      ? Math.round(
-          (dateRange.end.getTime() - dateRange.start.getTime()) /
-            (1000 * 60 * 60 * 24),
-        )
+      ? Math.round((dateRange.end.getTime() - dateRange.start.getTime()) / (1000 * 60 * 60 * 24))
       : 0;
 
   // ── Derived display values ────────────────────────────────────────────────
 
-  const categoryLabel = item
-    ? (CATEGORY_LABELS[item.category] ?? item.category)
-    : "";
+  const categoryLabel = item ? (CATEGORY_LABELS[item.category] ?? item.category) : "";
 
   // The backend does not currently expose a condition field in ItemResponse.
   // Access it defensively so the badge appears when the API is extended.
@@ -251,7 +241,6 @@ function Product() {
           <div className="grid grid-cols-[1fr_392px] items-start gap-8">
             {/* ════════════════════════════════════ Left column */}
             <div className="flex min-w-0 flex-col gap-6">
-
               {/* Image gallery */}
               <ProductImageGallery
                 images={images}
@@ -263,23 +252,13 @@ function Product() {
 
               {/* Title, badges and rating */}
               <div>
-                <h2 className="mb-2 text-[22px] font-bold leading-tight text-ink">
-                  {item.title}
-                </h2>
+                <h2 className="text-ink mb-2 text-[22px] leading-tight font-bold">{item.title}</h2>
 
                 <div className="mb-2 flex flex-wrap items-center gap-2">
-                  {categoryLabel && (
-                    <span className="product-estado-badge">{categoryLabel}</span>
-                  )}
-                  {condition && (
-                    <span className="product-estado-badge">
-                      Estado: {condition}
-                    </span>
-                  )}
+                  {categoryLabel && <span className="product-estado-badge">{categoryLabel}</span>}
+                  {condition && <span className="product-estado-badge">Estado: {condition}</span>}
                   {(item.brand ?? item.model) && (
-                    <span className="product-estado-badge">
-                      {[item.brand, item.model].filter(Boolean).join(" ")}
-                    </span>
+                    <span className="product-estado-badge">{[item.brand, item.model].filter(Boolean).join(" ")}</span>
                   )}
                 </div>
 
@@ -320,7 +299,7 @@ function Product() {
             </div>
 
             {/* ════════════════════════════════════ Right column */}
-            <div className="sticky top-8 flex flex-col gap-5">
+            <div className="top-8 flex flex-col gap-5">
               <BookingCard
                 itemId={item.item_id}
                 pricePerDay={item.price_per_day}

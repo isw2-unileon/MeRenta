@@ -201,7 +201,6 @@ func (h *ItemImageHandler) handleProxyLookupErr(c *gin.Context, itemID, imageID 
 // fetchImageContent performs a server-side GET to signedURL and returns the
 // content-type and a ready-to-read response body. The caller must close the body.
 func (h *ItemImageHandler) fetchImageContent(ctx context.Context, signedURL string) (string, io.ReadCloser, error) {
-	//nolint:gosec // URL comes from our own database, not from user input.
 	req, err := http.NewRequestWithContext(ctx, http.MethodGet, signedURL, nil)
 	if err != nil {
 		return "", nil, fmt.Errorf("build upstream request: %w", err)
@@ -250,7 +249,7 @@ func parseImageFiles(c *gin.Context) ([]*multipart.FileHeader, error) {
 
 		ct := fh.Header.Get("Content-Type")
 		// Strip parameters such as charset (e.g. "image/jpeg; boundary=…").
-		ct = strings.SplitN(ct, ";", 2)[0] //nolint:gomnd
+		ct = strings.SplitN(ct, ";", 2)[0]
 		ct = strings.TrimSpace(ct)
 
 		if !allowedMIMETypes[ct] {

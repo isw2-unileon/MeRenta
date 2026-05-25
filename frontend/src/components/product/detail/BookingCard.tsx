@@ -51,21 +51,12 @@ function fmtPrice(value: number): string {
  * @param selectedEnd Rental end date or null.
  * @returns Booking card JSX.
  */
-function BookingCard({
-  itemId,
-  pricePerDay,
-  rating,
-  reviewCount,
-  selectedStart,
-  selectedEnd,
-}: BookingCardProps) {
+function BookingCard({ itemId, pricePerDay, rating, reviewCount, selectedStart, selectedEnd }: BookingCardProps) {
   const navigate = useNavigate();
 
   const days =
     selectedStart && selectedEnd
-      ? Math.round(
-          (selectedEnd.getTime() - selectedStart.getTime()) / (1000 * 60 * 60 * 24),
-        )
+      ? Math.round((selectedEnd.getTime() - selectedStart.getTime()) / (1000 * 60 * 60 * 24))
       : 0;
 
   const subtotal = pricePerDay * days;
@@ -107,16 +98,12 @@ function BookingCard({
       <div className="booking-dates mb-4">
         <div className="flex flex-1 flex-col justify-center px-3">
           <p className="booking-date-label">Recogida</p>
-          <p className="booking-date-value">
-            {selectedStart ? formatDateEs(selectedStart) : "Selecciona fecha"}
-          </p>
+          <p className="booking-date-value">{selectedStart ? formatDateEs(selectedStart) : "Selecciona fecha"}</p>
         </div>
         <div className="booking-dates-divider" />
         <div className="flex flex-1 flex-col justify-center px-3">
           <p className="booking-date-label">Devolución</p>
-          <p className="booking-date-value">
-            {selectedEnd ? formatDateEs(selectedEnd) : "Selecciona fecha"}
-          </p>
+          <p className="booking-date-value">{selectedEnd ? formatDateEs(selectedEnd) : "Selecciona fecha"}</p>
         </div>
       </div>
 
@@ -165,9 +152,7 @@ function BookingCard({
       </div>
 
       {/* Disclaimer */}
-      <p className="booking-disclaimer mt-3 text-center">
-        No se hará ningún cargo hasta que el propietario acepte
-      </p>
+      <p className="booking-disclaimer mt-3 text-center">No se hará ningún cargo hasta que el propietario acepte</p>
 
       <hr className="divider-booking my-4" />
 

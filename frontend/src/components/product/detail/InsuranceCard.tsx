@@ -49,8 +49,8 @@ function InsuranceCard({ days, dailyRate = INSURANCE_DAILY_RATE }: InsuranceCard
       {/* ── Body ── */}
       <div className="p-5">
         <p className="insurance-body mb-5">
-          Todo alquiler en MeRenta incluye un seguro obligatorio que cubre tanto al
-          propietario como al inquilino durante todo el periodo de alquiler.
+          Todo alquiler en MeRenta incluye un seguro obligatorio que cubre tanto al propietario como al inquilino
+          durante todo el periodo de alquiler.
         </p>
 
         <ul className="insurance-coverage-list">
@@ -71,9 +71,7 @@ function InsuranceCard({ days, dailyRate = INSURANCE_DAILY_RATE }: InsuranceCard
 
       {/* ── Footer: premium ── */}
       <div className="insurance-card-footer">
-        <p className="insurance-prime-label flex-1">
-          Prima del seguro ({daysLabel})
-        </p>
+        <p className="insurance-prime-label flex-1">Prima del seguro ({daysLabel})</p>
         <p className="insurance-prime-value">{premium} EUR</p>
       </div>
     </div>
