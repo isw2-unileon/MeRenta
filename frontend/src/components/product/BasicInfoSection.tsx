@@ -8,7 +8,7 @@ import type { CategoryOption, ProductFormData } from "@/types/item";
 const CATEGORIES: CategoryOption[] = [
   {
     value: "sports",
-    label: "Deporte",
+    label: "Deportes",
     subcategories: ["Ciclismo", "Running", "Natación", "Montañismo", "Esquí", "Patinaje", "Surf", "Otros"],
   },
   {
@@ -27,14 +27,19 @@ const CATEGORIES: CategoryOption[] = [
     subcategories: ["Guitarra", "Batería", "Teclado", "Viento", "Cuerda", "DJ", "Otros"],
   },
   {
-    value: "leisure",
-    label: "Ocio",
-    subcategories: ["Juegos de mesa", "Videojuegos", "Libros", "Juguetes", "Otros"],
+    value: "photography",
+    label: "Fotografia",
+    subcategories: ["Camaras", "Objetivos", "Iluminacion", "Tripodes", "Accesorios", "Otros"],
   },
   {
-    value: "garden",
-    label: "Jardín",
-    subcategories: ["Maquinaria", "Muebles de exterior", "Riego", "Otros"],
+    value: "gardening",
+    label: "Jardineria",
+    subcategories: ["Maquinaria", "Muebles de exterior", "Riego", "Herramientas", "Otros"],
+  },
+  {
+    value: "camping",
+    label: "Camping",
+    subcategories: ["Tiendas", "Mochilas", "Sacos", "Iluminacion", "Otros"],
   },
   {
     value: "home",

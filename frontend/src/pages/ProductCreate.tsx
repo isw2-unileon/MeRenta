@@ -277,6 +277,7 @@ function ProductCreate() {
         const item = await createItem({
           address_id: state.data.address,
           category: state.data.category,
+          condition: state.data.condition,
           title: state.data.title.trim(),
           description: state.data.description.trim() || undefined,
           price_per_day: parseFloat(state.data.pricePerDay),

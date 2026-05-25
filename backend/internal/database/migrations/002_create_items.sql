@@ -7,10 +7,11 @@ CREATE TYPE category_enum AS ENUM (
     'sports',
     'vehicles',
     'home',
+    'gardening',
     'clothing',
     'music',
-    'garden',
-    'leisure',
+    'photography',
+    'camping',
     'other'
 );
 
@@ -19,6 +20,14 @@ CREATE TYPE item_status AS ENUM (
     'rented',
     'maintenance',
     'retired'
+);
+
+CREATE TYPE item_condition AS ENUM (
+    'new',
+    'like_new',
+    'good',
+    'fair',
+    'poor'
 );
 
 CREATE TABLE item (
@@ -30,6 +39,7 @@ CREATE TABLE item (
     description   text,
     brand         varchar(100),
     model         varchar(100),
+    item_condition item_condition          NOT NULL DEFAULT 'good',
     item_status   item_status              NOT NULL DEFAULT 'available',
     price_per_day numeric(10, 2)           NOT NULL,
     deposit       numeric(10, 2),

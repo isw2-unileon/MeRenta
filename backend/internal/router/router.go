@@ -69,6 +69,7 @@ func Setup(
 
 	// items
 	items := protected.Group("/items")
+	items.GET("", itemH.List)
 	items.POST("", itemH.Create)
 	items.GET("/:id", itemH.Get)
 	items.GET("/:id/images", itemImgH.ListImages)

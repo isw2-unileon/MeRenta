@@ -55,12 +55,13 @@ INSERT INTO item (
     description,
     brand,
     model,
+    item_condition,
     price_per_day,
     deposit,
     min_days,
     max_days
 ) VALUES (
-    $1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11
+    $1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12
 )
 RETURNING
     item_id,
@@ -71,6 +72,7 @@ RETURNING
     description,
     brand,
     model,
+    item_condition,
     item_status,
     price_per_day,
     deposit,
@@ -88,6 +90,7 @@ type CreateItemParams struct {
 	Description pgtype.Text    `json:"description"`
 	Brand       pgtype.Text    `json:"brand"`
 	Model       pgtype.Text    `json:"model"`
+	Condition   ItemCondition  `json:"condition"`
 	PricePerDay pgtype.Numeric `json:"price_per_day"`
 	Deposit     pgtype.Numeric `json:"deposit"`
 	MinDays     int32          `json:"min_days"`
@@ -106,6 +109,7 @@ func (q *Queries) CreateItem(ctx context.Context, arg CreateItemParams) (Item, e
 		arg.Description,
 		arg.Brand,
 		arg.Model,
+		arg.Condition,
 		arg.PricePerDay,
 		arg.Deposit,
 		arg.MinDays,
@@ -121,6 +125,7 @@ func (q *Queries) CreateItem(ctx context.Context, arg CreateItemParams) (Item, e
 		&i.Description,
 		&i.Brand,
 		&i.Model,
+		&i.Condition,
 		&i.ItemStatus,
 		&i.PricePerDay,
 		&i.Deposit,
@@ -170,6 +175,7 @@ SELECT
     description,
     brand,
     model,
+    item_condition,
     item_status,
     price_per_day,
     deposit,
@@ -197,6 +203,7 @@ func (q *Queries) GetItemByID(ctx context.Context, itemID uuid.UUID) (Item, erro
 		&i.Description,
 		&i.Brand,
 		&i.Model,
+		&i.Condition,
 		&i.ItemStatus,
 		&i.PricePerDay,
 		&i.Deposit,

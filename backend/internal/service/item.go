@@ -23,6 +23,8 @@ var (
 	ErrAddressNotFound = errors.New("address not found")
 	// ErrInvalidRentalPeriod indicates an invalid min/max rental-day range.
 	ErrInvalidRentalPeriod = errors.New("invalid rental period")
+	// ErrInvalidCondition indicates the condition value is not recognised.
+	ErrInvalidCondition = errors.New("invalid condition")
 )
 
 // itemQuerier is the minimal DB interface needed by ItemService.
@@ -31,6 +33,10 @@ var (
 type itemQuerier interface {
 	CreateItem(ctx context.Context, arg sqlcdb.CreateItemParams) (sqlcdb.Item, error)
 	GetItemByID(ctx context.Context, itemID uuid.UUID) (sqlcdb.Item, error)
+	SearchItemCards(ctx context.Context, arg sqlcdb.SearchItemCardsParams) ([]sqlcdb.SearchItemCardsRow, error)
+	CountItemCardsByCategory(ctx context.Context, arg sqlcdb.CountItemCardsByCategoryParams) ([]sqlcdb.CountItemCardsByCategoryRow, error)
+	CountItemCardsByCity(ctx context.Context, arg sqlcdb.CountItemCardsByCityParams) ([]sqlcdb.CountItemCardsByCityRow, error)
+	CountItemCardsByCondition(ctx context.Context, arg sqlcdb.CountItemCardsByConditionParams) ([]sqlcdb.CountItemCardsByConditionRow, error)
 }
 
 // ItemService handles item listing use cases.
@@ -47,6 +53,9 @@ func NewItemService(q itemQuerier) *ItemService {
 func (s *ItemService) CreateItem(ctx context.Context, ownerID uuid.UUID, req model.CreateItemRequest) (*model.ItemResponse, error) {
 	if !isValidCategory(req.Category) {
 		return nil, ErrInvalidCategory
+	}
+	if !isValidCondition(req.Condition) {
+		return nil, ErrInvalidCondition
 	}
 
 	minDays := req.MinDays
@@ -86,6 +95,7 @@ func (s *ItemService) CreateItem(ctx context.Context, ownerID uuid.UUID, req mod
 		Description: pgtype.Text{String: req.Description, Valid: req.Description != ""},
 		Brand:       pgtype.Text{String: req.Brand, Valid: req.Brand != ""},
 		Model:       pgtype.Text{String: req.Model, Valid: req.Model != ""},
+		Condition:   sqlcdb.ItemCondition(req.Condition),
 		PricePerDay: pricePerDay,
 		Deposit:     deposit,
 		MinDays:     int32(minDays),
@@ -118,6 +128,100 @@ func (s *ItemService) GetItem(ctx context.Context, itemID uuid.UUID) (*model.Ite
 	return toItemResponse(item)
 }
 
+// SearchItems returns paginated item cards for the search page.
+func (s *ItemService) SearchItems(ctx context.Context, params sqlcdb.SearchItemCardsParams, page int, limit int) (*model.SearchItemsResponse, error) {
+	rows, err := s.q.SearchItemCards(ctx, params)
+	if err != nil {
+		return nil, err
+	}
+
+	countRows, err := s.q.CountItemCardsByCategory(ctx, sqlcdb.CountItemCardsByCategoryParams{
+		RequireAvailable: params.RequireAvailable,
+		Query:            params.Query,
+		City:             params.City,
+		Condition:        params.Condition,
+		MinPrice:         params.MinPrice,
+		MaxPrice:         params.MaxPrice,
+	})
+	if err != nil {
+		return nil, err
+	}
+
+	cityRows, err := s.q.CountItemCardsByCity(ctx, sqlcdb.CountItemCardsByCityParams{
+		RequireAvailable: params.RequireAvailable,
+		Query:            params.Query,
+		Category:         params.Category,
+		Condition:        params.Condition,
+		MinPrice:         params.MinPrice,
+		MaxPrice:         params.MaxPrice,
+	})
+	if err != nil {
+		return nil, err
+	}
+
+	conditionRows, err := s.q.CountItemCardsByCondition(ctx, sqlcdb.CountItemCardsByConditionParams{
+		RequireAvailable: params.RequireAvailable,
+		Query:            params.Query,
+		Category:         params.Category,
+		City:             params.City,
+		MinPrice:         params.MinPrice,
+		MaxPrice:         params.MaxPrice,
+	})
+	if err != nil {
+		return nil, err
+	}
+
+	items := make([]model.SearchItemResponse, 0, len(rows))
+	categoryCounts := make(map[string]int64, len(countRows))
+	for _, row := range countRows {
+		categoryCounts[string(row.Category)] = row.TotalCount
+	}
+	cityCounts := make(map[string]int64, len(cityRows))
+	for _, row := range cityRows {
+		cityCounts[row.City] = row.TotalCount
+	}
+	conditionCounts := make(map[string]int64, len(conditionRows))
+	for _, row := range conditionRows {
+		conditionCounts[string(row.Condition)] = row.TotalCount
+	}
+
+	var total int64
+	for _, row := range rows {
+		if total == 0 {
+			total = row.TotalCount
+		}
+
+		pricePerDay, err := numericToFloat64(row.PricePerDay)
+		if err != nil {
+			return nil, fmt.Errorf("converting price_per_day: %w", err)
+		}
+
+		items = append(items, model.SearchItemResponse{
+			ItemID:          row.ItemID.String(),
+			OwnerID:         row.OwnerID.String(),
+			AddressID:       row.AddressID.String(),
+			Category:        string(row.Category),
+			Title:           row.Title,
+			ItemStatus:      string(row.ItemStatus),
+			PricePerDay:     pricePerDay,
+			IsAvailable:     row.IsAvailable,
+			PublishedAt:     row.PublishedAt.Time,
+			City:            row.City,
+			PrimaryImageURL: row.PrimaryImageURL,
+		})
+	}
+
+	return &model.SearchItemsResponse{
+		Items:           items,
+		Total:           total,
+		Page:            page,
+		Limit:           limit,
+		CategoryCounts:  categoryCounts,
+		CityCounts:      cityCounts,
+		ConditionCounts: conditionCounts,
+	}, nil
+}
+
 // toItemResponse maps a sqlcdb.Item to the API response model.
 func toItemResponse(item sqlcdb.Item) (*model.ItemResponse, error) {
 	pricePerDay, err := numericToFloat64(item.PricePerDay)
@@ -148,6 +252,7 @@ func toItemResponse(item sqlcdb.Item) (*model.ItemResponse, error) {
 		Description: item.Description.String,
 		Brand:       item.Brand.String,
 		Model:       item.Model.String,
+		Condition:   string(item.Condition),
 		ItemStatus:  string(item.ItemStatus),
 		PricePerDay: pricePerDay,
 		Deposit:     deposit,
@@ -166,11 +271,25 @@ func isValidCategory(c string) bool {
 		sqlcdb.CategoryEnumSports,
 		sqlcdb.CategoryEnumVehicles,
 		sqlcdb.CategoryEnumHome,
+		sqlcdb.CategoryEnumGardening,
 		sqlcdb.CategoryEnumClothing,
 		sqlcdb.CategoryEnumMusic,
-		sqlcdb.CategoryEnumGarden,
-		sqlcdb.CategoryEnumLeisure,
+		sqlcdb.CategoryEnumPhotography,
+		sqlcdb.CategoryEnumCamping,
 		sqlcdb.CategoryEnumOther:
+		return true
+	default:
+		return false
+	}
+}
+
+func isValidCondition(c string) bool {
+	switch sqlcdb.ItemCondition(c) {
+	case sqlcdb.ItemConditionNew,
+		sqlcdb.ItemConditionLikeNew,
+		sqlcdb.ItemConditionGood,
+		sqlcdb.ItemConditionFair,
+		sqlcdb.ItemConditionPoor:
 		return true
 	default:
 		return false

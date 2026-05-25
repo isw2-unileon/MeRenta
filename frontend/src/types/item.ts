@@ -38,6 +38,7 @@ interface CreateItemRequest {
   description?: string;
   brand?: string;
   model?: string;
+  condition: string;
   price_per_day: number;
   deposit?: number;
   min_days: number;
@@ -57,6 +58,7 @@ interface ItemResponse {
   description?: string;
   brand?: string;
   model?: string;
+  condition: string;
   item_status: string;
   price_per_day: number;
   deposit?: number;
@@ -64,6 +66,36 @@ interface ItemResponse {
   max_days?: number | null;
   is_available: boolean;
   published_at: string;
+}
+
+/**
+ * Compact item response used by the search results grid.
+ */
+interface SearchItemResponse {
+  item_id: string;
+  owner_id: string;
+  address_id: string;
+  category: string;
+  title: string;
+  item_status: string;
+  price_per_day: number;
+  is_available: boolean;
+  published_at: string;
+  city: string;
+  primary_image_url?: string;
+}
+
+/**
+ * Paginated search response returned by GET /api/items.
+ */
+interface SearchItemsResponse {
+  items: SearchItemResponse[];
+  total: number;
+  page: number;
+  limit: number;
+  category_counts: Record<string, number>;
+  city_counts: Record<string, number>;
+  condition_counts: Record<string, number>;
 }
 
 /**
@@ -86,4 +118,12 @@ interface CategoryOption {
   subcategories: string[];
 }
 
-export type { CategoryOption, CreateItemRequest, ItemImageResponse, ItemResponse, ProductFormData };
+export type {
+  CategoryOption,
+  CreateItemRequest,
+  ItemImageResponse,
+  ItemResponse,
+  ProductFormData,
+  SearchItemResponse,
+  SearchItemsResponse,
+};
