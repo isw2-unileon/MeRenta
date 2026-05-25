@@ -17,7 +17,7 @@ interface PhotosSectionProps {
 
 /**
  * Subcomponente para gestionar la vista previa de la imagen de forma eficiente
- * y evitar fugas de memoria al crear URLs de objetos.
+ * y evitar fugas de memoria al crear URL de objetos.
  */
 function Thumbnail({ file, index, onRemove }: { file: File; index: number; onRemove: () => void }) {
   const [previewUrl, setPreviewUrl] = useState<string>("");
@@ -119,7 +119,6 @@ function PhotosSection({ photos, error, onAddPhotos, onRemovePhoto }: PhotosSect
       <h4 className="heading-content mb-1">Fotos del producto</h4>
       <p className="field-hint mb-6">Sube entre 1 y 10 fotos. La primera será la imagen principal.</p>
 
-      {/* Drop zone */}
       <button
         type="button"
         aria-label="Área de carga de fotos"
@@ -153,13 +152,12 @@ function PhotosSection({ photos, error, onAddPhotos, onRemovePhoto }: PhotosSect
       />
 
       {error && <p className="field-error mt-2">{error}</p>}
-
-      {/* Thumbnail strip */}
       <div className="mt-4 flex flex-wrap gap-3">
         {Array.from({ length: visibleSlots }).map((_, idx) => {
-          const file = photos[idx];
+          if (idx < photos.length) {
+            const file = photos[idx];
+            if (!file) return null;
 
-          if (file) {
             return (
               <Thumbnail
                 key={idx}

@@ -118,9 +118,43 @@ interface CategoryOption {
   subcategories: string[];
 }
 
+/**
+ * Compact item card returned in GET /api/favorites.
+ * Matches model.FavoriteItemResponse in the backend.
+ */
+interface FavoriteItemResponse {
+  item_id: string;
+  category: string;
+  title: string;
+  item_status: string;
+  price_per_day: number;
+  is_available: boolean;
+  city: string;
+  primary_image_url?: string;
+  saved_at: string;
+}
+
+/**
+ * Response envelope for GET /api/favorites.
+ */
+interface FavoritesResponse {
+  items: FavoriteItemResponse[];
+  total: number;
+}
+
+/**
+ * Response envelope for GET /api/favorites/:id/check.
+ */
+interface FavoriteCheckResponse {
+  is_favorite: boolean;
+}
+
 export type {
   CategoryOption,
   CreateItemRequest,
+  FavoriteCheckResponse,
+  FavoriteItemResponse,
+  FavoritesResponse,
   ItemImageResponse,
   ItemResponse,
   ProductFormData,

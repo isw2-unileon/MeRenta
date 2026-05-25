@@ -33,16 +33,17 @@ function Register({ onSwitch }: { onSwitch: (v: AuthView) => void }) {
    */
   const updateRegisterField = (e: ChangeEvent<HTMLInputElement>) => {
     const { id, value } = e.target;
-    const fieldMap: Record<string, keyof typeof formData> = {
+    const fieldMap = {
       "register-name": "firstName",
       "register-last-name": "lastName",
       "register-email": "email",
       "register-password": "password",
       "register-repeat-password": "repeatPassword",
-    };
+    } as const;
+    type FieldId = keyof typeof fieldMap;
 
-    const field = fieldMap[id];
-    if (field) {
+    if (id in fieldMap) {
+      const field = fieldMap[id as FieldId];
       setFormData((prev) => ({ ...prev, [field]: value }));
     }
   };
