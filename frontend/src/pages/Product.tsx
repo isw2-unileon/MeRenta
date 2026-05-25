@@ -14,15 +14,16 @@ import type { ItemImageResponse, ItemResponse } from "@/types/item";
 // ── Label maps ──────────────────────────────────────────────────────────────
 
 const CATEGORY_LABELS: Record<string, string> = {
-  sports: "Deporte",
-  electronics: "Electrónica",
+  sports: "Deportes",
+  electronics: "Electronica",
   tools: "Herramientas",
-  music: "Música",
-  leisure: "Ocio",
-  garden: "Jardín",
+  music: "Musica",
+  photography: "Fotografia",
+  camping: "Camping",
   home: "Hogar",
   clothing: "Ropa",
-  vehicles: "Vehículos",
+  vehicles: "Vehiculos",
+  gardening: "Jardineria",
   other: "Otros",
 };
 

@@ -64,10 +64,11 @@ const (
 	CategoryEnumSports      CategoryEnum = "sports"
 	CategoryEnumVehicles    CategoryEnum = "vehicles"
 	CategoryEnumHome        CategoryEnum = "home"
+	CategoryEnumGardening   CategoryEnum = "gardening"
 	CategoryEnumClothing    CategoryEnum = "clothing"
 	CategoryEnumMusic       CategoryEnum = "music"
-	CategoryEnumGarden      CategoryEnum = "garden"
-	CategoryEnumLeisure     CategoryEnum = "leisure"
+	CategoryEnumPhotography CategoryEnum = "photography"
+	CategoryEnumCamping     CategoryEnum = "camping"
 	CategoryEnumOther       CategoryEnum = "other"
 )
 
@@ -104,6 +105,49 @@ func (ns NullCategoryEnum) Value() (driver.Value, error) {
 		return nil, nil
 	}
 	return string(ns.CategoryEnum), nil
+}
+
+type ItemCondition string
+
+const (
+	ItemConditionNew     ItemCondition = "new"
+	ItemConditionLikeNew ItemCondition = "like_new"
+	ItemConditionGood    ItemCondition = "good"
+	ItemConditionFair    ItemCondition = "fair"
+	ItemConditionPoor    ItemCondition = "poor"
+)
+
+func (e *ItemCondition) Scan(src interface{}) error {
+	switch s := src.(type) {
+	case []byte:
+		*e = ItemCondition(s)
+	case string:
+		*e = ItemCondition(s)
+	default:
+		return fmt.Errorf("unsupported scan type for ItemCondition: %T", src)
+	}
+	return nil
+}
+
+type NullItemCondition struct {
+	ItemCondition ItemCondition `json:"item_condition"`
+	Valid         bool          `json:"valid"` // Valid is true if ItemCondition is not NULL
+}
+
+func (ns *NullItemCondition) Scan(value interface{}) error {
+	if value == nil {
+		ns.ItemCondition, ns.Valid = "", false
+		return nil
+	}
+	ns.Valid = true
+	return ns.ItemCondition.Scan(value)
+}
+
+func (ns NullItemCondition) Value() (driver.Value, error) {
+	if !ns.Valid {
+		return nil, nil
+	}
+	return string(ns.ItemCondition), nil
 }
 
 type ItemStatus string
@@ -229,6 +273,7 @@ type Item struct {
 	Description pgtype.Text        `json:"description"`
 	Brand       pgtype.Text        `json:"brand"`
 	Model       pgtype.Text        `json:"model"`
+	Condition   ItemCondition      `json:"condition"`
 	ItemStatus  ItemStatus         `json:"item_status"`
 	PricePerDay pgtype.Numeric     `json:"price_per_day"`
 	Deposit     pgtype.Numeric     `json:"deposit"`

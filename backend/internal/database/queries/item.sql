@@ -11,12 +11,13 @@ INSERT INTO item (
     description,
     brand,
     model,
+    item_condition,
     price_per_day,
     deposit,
     min_days,
     max_days
 ) VALUES (
-    $1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11
+    $1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12
 )
 RETURNING
     item_id,
@@ -27,6 +28,7 @@ RETURNING
     description,
     brand,
     model,
+    item_condition,
     item_status,
     price_per_day,
     deposit,
@@ -49,6 +51,7 @@ SELECT
     description,
     brand,
     model,
+    item_condition,
     item_status,
     price_per_day,
     deposit,
@@ -154,6 +157,49 @@ WHERE (title ILIKE $1 OR description ILIKE $1)
   AND is_available = true
 ORDER BY published_at DESC
 LIMIT $2 OFFSET $3;
+
+-- name: SearchItemCards :many
+SELECT
+    i.item_id,
+    i.owner_id,
+    i.address_id,
+    i.category,
+    i.title,
+    i.item_status,
+    i.price_per_day,
+    i.is_available,
+    i.published_at,
+    a.city,
+    COALESCE(img.image_url, '') AS primary_image_url,
+    COUNT(*) OVER() AS total_count
+FROM item i
+JOIN address a ON a.address_id = i.address_id
+LEFT JOIN LATERAL (
+    SELECT image_url
+    FROM item_image
+    WHERE item_id = i.item_id
+    ORDER BY display_order ASC, image_id ASC
+    LIMIT 1
+) img ON true
+WHERE i.is_available = true
+  AND (
+    sqlc.arg(query)::text = ''
+    OR i.title ILIKE '%' || sqlc.arg(query)::text || '%'
+    OR COALESCE(i.description, '') ILIKE '%' || sqlc.arg(query)::text || '%'
+    OR COALESCE(i.brand, '') ILIKE '%' || sqlc.arg(query)::text || '%'
+    OR COALESCE(i.model, '') ILIKE '%' || sqlc.arg(query)::text || '%'
+  )
+  AND (sqlc.arg(category)::text = '' OR i.category::text = sqlc.arg(category)::text)
+  AND (sqlc.arg(city)::text = '' OR a.city ILIKE sqlc.arg(city)::text)
+  AND (sqlc.arg(condition)::text = '' OR i.item_condition::text = sqlc.arg(condition)::text)
+  AND (sqlc.narg(min_price)::numeric IS NULL OR i.price_per_day >= sqlc.narg(min_price)::numeric)
+  AND (sqlc.narg(max_price)::numeric IS NULL OR i.price_per_day <= sqlc.narg(max_price)::numeric)
+ORDER BY
+    CASE WHEN sqlc.arg(sort)::text = 'price_asc' THEN i.price_per_day END ASC,
+    CASE WHEN sqlc.arg(sort)::text = 'price_desc' THEN i.price_per_day END DESC,
+    CASE WHEN sqlc.arg(sort)::text = 'oldest' THEN i.published_at END ASC,
+    i.published_at DESC
+LIMIT sqlc.arg(limit_rows) OFFSET sqlc.arg(offset_rows);
 
 -- name: CountItems :one
 SELECT COUNT(*) FROM item;
