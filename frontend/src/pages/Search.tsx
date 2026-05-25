@@ -2,6 +2,8 @@ import { useCallback, useEffect, useMemo, useReducer, useRef, useState, type For
 import { useNavigate, useSearchParams } from "react-router-dom";
 import { ChevronLeft, ChevronRight, Heart, Search as SearchIcon, Star, X } from "lucide-react";
 
+import { useFavorites } from "@/hooks/useFavorites";
+
 import type { ApiResponse } from "@/types/common";
 import type { SearchItemResponse, SearchItemsResponse } from "@/types/item";
 
@@ -162,13 +164,20 @@ function FilterSection({ title, children }: FilterSectionProps) {
 
 interface ProductCardProps {
   item: SearchItemResponse;
+  isFavorite: boolean;
+  onToggleFavorite: () => void;
   onOpen: () => void;
 }
 
-function ProductCard({ item, onOpen }: ProductCardProps) {
+function ProductCard({ item, isFavorite, onToggleFavorite, onOpen }: ProductCardProps) {
   const { rating, reviews } = seededRating(item.item_id);
   const isReserved = item.item_status === "rented";
   const isAvailable = item.is_available && !isReserved;
+
+  function handleToggle(event: React.MouseEvent) {
+    event.stopPropagation();
+    onToggleFavorite();
+  }
 
   return (
     <article className="border-border-main bg-page overflow-hidden rounded-xl border">
@@ -193,11 +202,16 @@ function ProductCard({ item, onOpen }: ProductCardProps) {
 
         <button
           type="button"
-          className="text-subtle hover:text-heart-active absolute top-3 right-3 flex size-8 items-center justify-center rounded-full bg-white p-0"
-          aria-label="Guardar favorito"
-          onClick={(event) => event.stopPropagation()}
+          className={`absolute top-3 right-3 flex size-8 items-center justify-center rounded-full bg-white p-0 transition-colors ${
+            isFavorite ? "text-heart-active" : "text-subtle hover:text-heart-active"
+          }`}
+          aria-label={isFavorite ? "Quitar de favoritos" : "Guardar favorito"}
+          onClick={handleToggle}
         >
-          <Heart size={17} />
+          <Heart
+            size={17}
+            fill={isFavorite ? "currentColor" : "none"}
+          />
         </button>
       </div>
 
@@ -532,6 +546,7 @@ function SearchSidebar({
 function Search() {
   const navigate = useNavigate();
   const [searchParams, setSearchParams] = useSearchParams();
+  const { toggle, isFav } = useFavorites();
   const query = searchParams.get("q") ?? "";
 
   // CORRECCIÓN 1: Usamos useRef en lugar de useState para mutaciones que no requieren renderizado
@@ -717,6 +732,8 @@ function Search() {
                 <ProductCard
                   key={item.item_id}
                   item={item}
+                  isFavorite={isFav(item.item_id)}
+                  onToggleFavorite={() => toggle(item.item_id, isFav(item.item_id))}
                   onOpen={() => navigate(`/product/${item.item_id}`)}
                 />
               ))

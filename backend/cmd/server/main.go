@@ -72,7 +72,10 @@ func main() {
 	addrSvc := service.NewAddressService(q)
 	addrH := handler.NewAddressHandler(addrSvc)
 
-	r := router.Setup(authH, itemH, itemImgH, addrH, jwtMgr, cfg.CORSAllowOrigin, pool.Ping)
+	favSvc := service.NewFavoriteService(q)
+	favH := handler.NewFavoriteHandler(favSvc)
+
+	r := router.Setup(authH, itemH, itemImgH, addrH, favH, jwtMgr, cfg.CORSAllowOrigin, pool.Ping)
 	portNum, err := strconv.Atoi(cfg.Port)
 	if err != nil || portNum < 1 || portNum > 65535 {
 		slog.Error("invalid port", "port", cfg.Port)

@@ -23,3 +23,20 @@ func parseUUIDParam(c *gin.Context) (uuid.UUID, bool) {
 
 	return id, true
 }
+
+// getCustomerID extracts the authenticated customer's UUID from the Gin context.
+// On failure it writes a 401 response and returns false.
+func getCustomerID(c *gin.Context) (uuid.UUID, bool) {
+	raw, ok := c.Get("customer_id")
+	if !ok {
+		response.Error(c, http.StatusUnauthorized, "missing auth context")
+		return uuid.UUID{}, false
+	}
+	id, ok := raw.(uuid.UUID)
+	if !ok {
+		response.Error(c, http.StatusUnauthorized, "invalid auth context")
+		return uuid.UUID{}, false
+	}
+	return id, true
+}
+
