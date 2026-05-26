@@ -265,7 +265,9 @@ function Product() {
 
   const categoryLabel = state.item ? (CATEGORY_LABELS[state.item.category] ?? state.item.category) : "";
 
-  const condition = state.item?.condition ? (CONDITION_LABELS[state.item.condition] ?? state.item.condition) : undefined;
+  const condition = state.item?.condition
+    ? (CONDITION_LABELS[state.item.condition] ?? state.item.condition)
+    : undefined;
 
   // ── Render ─────────────────────────────────────────────────────────────────
 
