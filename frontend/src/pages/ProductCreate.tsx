@@ -280,6 +280,7 @@ function ProductCreate() {
           condition: state.data.condition,
           title: state.data.title.trim(),
           description: state.data.description.trim() || undefined,
+          usage_rules: state.data.usageRules.trim() || undefined,
           price_per_day: parseFloat(state.data.pricePerDay),
           deposit: state.data.deposit ? parseFloat(state.data.deposit) : undefined,
           min_days: Number.parseInt(state.data.minRentalPeriod, 10),

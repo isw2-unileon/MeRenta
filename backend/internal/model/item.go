@@ -9,8 +9,7 @@ type CreateItemRequest struct {
 	Category    string   `json:"category"      binding:"required"`
 	Title       string   `json:"title"         binding:"required,min=1,max=200"`
 	Description string   `json:"description"   binding:"omitempty,max=2000"`
-	Brand       string   `json:"brand"         binding:"omitempty,max=100"`
-	Model       string   `json:"model"         binding:"omitempty,max=100"`
+	UsageRules  string   `json:"usage_rules"   binding:"omitempty,max=2000"`
 	Condition   string   `json:"condition"     binding:"required"`
 	PricePerDay float64  `json:"price_per_day" binding:"required,gt=0"`
 	Deposit     *float64 `json:"deposit"       binding:"omitempty,gte=0"`
@@ -26,8 +25,7 @@ type ItemResponse struct {
 	Category    string    `json:"category"`
 	Title       string    `json:"title"`
 	Description string    `json:"description,omitempty"`
-	Brand       string    `json:"brand,omitempty"`
-	Model       string    `json:"model,omitempty"`
+	UsageRules  string    `json:"usage_rules,omitempty"`
 	Condition   string    `json:"condition"`
 	ItemStatus  string    `json:"item_status"`
 	PricePerDay float64   `json:"price_per_day"`

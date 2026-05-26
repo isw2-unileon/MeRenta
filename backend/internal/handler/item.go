@@ -91,6 +91,7 @@ func (h *ItemHandler) Get(c *gin.Context) {
 			return
 		}
 
+		slog.Error("get item failed", "item_id", itemID, "error", err)
 		response.Error(c, http.StatusInternalServerError, "internal server error")
 
 		return
