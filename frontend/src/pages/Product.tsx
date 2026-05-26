@@ -265,13 +265,9 @@ function Product() {
 
   const categoryLabel = state.item ? (CATEGORY_LABELS[state.item.category] ?? state.item.category) : "";
 
-  // The backend does not currently expose a condition field in ItemResponse.
-  // Access it defensively so the badge appears when the API is extended.
-  const conditionKey =
-    state.item && "condition" in state.item
-      ? (state.item as ItemResponse & { condition?: string }).condition
-      : undefined;
-  const condition = conditionKey ? (CONDITION_LABELS[conditionKey] ?? conditionKey) : undefined;
+  const condition = state.item?.condition
+    ? (CONDITION_LABELS[state.item.condition] ?? state.item.condition)
+    : undefined;
 
   // ── Render ─────────────────────────────────────────────────────────────────
 
@@ -307,11 +303,6 @@ function Product() {
                 <div className="mb-2 flex flex-wrap items-center gap-2">
                   {categoryLabel && <span className="product-estado-badge">{categoryLabel}</span>}
                   {condition && <span className="product-estado-badge">Estado: {condition}</span>}
-                  {(state.item.brand ?? state.item.model) && (
-                    <span className="product-estado-badge">
-                      {[state.item.brand, state.item.model].filter(Boolean).join(" ")}
-                    </span>
-                  )}
                 </div>
 
                 {/* Rating row — uses placeholder values until reviews API exists */}
@@ -333,6 +324,17 @@ function Product() {
                   <div>
                     <h3 className="heading-section mb-3">Descripcion</h3>
                     <p className="product-desc">{state.item.description}</p>
+                  </div>
+                  <hr className="divider-product" />
+                </>
+              )}
+
+              {/* Usage rules */}
+              {state.item.usage_rules && (
+                <>
+                  <div>
+                    <h3 className="heading-section mb-3">Normas de uso</h3>
+                    <p className="product-desc">{state.item.usage_rules}</p>
                   </div>
                   <hr className="divider-product" />
                 </>

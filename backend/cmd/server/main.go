@@ -15,9 +15,9 @@ import (
 	"time"
 
 	"github.com/gin-gonic/gin"
-	"github.com/jackc/pgx/v5/pgxpool"
 
 	"github.com/isw2-unileon/MeRenta/backend/internal/config"
+	"github.com/isw2-unileon/MeRenta/backend/internal/database"
 	"github.com/isw2-unileon/MeRenta/backend/internal/handler"
 	"github.com/isw2-unileon/MeRenta/backend/internal/router"
 	"github.com/isw2-unileon/MeRenta/backend/internal/service"
@@ -37,17 +37,12 @@ func main() {
 	ctx, stop := signal.NotifyContext(context.Background(), os.Interrupt, syscall.SIGTERM)
 	defer stop()
 
-	pool, err := pgxpool.New(ctx, cfg.DatabaseURL)
+	pool, err := database.Connect(ctx, cfg.DatabaseURL)
 	if err != nil {
 		slog.Error("error connecting to database", "error", err)
 		return
 	}
 	defer pool.Close()
-
-	if err := pool.Ping(ctx); err != nil {
-		slog.Error("database ping failed", "error", err)
-		return
-	}
 
 	q := sqlcdb.New(pool)
 

@@ -41,8 +41,6 @@ WHERE ($1 = false OR i.is_available = true)
     $2 = ''
     OR i.title ILIKE '%' || $2 || '%'
     OR COALESCE(i.description, '') ILIKE '%' || $2 || '%'
-    OR COALESCE(i.brand, '') ILIKE '%' || $2 || '%'
-    OR COALESCE(i.model, '') ILIKE '%' || $2 || '%'
   )
   AND ($3 = '' OR i.category::text = $3)
   AND ($4 = '' OR a.city ILIKE $4)
@@ -98,8 +96,6 @@ WHERE ($1 = false OR i.is_available = true)
     $2 = ''
     OR i.title ILIKE '%' || $2 || '%'
     OR COALESCE(i.description, '') ILIKE '%' || $2 || '%'
-    OR COALESCE(i.brand, '') ILIKE '%' || $2 || '%'
-    OR COALESCE(i.model, '') ILIKE '%' || $2 || '%'
   )
   AND ($3 = '' OR a.city ILIKE $3)
   AND ($4 = '' OR i.item_condition::text = $4)
@@ -119,8 +115,6 @@ WHERE ($1 = false OR i.is_available = true)
     $2 = ''
     OR i.title ILIKE '%' || $2 || '%'
     OR COALESCE(i.description, '') ILIKE '%' || $2 || '%'
-    OR COALESCE(i.brand, '') ILIKE '%' || $2 || '%'
-    OR COALESCE(i.model, '') ILIKE '%' || $2 || '%'
   )
   AND ($3 = '' OR i.category::text = $3)
   AND ($4 = '' OR i.item_condition::text = $4)
@@ -141,8 +135,6 @@ WHERE ($1 = false OR i.is_available = true)
     $2 = ''
     OR i.title ILIKE '%' || $2 || '%'
     OR COALESCE(i.description, '') ILIKE '%' || $2 || '%'
-    OR COALESCE(i.brand, '') ILIKE '%' || $2 || '%'
-    OR COALESCE(i.model, '') ILIKE '%' || $2 || '%'
   )
   AND ($3 = '' OR i.category::text = $3)
   AND ($4 = '' OR a.city ILIKE $4)

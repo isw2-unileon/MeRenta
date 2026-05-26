@@ -271,8 +271,7 @@ type Item struct {
 	Category    CategoryEnum       `json:"category"`
 	Title       string             `json:"title"`
 	Description pgtype.Text        `json:"description"`
-	Brand       pgtype.Text        `json:"brand"`
-	Model       pgtype.Text        `json:"model"`
+	UsageRules  pgtype.Text        `json:"usage_rules"`
 	Condition   ItemCondition      `json:"condition"`
 	ItemStatus  ItemStatus         `json:"item_status"`
 	PricePerDay pgtype.Numeric     `json:"price_per_day"`
