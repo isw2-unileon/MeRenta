@@ -9,15 +9,14 @@ INSERT INTO item (
     category,
     title,
     description,
-    brand,
-    model,
+    usage_rules,
     item_condition,
     price_per_day,
     deposit,
     min_days,
     max_days
 ) VALUES (
-    $1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12
+    $1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11
 )
 RETURNING
     item_id,
@@ -26,8 +25,7 @@ RETURNING
     category,
     title,
     description,
-    brand,
-    model,
+    usage_rules,
     item_condition,
     item_status,
     price_per_day,
@@ -49,8 +47,7 @@ SELECT
     category,
     title,
     description,
-    brand,
-    model,
+    usage_rules,
     item_condition,
     item_status,
     price_per_day,
@@ -76,8 +73,7 @@ SELECT
     category,
     title,
     description,
-    brand,
-    model,
+    usage_rules,
     item_status,
     price_per_day,
     deposit,
@@ -98,8 +94,7 @@ SELECT
     category,
     title,
     description,
-    brand,
-    model,
+    usage_rules,
     item_status,
     price_per_day,
     deposit,
@@ -120,8 +115,7 @@ SELECT
     category,
     title,
     description,
-    brand,
-    model,
+    usage_rules,
     item_status,
     price_per_day,
     deposit,
@@ -143,8 +137,7 @@ SELECT
     category,
     title,
     description,
-    brand,
-    model,
+    usage_rules,
     item_status,
     price_per_day,
     deposit,
@@ -186,8 +179,6 @@ WHERE i.is_available = true
     sqlc.arg(query)::text = ''
     OR i.title ILIKE '%' || sqlc.arg(query)::text || '%'
     OR COALESCE(i.description, '') ILIKE '%' || sqlc.arg(query)::text || '%'
-    OR COALESCE(i.brand, '') ILIKE '%' || sqlc.arg(query)::text || '%'
-    OR COALESCE(i.model, '') ILIKE '%' || sqlc.arg(query)::text || '%'
   )
   AND (sqlc.arg(category)::text = '' OR i.category::text = sqlc.arg(category)::text)
   AND (sqlc.arg(city)::text = '' OR a.city ILIKE sqlc.arg(city)::text)
@@ -219,13 +210,12 @@ UPDATE item
 SET
     title         = $2,
     description   = $3,
-    brand         = $4,
-    model         = $5,
-    category      = $6,
-    price_per_day = $7,
-    deposit       = $8,
-    min_days      = $9,
-    max_days      = $10
+    usage_rules   = $4,
+    category      = $5,
+    price_per_day = $6,
+    deposit       = $7,
+    min_days      = $8,
+    max_days      = $9
 WHERE item_id = $1
 RETURNING
     item_id,
@@ -234,8 +224,7 @@ RETURNING
     category,
     title,
     description,
-    brand,
-    model,
+    usage_rules,
     item_status,
     price_per_day,
     deposit,

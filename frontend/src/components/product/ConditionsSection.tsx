@@ -18,7 +18,7 @@ function ConditionsSection({ value, onChange }: ConditionsSectionProps) {
 
   return (
     <section className="border-border-main rounded-xl border bg-white p-6">
-      <h4 className="heading-content mb-1">Condiciones para el inquilino</h4>
+      <h4 className="heading-content mb-1">Condiciones para el arrendatario</h4>
       <p className="field-hint mb-6">Define tus reglas para el uso del producto.</p>
 
       <div>

@@ -19,8 +19,8 @@ func Connect(ctx context.Context, url string) (*pgxpool.Pool, error) {
 		return nil, fmt.Errorf("error parsing database config: %w", err)
 	}
 
-	config.MaxConns = 10
-	config.MinConns = 2
+	config.MaxConns = 5
+	config.MinConns = 1
 
 	pool, err := pgxpool.NewWithConfig(ctx, config)
 	if err != nil {

@@ -53,15 +53,14 @@ INSERT INTO item (
     category,
     title,
     description,
-    brand,
-    model,
+    usage_rules,
     item_condition,
     price_per_day,
     deposit,
     min_days,
     max_days
 ) VALUES (
-    $1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12
+    $1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11
 )
 RETURNING
     item_id,
@@ -70,8 +69,7 @@ RETURNING
     category,
     title,
     description,
-    brand,
-    model,
+    usage_rules,
     item_condition,
     item_status,
     price_per_day,
@@ -88,8 +86,7 @@ type CreateItemParams struct {
 	Category    CategoryEnum   `json:"category"`
 	Title       string         `json:"title"`
 	Description pgtype.Text    `json:"description"`
-	Brand       pgtype.Text    `json:"brand"`
-	Model       pgtype.Text    `json:"model"`
+	UsageRules  pgtype.Text    `json:"usage_rules"`
 	Condition   ItemCondition  `json:"condition"`
 	PricePerDay pgtype.Numeric `json:"price_per_day"`
 	Deposit     pgtype.Numeric `json:"deposit"`
@@ -107,8 +104,7 @@ func (q *Queries) CreateItem(ctx context.Context, arg CreateItemParams) (Item, e
 		arg.Category,
 		arg.Title,
 		arg.Description,
-		arg.Brand,
-		arg.Model,
+		arg.UsageRules,
 		arg.Condition,
 		arg.PricePerDay,
 		arg.Deposit,
@@ -123,8 +119,7 @@ func (q *Queries) CreateItem(ctx context.Context, arg CreateItemParams) (Item, e
 		&i.Category,
 		&i.Title,
 		&i.Description,
-		&i.Brand,
-		&i.Model,
+		&i.UsageRules,
 		&i.Condition,
 		&i.ItemStatus,
 		&i.PricePerDay,
@@ -173,8 +168,7 @@ SELECT
     category,
     title,
     description,
-    brand,
-    model,
+    usage_rules,
     item_condition,
     item_status,
     price_per_day,
@@ -201,8 +195,7 @@ func (q *Queries) GetItemByID(ctx context.Context, itemID uuid.UUID) (Item, erro
 		&i.Category,
 		&i.Title,
 		&i.Description,
-		&i.Brand,
-		&i.Model,
+		&i.UsageRules,
 		&i.Condition,
 		&i.ItemStatus,
 		&i.PricePerDay,
@@ -223,8 +216,7 @@ SELECT
     category,
     title,
     description,
-    brand,
-    model,
+    usage_rules,
     item_status,
     price_per_day,
     deposit,
@@ -259,8 +251,7 @@ func (q *Queries) ListItems(ctx context.Context, arg ListItemsParams) ([]Item, e
 			&i.Category,
 			&i.Title,
 			&i.Description,
-			&i.Brand,
-			&i.Model,
+			&i.UsageRules,
 			&i.ItemStatus,
 			&i.PricePerDay,
 			&i.Deposit,
@@ -287,8 +278,7 @@ SELECT
     category,
     title,
     description,
-    brand,
-    model,
+    usage_rules,
     item_status,
     price_per_day,
     deposit,
@@ -325,8 +315,7 @@ func (q *Queries) ListItemsByCategory(ctx context.Context, arg ListItemsByCatego
 			&i.Category,
 			&i.Title,
 			&i.Description,
-			&i.Brand,
-			&i.Model,
+			&i.UsageRules,
 			&i.ItemStatus,
 			&i.PricePerDay,
 			&i.Deposit,
@@ -353,8 +342,7 @@ SELECT
     category,
     title,
     description,
-    brand,
-    model,
+    usage_rules,
     item_status,
     price_per_day,
     deposit,
@@ -390,8 +378,7 @@ func (q *Queries) ListItemsByOwner(ctx context.Context, arg ListItemsByOwnerPara
 			&i.Category,
 			&i.Title,
 			&i.Description,
-			&i.Brand,
-			&i.Model,
+			&i.UsageRules,
 			&i.ItemStatus,
 			&i.PricePerDay,
 			&i.Deposit,
@@ -418,8 +405,7 @@ SELECT
     category,
     title,
     description,
-    brand,
-    model,
+    usage_rules,
     item_status,
     price_per_day,
     deposit,
@@ -456,8 +442,7 @@ func (q *Queries) SearchItems(ctx context.Context, arg SearchItemsParams) ([]Ite
 			&i.Category,
 			&i.Title,
 			&i.Description,
-			&i.Brand,
-			&i.Model,
+			&i.UsageRules,
 			&i.ItemStatus,
 			&i.PricePerDay,
 			&i.Deposit,
@@ -494,13 +479,12 @@ UPDATE item
 SET
     title         = $2,
     description   = $3,
-    brand         = $4,
-    model         = $5,
-    category      = $6,
-    price_per_day = $7,
-    deposit       = $8,
-    min_days      = $9,
-    max_days       = $10
+    usage_rules   = $4,
+    category      = $5,
+    price_per_day = $6,
+    deposit       = $7,
+    min_days      = $8,
+    max_days      = $9
 WHERE item_id = $1
 RETURNING
     item_id,
@@ -509,8 +493,7 @@ RETURNING
     category,
     title,
     description,
-    brand,
-    model,
+    usage_rules,
     item_status,
     price_per_day,
     deposit,
@@ -524,8 +507,7 @@ type UpdateItemParams struct {
 	ItemID      uuid.UUID      `json:"item_id"`
 	Title       string         `json:"title"`
 	Description pgtype.Text    `json:"description"`
-	Brand       pgtype.Text    `json:"brand"`
-	Model       pgtype.Text    `json:"model"`
+	UsageRules  pgtype.Text    `json:"usage_rules"`
 	Category    CategoryEnum   `json:"category"`
 	PricePerDay pgtype.Numeric `json:"price_per_day"`
 	Deposit     pgtype.Numeric `json:"deposit"`
@@ -541,8 +523,7 @@ func (q *Queries) UpdateItem(ctx context.Context, arg UpdateItemParams) (Item, e
 		arg.ItemID,
 		arg.Title,
 		arg.Description,
-		arg.Brand,
-		arg.Model,
+		arg.UsageRules,
 		arg.Category,
 		arg.PricePerDay,
 		arg.Deposit,
@@ -557,8 +538,7 @@ func (q *Queries) UpdateItem(ctx context.Context, arg UpdateItemParams) (Item, e
 		&i.Category,
 		&i.Title,
 		&i.Description,
-		&i.Brand,
-		&i.Model,
+		&i.UsageRules,
 		&i.ItemStatus,
 		&i.PricePerDay,
 		&i.Deposit,

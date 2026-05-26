@@ -36,8 +36,7 @@ interface CreateItemRequest {
   category: string;
   title: string;
   description?: string;
-  brand?: string;
-  model?: string;
+  usage_rules?: string;
   condition: string;
   price_per_day: number;
   deposit?: number;
@@ -56,8 +55,7 @@ interface ItemResponse {
   category: string;
   title: string;
   description?: string;
-  brand?: string;
-  model?: string;
+  usage_rules?: string;
   condition: string;
   item_status: string;
   price_per_day: number;
