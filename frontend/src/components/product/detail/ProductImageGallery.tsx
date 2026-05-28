@@ -166,58 +166,66 @@ function ProductImageGallery({ images, title, isAvailable, isFavorite, onToggleF
           aria-label={`${title} - imagen ampliada`}
           onCancel={closeLightbox}
           onClose={closeLightbox}
-          onClick={closeLightbox}
         >
-          {/* Close */}
           <button
             type="button"
-            className="absolute top-4 right-4 flex size-10 items-center justify-center rounded-full bg-white/15 text-white transition-colors hover:bg-white/30"
+            className="absolute inset-0 z-0 cursor-default"
             aria-label="Cerrar imagen"
             onClick={closeLightbox}
-          >
-            <X size={20} />
-          </button>
+            tabIndex={-1}
+          />
 
-          {/* Prev */}
-          {images.length > 1 && (
+          <div className="relative z-10 flex h-full w-full items-center justify-center">
+            {/* Close */}
             <button
               type="button"
-              className="absolute left-6 flex size-11 items-center justify-center rounded-full bg-white/15 text-white transition-colors hover:bg-white/30"
-              aria-label="Imagen anterior"
-              onClick={prevImage}
+              className="absolute top-4 right-4 flex size-10 items-center justify-center rounded-full bg-white/15 text-white transition-colors hover:bg-white/30"
+              aria-label="Cerrar imagen"
+              onClick={closeLightbox}
             >
-              <ChevronLeft size={24} />
+              <X size={20} />
             </button>
-          )}
 
-          {/* Image */}
-          {lightboxImage && (
-            <img
-              src={lightboxImage.image_url}
-              alt={`${title} - imagen ${activeIndex + 1}`}
-              className="max-h-[90vh] max-w-[90vw] rounded-lg object-contain shadow-2xl"
-              onClick={(e) => e.stopPropagation()}
-            />
-          )}
+            {/* Prev */}
+            {images.length > 1 && (
+              <button
+                type="button"
+                className="absolute left-6 flex size-11 items-center justify-center rounded-full bg-white/15 text-white transition-colors hover:bg-white/30"
+                aria-label="Imagen anterior"
+                onClick={prevImage}
+              >
+                <ChevronLeft size={24} />
+              </button>
+            )}
 
-          {/* Next */}
-          {images.length > 1 && (
-            <button
-              type="button"
-              className="absolute right-6 flex size-11 items-center justify-center rounded-full bg-white/15 text-white transition-colors hover:bg-white/30"
-              aria-label="Imagen siguiente"
-              onClick={nextImage}
-            >
-              <ChevronRight size={24} />
-            </button>
-          )}
+            {/* Image */}
+            {lightboxImage && (
+              <img
+                src={lightboxImage.image_url}
+                alt={`${title} - imagen ${activeIndex + 1}`}
+                className="max-h-[90vh] max-w-[90vw] rounded-lg object-contain shadow-2xl"
+              />
+            )}
 
-          {/* Counter */}
-          {images.length > 1 && (
-            <p className="absolute bottom-5 text-sm text-white/70">
-              {activeIndex + 1} / {images.length}
-            </p>
-          )}
+            {/* Next */}
+            {images.length > 1 && (
+              <button
+                type="button"
+                className="absolute right-6 flex size-11 items-center justify-center rounded-full bg-white/15 text-white transition-colors hover:bg-white/30"
+                aria-label="Imagen siguiente"
+                onClick={nextImage}
+              >
+                <ChevronRight size={24} />
+              </button>
+            )}
+
+            {/* Counter */}
+            {images.length > 1 && (
+              <p className="absolute bottom-5 text-sm text-white/70">
+                {activeIndex + 1} / {images.length}
+              </p>
+            )}
+          </div>
         </dialog>
       )}
     </>

@@ -354,6 +354,11 @@ function Product() {
               <div>
                 <h3 className="heading-section mb-1">Disponibilidad</h3>
                 <ProductCalendar
+                  key={
+                    state.dateRange.start
+                      ? `${state.dateRange.start.getFullYear()}-${state.dateRange.start.getMonth()}`
+                      : "none"
+                  }
                   occupiedDates={occupiedDates}
                   selectedStart={state.dateRange.start}
                   selectedEnd={state.dateRange.end}

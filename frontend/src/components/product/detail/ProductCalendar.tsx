@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useState } from "react";
 
 interface ProductCalendarProps {
   /** Set of ISO date strings ("YYYY-MM-DD") that are already booked. */
@@ -63,6 +63,7 @@ function isInRange(date: Date, start: Date | null, end: Date | null): boolean {
  * @param selectedStart Currently active start date.
  * @param selectedEnd Currently active end date.
  * @param onDateSelect Called with the clicked Date when the user taps a valid cell.
+ * @param navigateTo Path to navigate
  * @returns Calendar JSX.
  */
 function ProductCalendar({
@@ -75,18 +76,12 @@ function ProductCalendar({
   const today = new Date();
   today.setHours(0, 0, 0, 0);
 
-  const [viewMonth, setViewMonth] = useState<Date>(() => {
-    const d = new Date();
-    d.setDate(1);
-    d.setHours(0, 0, 0, 0);
-    return d;
-  });
+  const [monthOffset, setMonthOffset] = useState(0);
 
-  // Navigate the calendar view when a date is selected from the booking card inputs
-  useEffect(() => {
-    if (!navigateTo) return;
-    setViewMonth(new Date(navigateTo.getFullYear(), navigateTo.getMonth(), 1));
-  }, [navigateTo]);
+  const anchorMonth = navigateTo
+    ? new Date(navigateTo.getFullYear(), navigateTo.getMonth(), 1)
+    : new Date(today.getFullYear(), today.getMonth(), 1);
+  const viewMonth = new Date(anchorMonth.getFullYear(), anchorMonth.getMonth() + monthOffset, 1);
 
   const year = viewMonth.getFullYear();
   const month = viewMonth.getMonth();
@@ -122,7 +117,7 @@ function ProductCalendar({
           <button
             type="button"
             className="btn-ghost btn--sm"
-            onClick={() => setViewMonth((prev) => new Date(prev.getFullYear(), prev.getMonth() - 1, 1))}
+            onClick={() => setMonthOffset((prev) => prev - 1)}
             disabled={!canGoPrev}
             aria-label="Mes anterior"
           >
@@ -134,7 +129,7 @@ function ProductCalendar({
           <button
             type="button"
             className="btn-ghost btn--sm"
-            onClick={() => setViewMonth((prev) => new Date(prev.getFullYear(), prev.getMonth() + 1, 1))}
+            onClick={() => setMonthOffset((prev) => prev + 1)}
             aria-label="Mes siguiente"
           >
             ›

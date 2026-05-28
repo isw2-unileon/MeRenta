@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useMemo, useReducer, useRef, useState, type FormEvent, type ReactNode } from "react";
-import { useNavigate, useSearchParams } from "react-router-dom";
+import { Link, useSearchParams } from "react-router-dom";
 import { ChevronLeft, ChevronRight, Heart, Search as SearchIcon, Star, X } from "lucide-react";
 
 import { useFavorites } from "@/hooks/useFavorites";
@@ -169,28 +169,25 @@ interface ProductCardProps {
   item: SearchItemResponse;
   isFavorite: boolean;
   onToggleFavorite: () => void;
-  onOpen: () => void;
+  /** Route to navigate to when the card is clicked. */
+  to: string;
 }
 
-function ProductCard({ item, isFavorite, onToggleFavorite, onOpen }: ProductCardProps) {
+function ProductCard({ item, isFavorite, onToggleFavorite, to }: ProductCardProps) {
   const { rating, reviews } = seededRating(item.item_id);
   const isReserved = item.item_status === "rented";
   const isAvailable = item.is_available && !isReserved;
 
   function handleToggle(event: React.MouseEvent) {
+    event.preventDefault();
     event.stopPropagation();
     onToggleFavorite();
   }
 
-  function handleAlquilar(event: React.MouseEvent) {
-    event.stopPropagation();
-    onOpen();
-  }
-
   return (
-    <article
-      className="border-border-main bg-page relative cursor-pointer overflow-hidden rounded-xl border transition-shadow hover:shadow-md"
-      onClick={onOpen}
+    <Link
+      to={to}
+      className="border-border-main bg-page relative block overflow-hidden rounded-xl border transition-shadow hover:shadow-md"
     >
       <div className="relative">
         <div className="bg-primary-light relative h-42 overflow-hidden">
@@ -266,14 +263,13 @@ function ProductCard({ item, isFavorite, onToggleFavorite, onOpen }: ProductCard
               type="button"
               className="btn-primary btn--sm min-w-23"
               disabled={!isAvailable}
-              onClick={handleAlquilar}
             >
               {isAvailable ? "Alquilar" : "No disponible"}
             </button>
           </div>
         </div>
       </div>
-    </article>
+    </Link>
   );
 }
 
@@ -570,7 +566,6 @@ function SearchSidebar({
 // ==========================================
 
 function Search() {
-  const navigate = useNavigate();
   const [searchParams, setSearchParams] = useSearchParams();
   const { toggle, isFav } = useFavorites();
   const query = searchParams.get("q") ?? "";
@@ -760,7 +755,7 @@ function Search() {
                   item={item}
                   isFavorite={isFav(item.item_id)}
                   onToggleFavorite={() => toggle(item.item_id, isFav(item.item_id))}
-                  onOpen={() => navigate(`/product/${item.item_id}`)}
+                  to={`/product/${item.item_id}`}
                 />
               ))
             )}
