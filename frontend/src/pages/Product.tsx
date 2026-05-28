@@ -268,6 +268,8 @@ function Product() {
     ? (CONDITION_LABELS[state.item.condition] ?? state.item.condition)
     : undefined;
 
+  const item = state.item;
+
   // ── Render ─────────────────────────────────────────────────────────────────
 
   return (
@@ -282,22 +284,22 @@ function Product() {
           />
         )}
 
-        {!state.loading && state.item && (
+        {!state.loading && item && (
           <div className="grid grid-cols-[1fr_392px] items-start gap-8">
             {/* ════════════════════════════════════ Left column */}
             <div className="flex min-w-0 flex-col gap-6">
               {/* Image gallery */}
               <ProductImageGallery
                 images={state.images}
-                title={state.item.title}
-                isAvailable={state.item.is_available}
-                isFavorite={isFav(state.item.item_id)}
-                onToggleFavorite={() => toggle(state.item!.item_id, isFav(state.item!.item_id))}
+                title={item.title}
+                isAvailable={item.is_available}
+                isFavorite={isFav(item.item_id)}
+                onToggleFavorite={() => toggle(item.item_id, isFav(item.item_id))}
               />
 
               {/* Title, badges and rating */}
               <div>
-                <h2 className="text-ink mb-2 text-[22px] leading-tight font-bold">{state.item.title}</h2>
+                <h2 className="text-ink mb-2 text-[22px] leading-tight font-bold">{item.title}</h2>
 
                 <div className="mb-2 flex flex-wrap items-center gap-2">
                   {categoryLabel && <span className="product-estado-badge">{categoryLabel}</span>}
@@ -318,22 +320,22 @@ function Product() {
               <hr className="divider-product" />
 
               {/* Description */}
-              {state.item.description && (
+              {item.description && (
                 <>
                   <div>
                     <h3 className="heading-section mb-3">Descripcion</h3>
-                    <p className="product-desc">{state.item.description}</p>
+                    <p className="product-desc">{item.description}</p>
                   </div>
                   <hr className="divider-product" />
                 </>
               )}
 
               {/* Usage rules */}
-              {state.item.usage_rules && (
+              {item.usage_rules && (
                 <>
                   <div>
                     <h3 className="heading-section mb-3">Normas de uso</h3>
-                    <p className="product-desc">{state.item.usage_rules}</p>
+                    <p className="product-desc">{item.usage_rules}</p>
                   </div>
                   <hr className="divider-product" />
                 </>
@@ -354,14 +356,14 @@ function Product() {
             {/* ════════════════════════════════════ Right column */}
             <div className="top-8 flex flex-col gap-5">
               <BookingCard
-                itemId={state.item.item_id}
-                pricePerDay={state.item.price_per_day}
+                itemId={item.item_id}
+                pricePerDay={item.price_per_day}
                 rating={4.9}
                 reviewCount={48}
                 selectedStart={state.dateRange.start}
                 selectedEnd={state.dateRange.end}
-                minDays={state.item.min_days}
-                maxDay={state.item.max_days}
+                minDays={item.min_days}
+                maxDay={item.max_days}
               />
 
               <InsuranceCard days={rentalDays} />

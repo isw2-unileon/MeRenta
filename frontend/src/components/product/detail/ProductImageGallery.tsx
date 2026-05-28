@@ -2,6 +2,7 @@ import { useEffect, useState } from "react";
 import { ChevronLeft, ChevronRight, Heart, X } from "lucide-react";
 
 import type { ItemImageResponse } from "@/types/item";
+import * as React from "react";
 
 const PLACEHOLDER_IMAGE = "data:image/gif;base64,R0lGODlhAQABAIAAAAAAAP///ywAAAAAAQABAAACAUwAOw==";
 
@@ -38,6 +39,7 @@ function ProductImageGallery({ images, title, isAvailable, isFavorite, onToggleF
 
   const hasImages = images.length > 0;
   const mainImage = hasImages ? images[activeIndex] : undefined;
+  const lightboxImage = hasImages ? (images[activeIndex] ?? images[0]) : undefined;
 
   const openLightbox = () => {
     if (hasImages) setLightboxOpen(true);
@@ -176,12 +178,14 @@ function ProductImageGallery({ images, title, isAvailable, isFavorite, onToggleF
           )}
 
           {/* Image */}
-          <img
-            src={images[activeIndex].image_url}
-            alt={`${title} - imagen ${activeIndex + 1}`}
-            className="max-h-[90vh] max-w-[90vw] rounded-lg object-contain shadow-2xl"
-            onClick={(e) => e.stopPropagation()}
-          />
+          {lightboxImage && (
+            <img
+              src={lightboxImage.image_url}
+              alt={`${title} - imagen ${activeIndex + 1}`}
+              className="max-h-[90vh] max-w-[90vw] rounded-lg object-contain shadow-2xl"
+              onClick={(e) => e.stopPropagation()}
+            />
+          )}
 
           {/* Next */}
           {images.length > 1 && (
