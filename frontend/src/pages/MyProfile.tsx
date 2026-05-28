@@ -508,17 +508,19 @@ function MyProfile() {
       <section className="profile-hero min-h-profile-hero h-auto">
         <div className="mx-auto flex h-full max-w-340 flex-col items-start justify-center gap-5 px-6 py-6 md:flex-row md:items-center md:justify-between md:px-10">
           <div>
-            <span className="profile-public-badge mb-1">Tu perfil publico</span>
             <div className="mt-2 flex items-center gap-5">
-              {user?.avatar_url ? (
-                <img
-                  src={user.avatar_url}
-                  alt={fullName}
-                  className="avatar-hero"
-                />
-              ) : (
-                <div className="profile-avatar-hero">{initials}</div>
-              )}
+              <div className="flex w-avatar-hero flex-col items-center gap-2">
+                <span className="profile-public-badge">Tu perfil</span>
+                {user?.avatar_url ? (
+                  <img
+                    src={user.avatar_url}
+                    alt={fullName}
+                    className="avatar-hero"
+                  />
+                ) : (
+                  <div className="profile-avatar-hero">{initials}</div>
+                )}
+              </div>
               <div>
                 <p className="profile-name">{fullName}</p>
                 {profileMeta && <p className="profile-meta mt-1">{profileMeta}</p>}
