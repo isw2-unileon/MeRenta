@@ -75,21 +75,21 @@ type SearchItemCardsParams struct {
 
 // SearchItemCardsRow represents a lightweight item card with a total count.
 type SearchItemCardsRow struct {
-	ItemID           uuid.UUID          `json:"item_id"`
-	OwnerID          uuid.UUID          `json:"owner_id"`
-	AddressID        uuid.UUID          `json:"address_id"`
-	Category         CategoryEnum       `json:"category"`
-	Title            string             `json:"title"`
-	ItemStatus       ItemStatus         `json:"item_status"`
-	PricePerDay      pgtype.Numeric     `json:"price_per_day"`
-	IsAvailable      bool               `json:"is_available"`
-	PublishedAt      pgtype.Timestamptz `json:"published_at"`
-	City             string             `json:"city"`
-	PrimaryImageURL  string             `json:"primary_image_url"`
-	OwnerFirstName   string             `json:"owner_first_name"`
-	OwnerLastName    string             `json:"owner_last_name"`
-	OwnerAvatarURL   string             `json:"owner_avatar_url"`
-	TotalCount       int64              `json:"total_count"`
+	ItemID          uuid.UUID          `json:"item_id"`
+	OwnerID         uuid.UUID          `json:"owner_id"`
+	AddressID       uuid.UUID          `json:"address_id"`
+	Category        CategoryEnum       `json:"category"`
+	Title           string             `json:"title"`
+	ItemStatus      ItemStatus         `json:"item_status"`
+	PricePerDay     pgtype.Numeric     `json:"price_per_day"`
+	IsAvailable     bool               `json:"is_available"`
+	PublishedAt     pgtype.Timestamptz `json:"published_at"`
+	City            string             `json:"city"`
+	PrimaryImageURL string             `json:"primary_image_url"`
+	OwnerFirstName  string             `json:"owner_first_name"`
+	OwnerLastName   string             `json:"owner_last_name"`
+	OwnerAvatarURL  string             `json:"owner_avatar_url"`
+	TotalCount      int64              `json:"total_count"`
 }
 
 const countItemCardsByCategory = `

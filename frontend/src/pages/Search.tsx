@@ -226,7 +226,7 @@ function ProductCard({ item, isFavorite, onToggleFavorite, onOpen }: ProductCard
       </div>
 
       <div className="p-4">
-        <h2 className="text-ink line-clamp-2 min-h-9.5 mb-3 text-[15px] leading-snug font-medium">{item.title}</h2>
+        <h2 className="text-ink mb-3 line-clamp-2 min-h-9.5 text-[15px] leading-snug font-medium">{item.title}</h2>
 
         {/* Owner info */}
         <div className="mb-3 flex items-center gap-2">
