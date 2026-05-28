@@ -51,7 +51,7 @@ function toISODateStr(date: Date): string {
 /** Parses a "YYYY-MM-DD" string into a local midnight Date. */
 function parseISODateStr(value: string): Date {
   const [y, mo, d] = value.split("-").map(Number);
-  const date = new Date(y, (mo ?? 1) - 1, d ?? 1);
+  const date = new Date(y ?? 0, (mo ?? 1) - 1, d ?? 1);
   date.setHours(0, 0, 0, 0);
   return date;
 }
