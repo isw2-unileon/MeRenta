@@ -39,12 +39,17 @@ type chatQuerier interface {
 
 // ChatService handles conversation and message use cases.
 type ChatService struct {
-	q chatQuerier
+	q      chatQuerier
+	cipher *messageCipher
 }
 
 // NewChatService creates a ChatService with its dependencies.
-func NewChatService(q chatQuerier) *ChatService {
-	return &ChatService{q: q}
+func NewChatService(q chatQuerier, messageEncryptionKey []byte) (*ChatService, error) {
+	cipher, err := newMessageCipher(messageEncryptionKey)
+	if err != nil {
+		return nil, fmt.Errorf("creating message cipher: %w", err)
+	}
+	return &ChatService{q: q, cipher: cipher}, nil
 }
 
 // StartConversation creates or returns the conversation between the current user and an item owner.
@@ -75,7 +80,7 @@ func (s *ChatService) StartConversation(ctx context.Context, customerID, itemID 
 		return nil, err
 	}
 
-	res, err := toConversationResponse(conversation)
+	res, err := s.toConversationResponse(conversation)
 	if err != nil {
 		return nil, err
 	}
@@ -91,7 +96,7 @@ func (s *ChatService) ListConversations(ctx context.Context, customerID uuid.UUI
 
 	items := make([]model.ConversationResponse, 0, len(rows))
 	for _, row := range rows {
-		item, err := toConversationResponse(row)
+		item, err := s.toConversationResponse(row)
 		if err != nil {
 			return nil, err
 		}
@@ -114,7 +119,11 @@ func (s *ChatService) GetMessages(ctx context.Context, customerID, conversationI
 
 	items := make([]model.MessageResponse, 0, len(rows))
 	for _, row := range rows {
-		items = append(items, toMessageResponse(row, customerID))
+		item, err := s.toMessageResponse(row, customerID)
+		if err != nil {
+			return nil, err
+		}
+		items = append(items, item)
 	}
 
 	return &model.MessagesResponse{Items: items, Total: len(items)}, nil
@@ -169,10 +178,15 @@ func (s *ChatService) SendMessage(ctx context.Context, customerID, conversationI
 		return nil, err
 	}
 
+	encryptedBody, err := s.cipher.Encrypt(trimmed)
+	if err != nil {
+		return nil, fmt.Errorf("encrypting message: %w", err)
+	}
+
 	row, err := s.q.SendMessage(ctx, sqlcdb.SendMessageParams{
 		ConversationID: conversationID,
 		SenderID:       customerID,
-		Body:           trimmed,
+		Body:           encryptedBody,
 	})
 	if err != nil {
 		return nil, err
@@ -182,14 +196,21 @@ func (s *ChatService) SendMessage(ctx context.Context, customerID, conversationI
 		return nil, err
 	}
 
-	res := toMessageResponse(row, customerID)
+	res, err := s.toMessageResponse(row, customerID)
+	if err != nil {
+		return nil, err
+	}
 	return &res, nil
 }
 
-func toConversationResponse(row sqlcdb.ConversationRow) (model.ConversationResponse, error) {
+func (s *ChatService) toConversationResponse(row sqlcdb.ConversationRow) (model.ConversationResponse, error) {
 	itemPrice, err := numericToFloat64(row.ItemPrice)
 	if err != nil {
 		return model.ConversationResponse{}, fmt.Errorf("converting item_price: %w", err)
+	}
+	lastMessage, err := s.cipher.Decrypt(row.LastMessage)
+	if err != nil {
+		return model.ConversationResponse{}, fmt.Errorf("decrypting last message: %w", err)
 	}
 
 	return model.ConversationResponse{
@@ -200,23 +221,27 @@ func toConversationResponse(row sqlcdb.ConversationRow) (model.ConversationRespo
 		OtherUserID:    row.OtherUserID.String(),
 		OtherUserName:  row.OtherUserName,
 		OtherAvatarURL: row.OtherAvatarURL,
-		LastMessage:    row.LastMessage,
+		LastMessage:    lastMessage,
 		LastMessageAt:  timestamptzPtr(row.LastMessageAt),
 		UpdatedAt:      row.UpdatedAt.Time,
 	}, nil
 }
 
-func toMessageResponse(row sqlcdb.MessageRow, customerID uuid.UUID) model.MessageResponse {
+func (s *ChatService) toMessageResponse(row sqlcdb.MessageRow, customerID uuid.UUID) (model.MessageResponse, error) {
+	body, err := s.cipher.Decrypt(row.Body)
+	if err != nil {
+		return model.MessageResponse{}, fmt.Errorf("decrypting message: %w", err)
+	}
 	return model.MessageResponse{
 		MessageID:      row.MessageID.String(),
 		ConversationID: row.ConversationID.String(),
 		SenderID:       row.SenderID.String(),
-		Body:           row.Body,
+		Body:           body,
 		ReadAt:         timestamptzPtr(row.ReadAt),
 		CreatedAt:      row.CreatedAt.Time,
 		IsMine:         row.SenderID == customerID,
 		IsRead:         row.IsRead,
-	}
+	}, nil
 }
 
 func timestamptzPtr(value pgtype.Timestamptz) *time.Time {
