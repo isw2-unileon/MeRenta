@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useRef, useState, type FormEvent } from "react";
+import { useEffect, useMemo, useReducer, useRef, type FormEvent } from "react";
 import { useNavigate, useParams } from "react-router-dom";
 import { ArrowRight, CheckCheck, Search, SendHorizontal } from "lucide-react";
 
@@ -43,6 +43,100 @@ interface ChatWebSocketEvent {
   error?: string;
 }
 
+const chatTimeFormatter = new Intl.DateTimeFormat("es-ES", {
+  hour: "2-digit",
+  minute: "2-digit",
+});
+const conversationDayFormatter = new Intl.DateTimeFormat("es-ES", { weekday: "short" });
+const dayLabelFormatter = new Intl.DateTimeFormat("es-ES", {
+  day: "numeric",
+  month: "long",
+});
+
+interface ChatState {
+  conversations: ConversationResponse[];
+  messages: MessageResponse[];
+  draft: string;
+  loadingConversations: boolean;
+  loadingMessages: boolean;
+  sending: boolean;
+  error: string;
+}
+
+type ChatAction =
+  | { type: "conversations:success"; items: ConversationResponse[] }
+  | { type: "conversations:error"; message: string }
+  | { type: "messages:loading" }
+  | { type: "messages:success"; items: MessageResponse[] }
+  | { type: "messages:error"; message: string }
+  | { type: "messages:reset" }
+  | { type: "draft:set"; value: string }
+  | { type: "sending:start" }
+  | { type: "sending:end" }
+  | { type: "message:receive"; message: MessageResponse }
+  | { type: "error:clear" }
+  | { type: "error:set"; message: string };
+
+const initialState: ChatState = {
+  conversations: [],
+  messages: [],
+  draft: "",
+  loadingConversations: true,
+  loadingMessages: false,
+  sending: false,
+  error: "",
+};
+
+function applyIncomingMessage(state: ChatState, message: MessageResponse): ChatState {
+  const messages = state.messages.some((item) => item.message_id === message.message_id)
+    ? state.messages
+    : [...state.messages, message];
+
+  const conversations = state.conversations.map((conversation) =>
+    conversation.conversation_id === message.conversation_id
+      ? {
+          ...conversation,
+          last_message: message.body,
+          last_message_at: message.created_at,
+          updated_at: message.created_at,
+        }
+      : conversation
+  );
+
+  return { ...state, messages, conversations };
+}
+
+function chatReducer(state: ChatState, action: ChatAction): ChatState {
+  switch (action.type) {
+    case "conversations:success":
+      return { ...state, conversations: action.items, loadingConversations: false };
+    case "conversations:error":
+      return { ...state, error: action.message, loadingConversations: false };
+    case "messages:loading":
+      return { ...state, loadingMessages: true, error: "" };
+    case "messages:success":
+      return { ...state, messages: action.items, loadingMessages: false };
+    case "messages:error":
+      return { ...state, error: action.message, loadingMessages: false };
+    case "messages:reset":
+      return { ...state, messages: [], loadingMessages: false };
+    case "draft:set":
+      return { ...state, draft: action.value };
+    case "sending:start":
+      return { ...state, sending: true, error: "" };
+    case "sending:end":
+      return { ...state, sending: false };
+    case "message:receive":
+      return applyIncomingMessage(state, action.message);
+    case "error:clear":
+      return { ...state, error: "" };
+    case "error:set":
+      return { ...state, error: action.message };
+    default:
+      return state;
+  }
+}
+
 function initialsFromName(name: string): string {
   return name
     .split(" ")
@@ -55,10 +149,7 @@ function initialsFromName(name: string): string {
 
 function formatChatTime(iso?: string): string {
   if (!iso) return "";
-  return new Intl.DateTimeFormat("es-ES", {
-    hour: "2-digit",
-    minute: "2-digit",
-  }).format(new Date(iso));
+  return chatTimeFormatter.format(new Date(iso));
 }
 
 function formatConversationTime(iso?: string): string {
@@ -73,15 +164,12 @@ function formatConversationTime(iso?: string): string {
   yesterday.setDate(now.getDate() - 1);
   if (date.toDateString() === yesterday.toDateString()) return "Ayer";
 
-  return new Intl.DateTimeFormat("es-ES", { weekday: "short" }).format(date);
+  return conversationDayFormatter.format(date);
 }
 
 function dayLabel(iso?: string): string {
   if (!iso) return "Hoy";
-  return new Intl.DateTimeFormat("es-ES", {
-    day: "numeric",
-    month: "long",
-  }).format(new Date(iso));
+  return dayLabelFormatter.format(new Date(iso));
 }
 
 async function apiGet<T>(url: string, signal?: AbortSignal): Promise<T> {
@@ -158,8 +246,8 @@ function ConversationRow({
       <span className="min-w-0">
         <span className="text-ink block truncate text-[15px] font-bold">{conversation.other_user_name}</span>
         <span className="text-primary block truncate text-[11px] font-medium">{conversation.item_title}</span>
-        <span className="text-subtle block truncate text-[12px]">
-          {conversation.last_message || "Sin mensajes todavia"}
+        <span className="text-subtle text-card-loc block truncate">
+          {conversation.last_message ?? "Sin mensajes todavía"}
         </span>
       </span>
       <span className="text-footer-text self-start pt-1 text-[11px]">
@@ -182,7 +270,7 @@ function MessageBubble({ message, otherUser }: { message: MessageResponse; other
         />
       ) : null}
 
-      <div className={`max-w-[620px] ${isMine ? "items-end" : "items-start"} flex flex-col gap-1`}>
+      <div className={`max-w-155 ${isMine ? "items-end" : "items-start"} flex flex-col gap-1`}>
         <div
           className={`rounded-2xl px-5 py-4 text-[14px] leading-relaxed shadow-sm ${
             isMine ? "bg-primary text-white" : "border-border-main bg-page text-ink border"
@@ -205,26 +293,19 @@ function MessageBubble({ message, otherUser }: { message: MessageResponse; other
 function Chat() {
   const navigate = useNavigate();
   const { conversationId } = useParams();
-  const [conversations, setConversations] = useState<ConversationResponse[]>([]);
-  const [messages, setMessages] = useState<MessageResponse[]>([]);
-  const [draft, setDraft] = useState("");
-  const [loadingConversations, setLoadingConversations] = useState(true);
-  const [loadingMessages, setLoadingMessages] = useState(false);
-  const [sending, setSending] = useState(false);
-  const [error, setError] = useState("");
+  const [state, dispatch] = useReducer(chatReducer, initialState);
+  const { conversations, messages, draft, loadingConversations, loadingMessages, sending, error } = state;
   const socketRef = useRef<WebSocket | null>(null);
 
   useEffect(() => {
     const controller = new AbortController();
-    setLoadingConversations(true);
-    setError("");
+    dispatch({ type: "error:clear" });
 
     apiGet<ConversationsResponse>("/api/conversations", controller.signal)
-      .then((data) => setConversations(data.items))
+      .then((data) => dispatch({ type: "conversations:success", items: data.items }))
       .catch((err: Error) => {
-        if (err.name !== "AbortError") setError(err.message);
-      })
-      .finally(() => setLoadingConversations(false));
+        if (err.name !== "AbortError") dispatch({ type: "conversations:error", message: err.message });
+      });
 
     return () => controller.abort();
   }, []);
@@ -237,20 +318,18 @@ function Chat() {
 
   useEffect(() => {
     if (!activeConversationID) {
-      setMessages([]);
+      dispatch({ type: "messages:reset" });
       return;
     }
 
     const controller = new AbortController();
-    setLoadingMessages(true);
-    setError("");
+    dispatch({ type: "messages:loading" });
 
     apiGet<MessagesResponse>(`/api/conversations/${activeConversationID}/messages`, controller.signal)
-      .then((data) => setMessages(data.items))
+      .then((data) => dispatch({ type: "messages:success", items: data.items }))
       .catch((err: Error) => {
-        if (err.name !== "AbortError") setError(err.message);
-      })
-      .finally(() => setLoadingMessages(false));
+        if (err.name !== "AbortError") dispatch({ type: "messages:error", message: err.message });
+      });
 
     return () => controller.abort();
   }, [activeConversationID]);
@@ -264,32 +343,16 @@ function Chat() {
     socket.onmessage = (event) => {
       const payload = JSON.parse(event.data as string) as ChatWebSocketEvent;
       if (payload.type === "error") {
-        setError(payload.error ?? "Error en el chat en tiempo real");
+        dispatch({ type: "error:set", message: payload.error ?? "Error en el chat en tiempo real" });
         return;
       }
-      if (payload.type !== "message" || !payload.data) return;
+      if (!payload.data) return;
 
-      const message = payload.data;
-      setMessages((current) => {
-        if (current.some((item) => item.message_id === message.message_id)) return current;
-        return [...current, message];
-      });
-      setConversations((current) =>
-        current.map((conversation) =>
-          conversation.conversation_id === message.conversation_id
-            ? {
-                ...conversation,
-                last_message: message.body,
-                last_message_at: message.created_at,
-                updated_at: message.created_at,
-              }
-            : conversation
-        )
-      );
+      dispatch({ type: "message:receive", message: payload.data });
     };
 
     socket.onerror = () => {
-      setError("No se ha podido conectar el chat en tiempo real.");
+      dispatch({ type: "error:set", message: "No se ha podido conectar el chat en tiempo real." });
     };
 
     socket.onclose = () => {
@@ -310,46 +373,33 @@ function Chat() {
     event.preventDefault();
     if (!activeConversation || draft.trim() === "") return;
 
-    setSending(true);
-    setError("");
+    dispatch({ type: "sending:start" });
     try {
       const socket = socketRef.current;
       if (socket?.readyState === WebSocket.OPEN) {
         socket.send(JSON.stringify({ type: "message", body: draft }));
-        setDraft("");
+        dispatch({ type: "draft:set", value: "" });
         return;
       }
 
       const message = await sendMessage(activeConversation.conversation_id, draft);
-      setMessages((current) => {
-        if (current.some((item) => item.message_id === message.message_id)) return current;
-        return [...current, message];
-      });
-      setDraft("");
-      setConversations((current) =>
-        current.map((conversation) =>
-          conversation.conversation_id === activeConversation.conversation_id
-            ? {
-                ...conversation,
-                last_message: message.body,
-                last_message_at: message.created_at,
-                updated_at: message.created_at,
-              }
-            : conversation
-        )
-      );
+      dispatch({ type: "message:receive", message });
+      dispatch({ type: "draft:set", value: "" });
     } catch (err) {
-      setError(err instanceof Error ? err.message : "Error al enviar el mensaje");
+      dispatch({
+        type: "error:set",
+        message: err instanceof Error ? err.message : "Error al enviar el mensaje",
+      });
     } finally {
-      setSending(false);
+      dispatch({ type: "sending:end" });
     }
   }
 
   return (
     <div className="bg-surface flex h-[calc(100vh-var(--spacing-navbar))] overflow-hidden">
       <aside className="border-border-main bg-page flex w-[320px] shrink-0 flex-col border-r">
-        <div className="border-border-main border-b px-4 py-4">
-          <h1 className="text-[19px] font-bold">Mensajes</h1>
+        <div className="border-border-main border-b p-4">
+          <h1 className="text-error-title font-bold">Mensajes</h1>
           <label className="relative mt-5 mb-0 block">
             <Search
               size={16}
@@ -358,14 +408,14 @@ function Chat() {
             <input
               type="search"
               placeholder="Buscar conversacion..."
-              className="h-10 rounded-lg pl-10 text-[12px]"
+              className="text-card-loc h-10 rounded-lg pl-10"
             />
           </label>
         </div>
 
-        <div className="min-h-0 flex-1 overflow-y-auto">
+        <div className="min-h-0 flex-1 overflow-y-auto p-6">
           {loadingConversations ? (
-            <div className="space-y-4 p-4">
+            <div className="space-y-4">
               {Array.from({ length: 5 }, (_, index) => (
                 <div
                   key={index}
@@ -397,7 +447,7 @@ function Chat() {
       <section className="flex min-w-0 flex-1 flex-col">
         {activeConversation ? (
           <>
-            <header className="border-border-main bg-page flex h-[72px] shrink-0 items-center justify-between border-b px-6">
+            <header className="border-border-main bg-page flex h-18 shrink-0 items-center justify-between border-b px-6">
               <div className="flex items-center gap-3">
                 <ChatAvatar
                   name={activeConversation.other_user_name}
@@ -405,7 +455,7 @@ function Chat() {
                 />
                 <div>
                   <h2 className="text-[17px] font-bold">{activeConversation.other_user_name}</h2>
-                  <p className="bg-primary-light text-primary inline-flex max-w-[360px] truncate rounded-full px-2.5 py-0.5 text-[10px] font-medium">
+                  <p className="bg-primary-light text-primary inline-flex max-w-90 truncate rounded-full px-2.5 py-0.5 text-[10px] font-medium">
                     {activeConversation.item_title} · {Math.round(activeConversation.item_price)} EUR/dia
                   </p>
                 </div>
@@ -425,8 +475,8 @@ function Chat() {
               <p className="border-border-main bg-error-danger text-report border-b px-6 py-3 text-[13px]">{error}</p>
             ) : null}
 
-            <div className="min-h-0 flex-1 overflow-y-auto px-6 py-6">
-              <div className="mx-auto flex max-w-[980px] flex-col gap-5">
+            <div className="min-h-0 flex-1 overflow-y-auto p-6">
+              <div className="mx-auto flex max-w-245 flex-col gap-5">
                 <div className="flex justify-center">
                   <span className="bg-ghost text-subtle rounded-full px-5 py-2 text-[11px]">
                     {dayLabel(messages[0]?.created_at)}
@@ -455,15 +505,16 @@ function Chat() {
             </div>
 
             <form
-              className="border-border-main bg-page flex h-[72px] shrink-0 items-center gap-3 border-t px-4"
+              className="border-border-main bg-page flex h-18 shrink-0 items-center gap-3 border-t px-4"
               onSubmit={handleSubmit}
             >
               <input
                 type="text"
                 placeholder="Escribe un mensaje..."
+                aria-label="Mensaje"
                 className="bg-surface h-11 rounded-full px-5"
                 value={draft}
-                onChange={(event) => setDraft(event.target.value)}
+                onChange={(event) => dispatch({ type: "draft:set", value: event.target.value })}
               />
               <button
                 type="submit"
