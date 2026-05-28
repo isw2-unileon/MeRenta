@@ -207,6 +207,9 @@ func (s *ItemService) SearchItems(ctx context.Context, params sqlcdb.SearchItemC
 			PublishedAt:     row.PublishedAt.Time,
 			City:            row.City,
 			PrimaryImageURL: row.PrimaryImageURL,
+			OwnerFirstName:  row.OwnerFirstName,
+			OwnerLastName:   row.OwnerLastName,
+			OwnerAvatarURL:  row.OwnerAvatarURL,
 		})
 	}
 
@@ -274,6 +277,7 @@ func isValidCategory(c string) bool {
 		sqlcdb.CategoryEnumMusic,
 		sqlcdb.CategoryEnumPhotography,
 		sqlcdb.CategoryEnumCamping,
+		sqlcdb.CategoryEnumLeisure,
 		sqlcdb.CategoryEnumOther:
 		return true
 	default:

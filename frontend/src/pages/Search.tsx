@@ -20,6 +20,7 @@ const CATEGORY_LABELS: Record<string, string> = {
   photography: "Fotografía",
   camping: "Camping",
   clothing: "Ropa",
+  leisure: "Ocio",
   other: "Otros",
 };
 
@@ -34,6 +35,7 @@ const CATEGORY_ORDER = [
   "photography",
   "camping",
   "clothing",
+  "leisure",
   "other",
 ];
 
@@ -179,8 +181,16 @@ function ProductCard({ item, isFavorite, onToggleFavorite, onOpen }: ProductCard
     onToggleFavorite();
   }
 
+  function handleAlquilar(event: React.MouseEvent) {
+    event.stopPropagation();
+    onOpen();
+  }
+
   return (
-    <article className="border-border-main bg-page overflow-hidden rounded-xl border">
+    <article
+      className="border-border-main bg-page cursor-pointer overflow-hidden rounded-xl border transition-shadow hover:shadow-md"
+      onClick={onOpen}
+    >
       <div className="bg-primary-light relative h-42 overflow-hidden">
         {item.primary_image_url ? (
           <img
@@ -216,15 +226,28 @@ function ProductCard({ item, isFavorite, onToggleFavorite, onOpen }: ProductCard
       </div>
 
       <div className="p-4">
-        <button
-          type="button"
-          className="mb-5 block h-auto w-full p-0 text-left"
-          onClick={onOpen}
-        >
-          <h2 className="text-ink line-clamp-2 min-h-9.5 text-[15px] leading-snug font-medium">{item.title}</h2>
-        </button>
+        <h2 className="text-ink line-clamp-2 min-h-9.5 mb-3 text-[15px] leading-snug font-medium">{item.title}</h2>
 
-        <div className="mb-6 flex items-center justify-between">
+        {/* Owner info */}
+        <div className="mb-3 flex items-center gap-2">
+          {item.owner_avatar_url ? (
+            <img
+              src={item.owner_avatar_url}
+              alt={`${item.owner_first_name} ${item.owner_last_name}`}
+              className="size-6 rounded-full object-cover"
+            />
+          ) : (
+            <span className="bg-primary text-primary-contrast flex size-6 shrink-0 items-center justify-center rounded-full text-[10px] font-bold">
+              {item.owner_first_name.charAt(0).toUpperCase()}
+              {item.owner_last_name.charAt(0).toUpperCase()}
+            </span>
+          )}
+          <p className="text-card-loc text-subtle truncate">
+            {item.owner_first_name} {item.owner_last_name}
+          </p>
+        </div>
+
+        <div className="mb-5 flex items-center justify-between">
           <p className="text-card-loc text-subtle">{item.city || "Sin ubicación"}</p>
           <p className="text-card-loc text-rating flex items-center gap-1">
             <Star
@@ -241,7 +264,7 @@ function ProductCard({ item, isFavorite, onToggleFavorite, onOpen }: ProductCard
             type="button"
             className="btn-primary btn--sm min-w-23"
             disabled={!isAvailable}
-            onClick={onOpen}
+            onClick={handleAlquilar}
           >
             {isAvailable ? "Alquilar" : "No disponible"}
           </button>

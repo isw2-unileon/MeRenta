@@ -26,9 +26,13 @@ SELECT
     i.published_at,
     a.city,
     img.image_url AS primary_image_url,
+    c.first_name  AS owner_first_name,
+    c.last_name   AS owner_last_name,
+    COALESCE(c.avatar_url, '') AS owner_avatar_url,
     COUNT(*) OVER() AS total_count
 FROM item i
-JOIN address a ON a.address_id = i.address_id
+JOIN address  a ON a.address_id  = i.address_id
+JOIN customer c ON c.customer_id = i.owner_id
 LEFT JOIN LATERAL (
     SELECT image_url
     FROM item_image
@@ -71,18 +75,21 @@ type SearchItemCardsParams struct {
 
 // SearchItemCardsRow represents a lightweight item card with a total count.
 type SearchItemCardsRow struct {
-	ItemID          uuid.UUID          `json:"item_id"`
-	OwnerID         uuid.UUID          `json:"owner_id"`
-	AddressID       uuid.UUID          `json:"address_id"`
-	Category        CategoryEnum       `json:"category"`
-	Title           string             `json:"title"`
-	ItemStatus      ItemStatus         `json:"item_status"`
-	PricePerDay     pgtype.Numeric     `json:"price_per_day"`
-	IsAvailable     bool               `json:"is_available"`
-	PublishedAt     pgtype.Timestamptz `json:"published_at"`
-	City            string             `json:"city"`
-	PrimaryImageURL string             `json:"primary_image_url"`
-	TotalCount      int64              `json:"total_count"`
+	ItemID           uuid.UUID          `json:"item_id"`
+	OwnerID          uuid.UUID          `json:"owner_id"`
+	AddressID        uuid.UUID          `json:"address_id"`
+	Category         CategoryEnum       `json:"category"`
+	Title            string             `json:"title"`
+	ItemStatus       ItemStatus         `json:"item_status"`
+	PricePerDay      pgtype.Numeric     `json:"price_per_day"`
+	IsAvailable      bool               `json:"is_available"`
+	PublishedAt      pgtype.Timestamptz `json:"published_at"`
+	City             string             `json:"city"`
+	PrimaryImageURL  string             `json:"primary_image_url"`
+	OwnerFirstName   string             `json:"owner_first_name"`
+	OwnerLastName    string             `json:"owner_last_name"`
+	OwnerAvatarURL   string             `json:"owner_avatar_url"`
+	TotalCount       int64              `json:"total_count"`
 }
 
 const countItemCardsByCategory = `
@@ -227,6 +234,9 @@ func (q *Queries) SearchItemCards(ctx context.Context, arg SearchItemCardsParams
 			&i.PublishedAt,
 			&i.City,
 			&i.PrimaryImageURL,
+			&i.OwnerFirstName,
+			&i.OwnerLastName,
+			&i.OwnerAvatarURL,
 			&i.TotalCount,
 		); err != nil {
 			return nil, err

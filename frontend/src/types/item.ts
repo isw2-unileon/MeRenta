@@ -81,6 +81,9 @@ interface SearchItemResponse {
   published_at: string;
   city: string;
   primary_image_url?: string;
+  owner_first_name: string;
+  owner_last_name: string;
+  owner_avatar_url?: string;
 }
 
 /**

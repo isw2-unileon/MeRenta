@@ -1,6 +1,8 @@
 import { useEffect, useReducer } from "react";
 import { useNavigate, useParams } from "react-router-dom";
 
+import { useFavorites } from "@/hooks/useFavorites";
+
 import { BookingCard } from "@/components/product/detail/BookingCard";
 import { InsuranceCard } from "@/components/product/detail/InsuranceCard";
 import { OwnerCard } from "@/components/product/detail/OwnerCard";
@@ -24,6 +26,7 @@ const CATEGORY_LABELS: Record<string, string> = {
   clothing: "Ropa",
   vehicles: "Vehículos",
   gardening: "Jardinería",
+  leisure: "Ocio",
   other: "Otros",
 };
 
@@ -76,7 +79,6 @@ interface ProductState {
   owner: CustomerProfile | null;
   loading: boolean;
   error: string;
-  isFavorite: boolean;
   dateRange: DateRange;
 }
 
@@ -86,7 +88,6 @@ type ProductAction =
   | { type: "set-item"; value: ItemResponse | null }
   | { type: "set-images"; value: ItemImageResponse[] }
   | { type: "set-owner"; value: CustomerProfile | null }
-  | { type: "toggle-favorite" }
   | { type: "set-date-range"; value: DateRange };
 
 const INITIAL_STATE: ProductState = {
@@ -95,7 +96,6 @@ const INITIAL_STATE: ProductState = {
   owner: null,
   loading: true,
   error: "",
-  isFavorite: false,
   dateRange: { start: null, end: null },
 };
 
@@ -111,8 +111,6 @@ function productReducer(state: ProductState, action: ProductAction): ProductStat
       return { ...state, images: action.value };
     case "set-owner":
       return { ...state, owner: action.value };
-    case "toggle-favorite":
-      return { ...state, isFavorite: !state.isFavorite };
     case "set-date-range":
       return { ...state, dateRange: action.value };
     default:
@@ -202,6 +200,7 @@ function Product() {
   const navigate = useNavigate();
 
   const [state, dispatch] = useReducer(productReducer, INITIAL_STATE);
+  const { isFav, toggle } = useFavorites();
 
   // Placeholder — a real implementation would fetch from /api/items/:id/bookings
   const occupiedDates = new Set<string>();
@@ -292,8 +291,8 @@ function Product() {
                 images={state.images}
                 title={state.item.title}
                 isAvailable={state.item.is_available}
-                isFavorite={state.isFavorite}
-                onToggleFavorite={() => dispatch({ type: "toggle-favorite" })}
+                isFavorite={isFav(state.item.item_id)}
+                onToggleFavorite={() => toggle(state.item!.item_id, isFav(state.item!.item_id))}
               />
 
               {/* Title, badges and rating */}

@@ -1,4 +1,5 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
+import { ChevronLeft, ChevronRight, Heart, X } from "lucide-react";
 
 import type { ItemImageResponse } from "@/types/item";
 
@@ -21,6 +22,7 @@ interface ProductImageGalleryProps {
  * Hero image section for the product detail page.
  * Shows a large main image with a status badge and favourite toggle overlay,
  * plus a horizontal strip of clickable thumbnails below.
+ * Clicking the main image opens a fullscreen lightbox with arrow navigation.
  *
  * When there are no images, renders a green-tinted placeholder block.
  * @param images Ordered image list from the API.
@@ -32,79 +34,176 @@ interface ProductImageGalleryProps {
  */
 function ProductImageGallery({ images, title, isAvailable, isFavorite, onToggleFavorite }: ProductImageGalleryProps) {
   const [activeIndex, setActiveIndex] = useState(0);
+  const [lightboxOpen, setLightboxOpen] = useState(false);
 
   const hasImages = images.length > 0;
   const mainImage = hasImages ? images[activeIndex] : undefined;
 
+  const openLightbox = () => {
+    if (hasImages) setLightboxOpen(true);
+  };
+
+  const closeLightbox = () => setLightboxOpen(false);
+
+  const prevImage = (e: React.MouseEvent) => {
+    e.stopPropagation();
+    setActiveIndex((i) => (i - 1 + images.length) % images.length);
+  };
+
+  const nextImage = (e: React.MouseEvent) => {
+    e.stopPropagation();
+    setActiveIndex((i) => (i + 1) % images.length);
+  };
+
+  // Keyboard navigation and Escape to close
+  useEffect(() => {
+    if (!lightboxOpen) return;
+    const handleKey = (e: KeyboardEvent) => {
+      if (e.key === "Escape") closeLightbox();
+      if (e.key === "ArrowLeft") setActiveIndex((i) => (i - 1 + images.length) % images.length);
+      if (e.key === "ArrowRight") setActiveIndex((i) => (i + 1) % images.length);
+    };
+    document.addEventListener("keydown", handleKey);
+    return () => document.removeEventListener("keydown", handleKey);
+  }, [lightboxOpen, images.length]);
+
   return (
-    <div>
-      {/* ── Main image ── */}
-      <div className="relative">
-        {hasImages && mainImage ? (
-          <img
-            className="product-main-img"
-            src={mainImage.image_url}
-            alt={title}
-          />
-        ) : (
-          <img
-            className="product-main-img bg-primary-light rounded-lg"
-            src={PLACEHOLDER_IMAGE}
-            alt={title}
-          />
+    <>
+      <div>
+        {/* ── Main image ── */}
+        <div className="relative">
+          {hasImages && mainImage ? (
+            <img
+              className="product-main-img cursor-zoom-in"
+              src={mainImage.image_url}
+              alt={title}
+              onClick={openLightbox}
+            />
+          ) : (
+            <img
+              className="product-main-img bg-primary-light rounded-lg"
+              src={PLACEHOLDER_IMAGE}
+              alt={title}
+            />
+          )}
+
+          {/* Availability badge */}
+          <div className="absolute top-4 left-4">
+            <span className="product-status-badge">{isAvailable ? "Disponible" : "No disponible"}</span>
+          </div>
+
+          {/* Favourite button */}
+          <button
+            type="button"
+            className={`absolute top-4 right-4 flex size-8 items-center justify-center rounded-full bg-white p-0 shadow-sm transition-colors ${
+              isFavorite ? "text-heart-active" : "text-subtle hover:text-heart-active"
+            }`}
+            aria-pressed={isFavorite}
+            aria-label={isFavorite ? "Quitar de favoritos" : "Añadir a favoritos"}
+            onClick={onToggleFavorite}
+          >
+            <Heart
+              size={17}
+              fill={isFavorite ? "currentColor" : "none"}
+            />
+          </button>
+        </div>
+
+        {/* ── Thumbnails ── */}
+        {hasImages && images.length > 1 && (
+          <div className="mt-3 flex gap-2 overflow-x-auto pb-1">
+            {images.map((img, i) => (
+              <button
+                key={img.image_id}
+                type="button"
+                className="shrink-0 p-0"
+                aria-pressed={i === activeIndex}
+                aria-label={`${title} - imagen ${i + 1}`}
+                onClick={() => setActiveIndex(i)}
+              >
+                <img
+                  className={`product-thumb ${i === activeIndex ? "active" : ""}`}
+                  src={img.image_url}
+                  alt=""
+                />
+              </button>
+            ))}
+          </div>
         )}
 
-        {/* Availability badge */}
-        <div className="absolute top-4 left-4">
-          <span className="product-status-badge">{isAvailable ? "Disponible" : "No disponible"}</span>
-        </div>
-
-        {/* Favourite button */}
-        <button
-          type="button"
-          className={`btn-fav btn-fav--lg absolute top-4 right-4 shadow-sm ${isFavorite ? "active" : ""}`}
-          aria-pressed={isFavorite}
-          aria-label={isFavorite ? "Quitar de favoritos" : "Añadir a favoritos"}
-          onClick={onToggleFavorite}
-        >
-          ♥
-        </button>
+        {/* Placeholder thumbnails when no images */}
+        {!hasImages && (
+          <div className="mt-3 flex gap-2">
+            {Array.from({ length: 5 }, (_, i) => (
+              <div
+                key={i}
+                className="product-thumb bg-primary-light shrink-0"
+              />
+            ))}
+          </div>
+        )}
       </div>
 
-      {/* ── Thumbnails ── */}
-      {hasImages && images.length > 1 && (
-        <div className="mt-3 flex gap-2 overflow-x-auto pb-1">
-          {images.map((img, i) => (
-            <button
-              key={img.image_id}
-              type="button"
-              className="shrink-0 p-0"
-              aria-pressed={i === activeIndex}
-              aria-label={`${title} - imagen ${i + 1}`}
-              onClick={() => setActiveIndex(i)}
-            >
-              <img
-                className={`product-thumb ${i === activeIndex ? "active" : ""}`}
-                src={img.image_url}
-                alt=""
-              />
-            </button>
-          ))}
-        </div>
-      )}
+      {/* ── Lightbox ── */}
+      {lightboxOpen && (
+        <div
+          className="fixed inset-0 z-50 flex items-center justify-center bg-black/85"
+          onClick={closeLightbox}
+          role="dialog"
+          aria-modal="true"
+          aria-label={`${title} - imagen ampliada`}
+        >
+          {/* Close */}
+          <button
+            type="button"
+            className="absolute top-4 right-4 flex size-10 items-center justify-center rounded-full bg-white/10 text-white transition-colors hover:bg-white/25"
+            aria-label="Cerrar imagen"
+            onClick={closeLightbox}
+          >
+            <X size={20} />
+          </button>
 
-      {/* Placeholder thumbnails when no images */}
-      {!hasImages && (
-        <div className="mt-3 flex gap-2">
-          {Array.from({ length: 5 }, (_, i) => (
-            <div
-              key={i}
-              className="product-thumb bg-primary-light shrink-0"
-            />
-          ))}
+          {/* Prev */}
+          {images.length > 1 && (
+            <button
+              type="button"
+              className="absolute left-4 flex size-11 items-center justify-center rounded-full bg-white/10 text-white transition-colors hover:bg-white/25"
+              aria-label="Imagen anterior"
+              onClick={prevImage}
+            >
+              <ChevronLeft size={24} />
+            </button>
+          )}
+
+          {/* Image */}
+          <img
+            src={images[activeIndex].image_url}
+            alt={`${title} - imagen ${activeIndex + 1}`}
+            className="max-h-[90vh] max-w-[90vw] rounded-lg object-contain shadow-2xl"
+            onClick={(e) => e.stopPropagation()}
+          />
+
+          {/* Next */}
+          {images.length > 1 && (
+            <button
+              type="button"
+              className="absolute right-4 flex size-11 items-center justify-center rounded-full bg-white/10 text-white transition-colors hover:bg-white/25"
+              aria-label="Imagen siguiente"
+              onClick={nextImage}
+            >
+              <ChevronRight size={24} />
+            </button>
+          )}
+
+          {/* Counter */}
+          {images.length > 1 && (
+            <p className="absolute bottom-5 text-sm text-white/70">
+              {activeIndex + 1} / {images.length}
+            </p>
+          )}
         </div>
       )}
-    </div>
+    </>
   );
 }
 
