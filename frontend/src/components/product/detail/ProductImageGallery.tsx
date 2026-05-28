@@ -83,7 +83,7 @@ function ProductImageGallery({ images, title, isAvailable, isFavorite, onToggleF
     <>
       <div>
         {/* ── Main image ── */}
-        <div className="relative h-[480px] overflow-hidden rounded-lg">
+        <div className="h-main-img relative overflow-hidden rounded-lg">
           {hasImages && mainImage ? (
             <button
               type="button"
@@ -167,65 +167,64 @@ function ProductImageGallery({ images, title, isAvailable, isFavorite, onToggleF
           onCancel={closeLightbox}
           onClose={closeLightbox}
         >
+          {/* Backdrop: semantic button at z-0, all other content at z-10 above it */}
           <button
             type="button"
-            className="absolute inset-0 z-0 cursor-default"
+            className="absolute inset-0 z-0 cursor-default bg-transparent"
             aria-label="Cerrar imagen"
-            onClick={closeLightbox}
             tabIndex={-1}
+            onClick={closeLightbox}
           />
 
-          <div className="relative z-10 flex h-full w-full items-center justify-center">
-            {/* Close */}
+          {/* Close */}
+          <button
+            type="button"
+            className="absolute top-4 right-4 z-10 flex size-10 items-center justify-center rounded-full bg-white/15 text-white transition-colors hover:bg-white/30"
+            aria-label="Cerrar imagen"
+            onClick={closeLightbox}
+          >
+            <X size={20} />
+          </button>
+
+          {/* Prev */}
+          {images.length > 1 && (
             <button
               type="button"
-              className="absolute top-4 right-4 flex size-10 items-center justify-center rounded-full bg-white/15 text-white transition-colors hover:bg-white/30"
-              aria-label="Cerrar imagen"
-              onClick={closeLightbox}
+              className="absolute top-1/2 left-6 z-10 flex size-11 -translate-y-1/2 items-center justify-center rounded-full bg-white/15 text-white transition-colors hover:bg-white/30"
+              aria-label="Imagen anterior"
+              onClick={prevImage}
             >
-              <X size={20} />
+              <ChevronLeft size={24} />
             </button>
+          )}
 
-            {/* Prev */}
-            {images.length > 1 && (
-              <button
-                type="button"
-                className="absolute left-6 flex size-11 items-center justify-center rounded-full bg-white/15 text-white transition-colors hover:bg-white/30"
-                aria-label="Imagen anterior"
-                onClick={prevImage}
-              >
-                <ChevronLeft size={24} />
-              </button>
-            )}
+          {/* Image at z-10 so it sits above the backdrop button */}
+          {lightboxImage && (
+            <img
+              src={lightboxImage.image_url}
+              alt={`${title} - imagen ${activeIndex + 1}`}
+              className="relative z-10 max-h-[90vh] max-w-[90vw] rounded-lg object-contain shadow-2xl"
+            />
+          )}
 
-            {/* Image */}
-            {lightboxImage && (
-              <img
-                src={lightboxImage.image_url}
-                alt={`${title} - imagen ${activeIndex + 1}`}
-                className="max-h-[90vh] max-w-[90vw] rounded-lg object-contain shadow-2xl"
-              />
-            )}
+          {/* Next */}
+          {images.length > 1 && (
+            <button
+              type="button"
+              className="absolute top-1/2 right-6 z-10 flex size-11 -translate-y-1/2 items-center justify-center rounded-full bg-white/15 text-white transition-colors hover:bg-white/30"
+              aria-label="Imagen siguiente"
+              onClick={nextImage}
+            >
+              <ChevronRight size={24} />
+            </button>
+          )}
 
-            {/* Next */}
-            {images.length > 1 && (
-              <button
-                type="button"
-                className="absolute right-6 flex size-11 items-center justify-center rounded-full bg-white/15 text-white transition-colors hover:bg-white/30"
-                aria-label="Imagen siguiente"
-                onClick={nextImage}
-              >
-                <ChevronRight size={24} />
-              </button>
-            )}
-
-            {/* Counter */}
-            {images.length > 1 && (
-              <p className="absolute bottom-5 text-sm text-white/70">
-                {activeIndex + 1} / {images.length}
-              </p>
-            )}
-          </div>
+          {/* Counter */}
+          {images.length > 1 && (
+            <p className="absolute bottom-5 z-10 text-sm text-white/70">
+              {activeIndex + 1} / {images.length}
+            </p>
+          )}
         </dialog>
       )}
     </>
