@@ -78,7 +78,10 @@ func main() {
 	chatHub := handler.NewChatHub()
 	chatH := handler.NewChatHandler(chatSvc, chatHub)
 
-	r := router.Setup(authH, itemH, itemImgH, addrH, favH, chatH, jwtMgr, cfg.CORSAllowOrigin, pool.Ping)
+	reviewSvc := service.NewReviewService(q)
+	reviewH := handler.NewReviewHandler(reviewSvc)
+
+	r := router.Setup(authH, itemH, itemImgH, addrH, favH, chatH, reviewH, jwtMgr, cfg.CORSAllowOrigin, pool.Ping)
 	portNum, err := strconv.Atoi(cfg.Port)
 	if err != nil || portNum < 1 || portNum > 65535 {
 		slog.Error("invalid port", "port", cfg.Port)

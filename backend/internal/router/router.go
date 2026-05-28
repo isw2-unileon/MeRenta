@@ -21,6 +21,7 @@ func Setup(
 	addrH *handler.AddressHandler,
 	favH *handler.FavoriteHandler,
 	chatH *handler.ChatHandler,
+	reviewH *handler.ReviewHandler,
 	jwtMgr *jwt.Manager,
 	corsAllowOrigin string,
 	readiness func(context.Context) error,
@@ -73,6 +74,7 @@ func Setup(
 	items := protected.Group("/items")
 	items.GET("", itemH.List)
 	items.POST("", itemH.Create)
+	items.GET("/mine", itemH.ListMine)
 	items.GET("/:id", itemH.Get)
 	items.GET("/:id/images", itemImgH.ListImages)
 	items.POST("/:id/images", itemImgH.AddImages)
@@ -84,6 +86,10 @@ func Setup(
 	favs.POST("/:id", favH.Add)
 	favs.DELETE("/:id", favH.Remove)
 	favs.GET("/:id/check", favH.Check)
+
+	// reviews
+	reviews := protected.Group("/reviews")
+	reviews.GET("/received", reviewH.ListReceived)
 
 	// conversations
 	conversations := protected.Group("/conversations")
