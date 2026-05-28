@@ -69,6 +69,7 @@ const (
 	CategoryEnumMusic       CategoryEnum = "music"
 	CategoryEnumPhotography CategoryEnum = "photography"
 	CategoryEnumCamping     CategoryEnum = "camping"
+	CategoryEnumLeisure     CategoryEnum = "leisure"
 	CategoryEnumOther       CategoryEnum = "other"
 )
 

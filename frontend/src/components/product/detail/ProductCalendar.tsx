@@ -9,6 +9,11 @@ interface ProductCalendarProps {
   selectedEnd: Date | null;
   /** Callback fired when the user clicks an available day cell. */
   onDateSelect: (date: Date) => void;
+  /**
+   * When provided, the calendar navigates to the month of this date.
+   * Used to sync the calendar view when dates are changed from the booking card.
+   */
+  navigateTo?: Date | null;
 }
 
 const WEEKDAY_LABELS = ["L", "M", "X", "J", "V", "S", "D"] as const;
@@ -58,18 +63,25 @@ function isInRange(date: Date, start: Date | null, end: Date | null): boolean {
  * @param selectedStart Currently active start date.
  * @param selectedEnd Currently active end date.
  * @param onDateSelect Called with the clicked Date when the user taps a valid cell.
+ * @param navigateTo Path to navigate
  * @returns Calendar JSX.
  */
-function ProductCalendar({ occupiedDates, selectedStart, selectedEnd, onDateSelect }: ProductCalendarProps) {
+function ProductCalendar({
+  occupiedDates,
+  selectedStart,
+  selectedEnd,
+  onDateSelect,
+  navigateTo,
+}: ProductCalendarProps) {
   const today = new Date();
   today.setHours(0, 0, 0, 0);
 
-  const [viewMonth, setViewMonth] = useState<Date>(() => {
-    const d = new Date();
-    d.setDate(1);
-    d.setHours(0, 0, 0, 0);
-    return d;
-  });
+  const [monthOffset, setMonthOffset] = useState(0);
+
+  const anchorMonth = navigateTo
+    ? new Date(navigateTo.getFullYear(), navigateTo.getMonth(), 1)
+    : new Date(today.getFullYear(), today.getMonth(), 1);
+  const viewMonth = new Date(anchorMonth.getFullYear(), anchorMonth.getMonth() + monthOffset, 1);
 
   const year = viewMonth.getFullYear();
   const month = viewMonth.getMonth();
@@ -105,7 +117,7 @@ function ProductCalendar({ occupiedDates, selectedStart, selectedEnd, onDateSele
           <button
             type="button"
             className="btn-ghost btn--sm"
-            onClick={() => setViewMonth((prev) => new Date(prev.getFullYear(), prev.getMonth() - 1, 1))}
+            onClick={() => setMonthOffset((prev) => prev - 1)}
             disabled={!canGoPrev}
             aria-label="Mes anterior"
           >
@@ -117,7 +129,7 @@ function ProductCalendar({ occupiedDates, selectedStart, selectedEnd, onDateSele
           <button
             type="button"
             className="btn-ghost btn--sm"
-            onClick={() => setViewMonth((prev) => new Date(prev.getFullYear(), prev.getMonth() + 1, 1))}
+            onClick={() => setMonthOffset((prev) => prev + 1)}
             aria-label="Mes siguiente"
           >
             ›

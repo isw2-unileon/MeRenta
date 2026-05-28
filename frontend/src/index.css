@@ -655,7 +655,8 @@
     font-weight: var(--font-weight-medium);
     color: var(--color-form);
   }
-  p.booking-date-label {
+  p.booking-date-label,
+  label.booking-date-label {
     font-size: var(--text-date-label);
     color: var(--color-subtle);
   }
@@ -663,6 +664,16 @@
     font-size: var(--text-date-value);
     font-weight: var(--font-weight-medium);
     color: var(--color-ink);
+  }
+  input.booking-date-hidden {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    opacity: 0;
+    pointer-events: none;
+  }
+  p.booking-date-value--muted {
+    color: var(--color-subtle);
   }
   p.booking-row-label {
     font-size: var(--text-body);
@@ -2044,7 +2055,7 @@
   .booking-dates {
     border: 1.5px solid var(--color-border-booking-active);
     border-radius: var(--radius-md);
-    height: 48px;
+    height: 56px;
     display: flex;
     align-items: center;
     overflow: hidden;

@@ -17,6 +17,7 @@ const CATEGORY_LABELS: Record<string, string> = {
   photography: "Fotografía",
   camping: "Camping",
   clothing: "Ropa",
+  leisure: "Ocio",
   other: "Otros",
 };
 

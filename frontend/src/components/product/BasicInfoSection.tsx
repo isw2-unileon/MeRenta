@@ -57,6 +57,11 @@ const CATEGORIES: CategoryOption[] = [
     subcategories: ["Coches", "Motos", "Bicicletas", "Patinetes", "Furgonetas", "Otros"],
   },
   {
+    value: "leisure",
+    label: "Ocio",
+    subcategories: ["Juegos de mesa", "Videojuegos", "Disfraces", "Libros", "Coleccionismo", "Otros"],
+  },
+  {
     value: "other",
     label: "Otros",
     subcategories: ["Otros"],

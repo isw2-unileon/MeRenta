@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useRef, useState } from "react";
 import { useNavigate } from "react-router-dom";
 
 import { StarRating } from "@/components/product/detail/StarRating";
@@ -29,13 +29,34 @@ interface BookingCardProps {
   maxDay?: number | null;
   /** Whether the authenticated user owns this listing. */
   isOwner?: boolean;
+  /**
+   * Callback fired when the user changes a date from the booking card inputs.
+   * Receives the new start and end dates (either may be null).
+   */
+  onDateChange?: (start: Date | null, end: Date | null) => void;
 }
 
 interface ConversationResponse {
   conversation_id: string;
 }
 
-/** Formats a Date as localised Spanish short date, e.g. "15 may 2025". */
+/** Formats a Date as "YYYY-MM-DD" (the value format required by input[type="date"]). */
+function toISODateStr(date: Date): string {
+  const y = date.getFullYear();
+  const m = String(date.getMonth() + 1).padStart(2, "0");
+  const d = String(date.getDate()).padStart(2, "0");
+  return `${y}-${m}-${d}`;
+}
+
+/** Parses a "YYYY-MM-DD" string into a local midnight Date. */
+function parseISODateStr(value: string): Date {
+  const [y, mo, d] = value.split("-").map(Number);
+  const date = new Date(y ?? 0, (mo ?? 1) - 1, d ?? 1);
+  date.setHours(0, 0, 0, 0);
+  return date;
+}
+
+/** Formats a Date as localised Spanish short date, e.g. "28 may 2026". */
 function formatDateEs(date: Date): string {
   return date.toLocaleDateString("es-ES", {
     day: "numeric",
@@ -89,10 +110,60 @@ function BookingCard({
   minDays,
   maxDay,
   isOwner = false,
+  onDateChange,
 }: BookingCardProps) {
   const navigate = useNavigate();
   const [messageLoading, setMessageLoading] = useState(false);
   const [messageError, setMessageError] = useState("");
+
+  const startInputRef = useRef<HTMLInputElement>(null);
+  const endInputRef = useRef<HTMLInputElement>(null);
+
+  /** Opens the native date picker for the given input ref. */
+  const openPicker = (ref: React.RefObject<HTMLInputElement | null>) => {
+    const input = ref.current;
+    if (!input || input.disabled) return;
+    if (typeof input.showPicker === "function") {
+      try {
+        input.showPicker();
+      } catch {
+        input.focus();
+      }
+    } else {
+      input.focus();
+    }
+  };
+
+  /** Today as "YYYY-MM-DD" — used as the minimum selectable date. */
+  const todayStr = toISODateStr(new Date());
+
+  /** One day after the selected start — minimum valid end date. */
+  const minEndStr = selectedStart
+    ? toISODateStr(new Date(selectedStart.getFullYear(), selectedStart.getMonth(), selectedStart.getDate() + 1))
+    : todayStr;
+
+  const handleStartInputChange = (value: string) => {
+    if (!value) {
+      onDateChange?.(null, null);
+      return;
+    }
+    const date = parseISODateStr(value);
+    // Clear end date if it's no longer after the new start
+    const newEnd = selectedEnd && selectedEnd > date ? selectedEnd : null;
+    onDateChange?.(date, newEnd);
+  };
+
+  const handleEndInputChange = (value: string) => {
+    if (!value) {
+      onDateChange?.(selectedStart, null);
+      return;
+    }
+    const date = parseISODateStr(value);
+    // Only accept end if it's strictly after start
+    if (selectedStart && date > selectedStart) {
+      onDateChange?.(selectedStart, date);
+    }
+  };
 
   const days =
     selectedStart && selectedEnd
@@ -150,15 +221,53 @@ function BookingCard({
       {/* ── Rental dates summary ── */}
       <p className="booking-field-label mb-2">Fechas del alquiler</p>
       <div className="booking-dates mb-4">
-        <div className="flex flex-1 flex-col justify-center px-3">
+        {/* Start date cell: clicking opens the native date picker via ref */}
+        <button
+          type="button"
+          className="flex flex-1 flex-col justify-between px-3 py-2 text-left"
+          onClick={() => openPicker(startInputRef)}
+          aria-label="Seleccionar fecha de recogida"
+        >
           <p className="booking-date-label">Recogida</p>
           <p className="booking-date-value">{selectedStart ? formatDateEs(selectedStart) : "Selecciona fecha"}</p>
-        </div>
+        </button>
+        <input
+          ref={startInputRef}
+          type="date"
+          className="booking-date-hidden"
+          value={selectedStart ? toISODateStr(selectedStart) : ""}
+          min={todayStr}
+          onChange={(e) => handleStartInputChange(e.target.value)}
+          aria-label="Fecha de recogida"
+          tabIndex={-1}
+        />
+
         <div className="booking-dates-divider" />
-        <div className="flex flex-1 flex-col justify-center px-3">
+
+        {/* End date cell */}
+        <button
+          type="button"
+          className="flex flex-1 flex-col justify-between px-3 py-2 text-left"
+          onClick={() => openPicker(endInputRef)}
+          disabled={!selectedStart}
+          aria-label="Seleccionar fecha de devolución"
+        >
           <p className="booking-date-label">Devolución</p>
-          <p className="booking-date-value">{selectedEnd ? formatDateEs(selectedEnd) : "Selecciona fecha"}</p>
-        </div>
+          <p className={`booking-date-value${!selectedStart ? "booking-date-value--muted" : ""}`}>
+            {selectedEnd ? formatDateEs(selectedEnd) : "Selecciona fecha"}
+          </p>
+        </button>
+        <input
+          ref={endInputRef}
+          type="date"
+          className="booking-date-hidden"
+          value={selectedEnd ? toISODateStr(selectedEnd) : ""}
+          min={minEndStr}
+          disabled={!selectedStart}
+          onChange={(e) => handleEndInputChange(e.target.value)}
+          aria-label="Fecha de devolución"
+          tabIndex={-1}
+        />
       </div>
       <p className="booking-row-label -mt-2 mb-4">{periodHint}</p>
 

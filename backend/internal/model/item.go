@@ -49,6 +49,9 @@ type SearchItemResponse struct {
 	PublishedAt     time.Time `json:"published_at"`
 	City            string    `json:"city"`
 	PrimaryImageURL string    `json:"primary_image_url,omitempty"`
+	OwnerFirstName  string    `json:"owner_first_name"`
+	OwnerLastName   string    `json:"owner_last_name"`
+	OwnerAvatarURL  string    `json:"owner_avatar_url,omitempty"`
 }
 
 // SearchItemsResponse wraps paginated search results.
