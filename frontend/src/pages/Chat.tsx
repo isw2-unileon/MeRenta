@@ -346,7 +346,10 @@ function Chat() {
       if (showLoading) dispatch({ type: "messages:loading" });
 
       try {
-        const data = await apiGet<MessagesResponse>(`/api/conversations/${activeConversationID}/messages`, controller.signal);
+        const data = await apiGet<MessagesResponse>(
+          `/api/conversations/${activeConversationID}/messages`,
+          controller.signal
+        );
         if (!active) return;
         dispatch({ type: showLoading ? "messages:success" : "messages:merge", items: data.items });
       } catch (err) {
