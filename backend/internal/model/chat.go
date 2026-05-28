@@ -42,12 +42,20 @@ type MessageResponse struct {
 	ReadAt         *time.Time `json:"read_at,omitempty"`
 	CreatedAt      time.Time  `json:"created_at"`
 	IsMine         bool       `json:"is_mine"`
+	IsRead         bool       `json:"is_read"`
 }
 
 // MessagesResponse wraps all messages for a conversation.
 type MessagesResponse struct {
 	Items []MessageResponse `json:"items"`
 	Total int               `json:"total"`
+}
+
+// ReadReceiptResponse notifies clients that messages in a conversation were read.
+type ReadReceiptResponse struct {
+	ConversationID string   `json:"conversation_id"`
+	ReaderID       string   `json:"reader_id"`
+	MessageIDs     []string `json:"message_ids"`
 }
 
 // ChatWebSocketIn is a message received from the browser over WebSocket.
@@ -58,7 +66,8 @@ type ChatWebSocketIn struct {
 
 // ChatWebSocketOut is an event sent to the browser over WebSocket.
 type ChatWebSocketOut struct {
-	Type  string           `json:"type"`
-	Data  *MessageResponse `json:"data,omitempty"`
-	Error string           `json:"error,omitempty"`
+	Type  string               `json:"type"`
+	Data  *MessageResponse     `json:"data,omitempty"`
+	Read  *ReadReceiptResponse `json:"read,omitempty"`
+	Error string               `json:"error,omitempty"`
 }

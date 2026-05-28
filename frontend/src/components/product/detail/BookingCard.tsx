@@ -27,6 +27,8 @@ interface BookingCardProps {
   minDays: number;
   /** Maximum number of rental days configured by the owner. Null means unlimited. */
   maxDay?: number | null;
+  /** Whether the authenticated user owns this listing. */
+  isOwner?: boolean;
 }
 
 interface ConversationResponse {
@@ -86,6 +88,7 @@ function BookingCard({
   selectedEnd,
   minDays,
   maxDay,
+  isOwner = false,
 }: BookingCardProps) {
   const navigate = useNavigate();
   const [messageLoading, setMessageLoading] = useState(false);
@@ -202,14 +205,16 @@ function BookingCard({
         >
           Solicitar alquiler
         </button>
-        <button
-          type="button"
-          className="btn-secondary btn--md w-full"
-          onClick={handleMessage}
-          disabled={messageLoading}
-        >
-          {messageLoading ? "Abriendo chat..." : "Enviar mensaje al propietario"}
-        </button>
+        {!isOwner && (
+          <button
+            type="button"
+            className="btn-secondary btn--md w-full"
+            onClick={handleMessage}
+            disabled={messageLoading}
+          >
+            {messageLoading ? "Abriendo chat..." : "Enviar mensaje al propietario"}
+          </button>
+        )}
       </div>
 
       {messageError && <p className="field-error mt-3 text-center">{messageError}</p>}

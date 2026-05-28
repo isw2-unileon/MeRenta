@@ -3,6 +3,7 @@ import { useNavigate, useParams } from "react-router-dom";
 import { ArrowRight, CheckCheck, Search, SendHorizontal } from "lucide-react";
 
 import type { ApiResponse } from "@/types/common";
+import * as React from "react";
 
 interface ConversationResponse {
   conversation_id: string;
@@ -30,6 +31,7 @@ interface MessageResponse {
   read_at?: string;
   created_at: string;
   is_mine: boolean;
+  is_read: boolean;
 }
 
 interface MessagesResponse {
@@ -38,8 +40,13 @@ interface MessagesResponse {
 }
 
 interface ChatWebSocketEvent {
-  type: "message" | "error";
+  type: "message" | "read" | "error";
   data?: MessageResponse;
+  read?: {
+    conversation_id: string;
+    reader_id: string;
+    message_ids: string[];
+  };
   error?: string;
 }
 
@@ -55,6 +62,7 @@ const dayLabelFormatter = new Intl.DateTimeFormat("es-ES", {
 
 interface ChatState {
   conversations: ConversationResponse[];
+  unreadConversationIDs: Set<string>;
   messages: MessageResponse[];
   draft: string;
   loadingConversations: boolean;
@@ -65,21 +73,25 @@ interface ChatState {
 
 type ChatAction =
   | { type: "conversations:success"; items: ConversationResponse[] }
+  | { type: "conversations:refresh"; items: ConversationResponse[]; activeConversationID?: string }
   | { type: "conversations:error"; message: string }
+  | { type: "conversation:open"; conversationID: string }
   | { type: "messages:loading" }
   | { type: "messages:success"; items: MessageResponse[] }
-  | { type: "messages:merge"; items: MessageResponse[] }
+  | { type: "messages:merge"; items: MessageResponse[]; activeConversationID?: string }
   | { type: "messages:error"; message: string }
   | { type: "messages:reset" }
   | { type: "draft:set"; value: string }
   | { type: "sending:start" }
   | { type: "sending:end" }
-  | { type: "message:receive"; message: MessageResponse }
+  | { type: "message:receive"; message: MessageResponse; activeConversationID?: string }
+  | { type: "messages:read"; messageIDs: string[] }
   | { type: "error:clear" }
   | { type: "error:set"; message: string };
 
 const initialState: ChatState = {
   conversations: [],
+  unreadConversationIDs: new Set<string>(),
   messages: [],
   draft: "",
   loadingConversations: true,
@@ -88,12 +100,47 @@ const initialState: ChatState = {
   error: "",
 };
 
-function applyIncomingMessage(state: ChatState, message: MessageResponse): ChatState {
+function sortConversations(conversations: ConversationResponse[]): ConversationResponse[] {
+  return conversations.toSorted((a, b) => {
+    const aTime = new Date(a.last_message_at ?? a.updated_at).getTime();
+    const bTime = new Date(b.last_message_at ?? b.updated_at).getTime();
+    return bTime - aTime;
+  });
+}
+
+function refreshConversations(
+  state: ChatState,
+  items: ConversationResponse[],
+  activeConversationID?: string
+): ChatState {
+  const previousByID = new Map(state.conversations.map((conversation) => [conversation.conversation_id, conversation]));
+  const unreadConversationIDs = new Set(state.unreadConversationIDs);
+
+  for (const conversation of items) {
+    const previous = previousByID.get(conversation.conversation_id);
+    const changed =
+      previous &&
+      (previous.last_message_at !== conversation.last_message_at ||
+        previous.last_message !== conversation.last_message);
+
+    if (changed && conversation.conversation_id !== activeConversationID) {
+      unreadConversationIDs.add(conversation.conversation_id);
+    }
+  }
+
+  if (activeConversationID) {
+    unreadConversationIDs.delete(activeConversationID);
+  }
+
+  return { ...state, conversations: sortConversations(items), unreadConversationIDs, loadingConversations: false };
+}
+
+function applyIncomingMessage(state: ChatState, message: MessageResponse, activeConversationID?: string): ChatState {
   const messages = state.messages.some((item) => item.message_id === message.message_id)
     ? state.messages
     : [...state.messages, message];
 
-  const conversations = state.conversations.map((conversation) =>
+  const updatedConversations = state.conversations.map((conversation) =>
     conversation.conversation_id === message.conversation_id
       ? {
           ...conversation,
@@ -103,36 +150,64 @@ function applyIncomingMessage(state: ChatState, message: MessageResponse): ChatS
         }
       : conversation
   );
+  const unreadConversationIDs = new Set(state.unreadConversationIDs);
 
-  return { ...state, messages, conversations };
+  if (message.conversation_id === activeConversationID || message.is_mine) {
+    unreadConversationIDs.delete(message.conversation_id);
+  } else {
+    unreadConversationIDs.add(message.conversation_id);
+  }
+
+  return { ...state, messages, conversations: sortConversations(updatedConversations), unreadConversationIDs };
 }
 
-function mergeMessages(current: MessageResponse[], incoming: MessageResponse[]): MessageResponse[] {
+function mergeMessages(
+  current: MessageResponse[],
+  incoming: MessageResponse[]
+): {
+  messages: MessageResponse[];
+  added: MessageResponse[];
+} {
   const known = new Set(current.map((message) => message.message_id));
   const next = [...current];
+  const added: MessageResponse[] = [];
 
   for (const message of incoming) {
     if (!known.has(message.message_id)) {
       next.push(message);
+      added.push(message);
       known.add(message.message_id);
     }
   }
 
-  return next;
+  return { messages: next, added };
 }
 
 function chatReducer(state: ChatState, action: ChatAction): ChatState {
   switch (action.type) {
     case "conversations:success":
-      return { ...state, conversations: action.items, loadingConversations: false };
+      return { ...state, conversations: sortConversations(action.items), loadingConversations: false };
+    case "conversations:refresh":
+      return refreshConversations(state, action.items, action.activeConversationID);
     case "conversations:error":
       return { ...state, error: action.message, loadingConversations: false };
+    case "conversation:open": {
+      const unreadConversationIDs = new Set(state.unreadConversationIDs);
+      unreadConversationIDs.delete(action.conversationID);
+      return { ...state, unreadConversationIDs };
+    }
     case "messages:loading":
       return { ...state, loadingMessages: true, error: "" };
     case "messages:success":
       return { ...state, messages: action.items, loadingMessages: false };
-    case "messages:merge":
-      return { ...state, messages: mergeMessages(state.messages, action.items) };
+    case "messages:merge": {
+      const merged = mergeMessages(state.messages, action.items);
+      let nextState = { ...state, messages: merged.messages };
+      for (const message of merged.added) {
+        nextState = applyIncomingMessage(nextState, message, action.activeConversationID);
+      }
+      return nextState;
+    }
     case "messages:error":
       return { ...state, error: action.message, loadingMessages: false };
     case "messages:reset":
@@ -144,7 +219,16 @@ function chatReducer(state: ChatState, action: ChatAction): ChatState {
     case "sending:end":
       return { ...state, sending: false };
     case "message:receive":
-      return applyIncomingMessage(state, action.message);
+      return applyIncomingMessage(state, action.message, action.activeConversationID);
+    case "messages:read": {
+      const readIDs = new Set(action.messageIDs);
+      return {
+        ...state,
+        messages: state.messages.map((message) =>
+          readIDs.has(message.message_id) ? { ...message, is_read: true } : message
+        ),
+      };
+    }
     case "error:clear":
       return { ...state, error: "" };
     case "error:set":
@@ -241,21 +325,23 @@ function ChatAvatar({ name, image, small = false }: { name: string; image?: stri
 function ConversationRow({
   conversation,
   active,
+  unread,
   onOpen,
 }: {
   conversation: ConversationResponse;
   active: boolean;
+  unread: boolean;
   onOpen: () => void;
 }) {
   return (
     <button
       type="button"
       className={`border-border-main relative grid h-auto w-full grid-cols-[44px_1fr_auto] items-center gap-3 rounded-none border-b px-4 py-5 text-left transition-colors ${
-        active ? "bg-page" : "hover:bg-section-alt"
+        active ? "bg-page" : unread ? "bg-[#d6f0e6] hover:bg-[#c7eadc]" : "hover:bg-section-alt"
       }`}
       onClick={onOpen}
     >
-      {active ? <span className="bg-primary absolute top-0 bottom-0 left-0 w-1" /> : null}
+      {active || unread ? <span className="bg-primary absolute top-0 bottom-0 left-0 w-1" /> : null}
       <ChatAvatar
         name={conversation.other_user_name}
         image={conversation.other_avatar_url}
@@ -263,11 +349,11 @@ function ConversationRow({
       <span className="min-w-0">
         <span className="text-ink block truncate text-[15px] font-bold">{conversation.other_user_name}</span>
         <span className="text-primary block truncate text-[11px] font-medium">{conversation.item_title}</span>
-        <span className="text-subtle text-card-loc block truncate">
+        <span className={`${unread ? "text-ink font-medium" : "text-subtle"} text-card-loc block truncate`}>
           {conversation.last_message ?? "Sin mensajes todavía"}
         </span>
       </span>
-      <span className="text-footer-text self-start pt-1 text-[11px]">
+      <span className={`${unread ? "text-primary font-bold" : "text-footer-text"} self-start pt-1 text-[11px]`}>
         {formatConversationTime(conversation.last_message_at ?? conversation.updated_at)}
       </span>
     </button>
@@ -296,11 +382,202 @@ function MessageBubble({ message, otherUser }: { message: MessageResponse; other
           {message.body}
         </div>
         <div className={`flex items-center gap-1 text-[11px] ${isMine ? "text-subtle" : "text-footer-text"}`}>
-          {isMine ? <CheckCheck size={14} /> : null}
+          {isMine ? (
+            <CheckCheck
+              size={14}
+              className={message.is_read ? "text-[#1d9bf0]" : "text-subtle"}
+            />
+          ) : null}
           <span>{formatChatTime(message.created_at)}</span>
         </div>
       </div>
     </div>
+  );
+}
+
+function ConversationList({
+  conversations,
+  loading,
+  activeConversationID,
+  unreadConversationIDs,
+  onOpen,
+}: {
+  conversations: ConversationResponse[];
+  loading: boolean;
+  activeConversationID?: string;
+  unreadConversationIDs: Set<string>;
+  onOpen: (conversationID: string) => void;
+}) {
+  return (
+    <aside className="border-border-main bg-page flex w-[320px] shrink-0 flex-col border-r">
+      <div className="border-border-main border-b p-4">
+        <h1 className="text-error-title font-bold">Mensajes</h1>
+        <label className="relative mt-5 mb-0 block">
+          <Search
+            size={16}
+            className="text-placeholder pointer-events-none absolute top-1/2 left-3 -translate-y-1/2"
+          />
+          <input
+            type="search"
+            placeholder="Buscar conversacion..."
+            className="text-card-loc h-10 rounded-lg pl-10"
+          />
+        </label>
+      </div>
+
+      <div className="min-h-0 flex-1 overflow-y-auto p-6">
+        {loading ? (
+          <div className="space-y-4">
+            {Array.from({ length: 5 }, (_, index) => (
+              <div
+                key={index}
+                className="flex animate-pulse items-center gap-3"
+              >
+                <div className="bg-primary-light size-11 rounded-full" />
+                <div className="flex-1 space-y-2">
+                  <div className="bg-border-main h-3 w-1/2 rounded" />
+                  <div className="bg-border-main h-3 w-3/4 rounded" />
+                </div>
+              </div>
+            ))}
+          </div>
+        ) : conversations.length > 0 ? (
+          conversations.map((conversation) => (
+            <ConversationRow
+              key={conversation.conversation_id}
+              conversation={conversation}
+              active={conversation.conversation_id === activeConversationID}
+              unread={unreadConversationIDs.has(conversation.conversation_id)}
+              onOpen={() => onOpen(conversation.conversation_id)}
+            />
+          ))
+        ) : (
+          <p className="text-subtle p-5 text-[13px]">Todavia no tienes conversaciones.</p>
+        )}
+      </div>
+    </aside>
+  );
+}
+
+function ChatHeader({
+  conversation,
+  onViewProduct,
+}: {
+  conversation: ConversationResponse;
+  onViewProduct: () => void;
+}) {
+  return (
+    <header className="border-border-main bg-page flex h-18 shrink-0 items-center justify-between border-b px-6">
+      <div className="flex items-center gap-3">
+        <ChatAvatar
+          name={conversation.other_user_name}
+          image={conversation.other_avatar_url}
+        />
+        <div>
+          <h2 className="text-[17px] font-bold">{conversation.other_user_name}</h2>
+          <p className="bg-primary-light text-primary inline-flex max-w-90 truncate rounded-full px-2.5 py-0.5 text-[10px] font-medium">
+            {conversation.item_title} · {Math.round(conversation.item_price)} EUR/dia
+          </p>
+        </div>
+      </div>
+
+      <button
+        type="button"
+        className="text-primary hover:text-primary-dark h-auto gap-2 p-0 text-[13px] font-medium"
+        onClick={onViewProduct}
+      >
+        Ver producto
+        <ArrowRight size={15} />
+      </button>
+    </header>
+  );
+}
+
+function MessagesPanel({
+  conversation,
+  messages,
+  loadingMessages,
+  error,
+  messagesEndRef,
+}: {
+  conversation: ConversationResponse;
+  messages: MessageResponse[];
+  loadingMessages: boolean;
+  error: string;
+  messagesEndRef: React.RefObject<HTMLDivElement | null>;
+}) {
+  return (
+    <>
+      {error ? (
+        <p className="border-border-main bg-error-danger text-report border-b px-6 py-3 text-[13px]">{error}</p>
+      ) : null}
+
+      <div className="min-h-0 flex-1 overflow-y-auto p-6">
+        <div className="mx-auto flex max-w-245 flex-col gap-5">
+          <div className="flex justify-center">
+            <span className="bg-ghost text-subtle rounded-full px-5 py-2 text-[11px]">
+              {dayLabel(messages[0]?.created_at)}
+            </span>
+          </div>
+
+          {loadingMessages ? (
+            <div className="space-y-5">
+              <div className="bg-border-main h-13 w-2/5 animate-pulse rounded-2xl" />
+              <div className="bg-primary-light ml-auto h-13 w-1/2 animate-pulse rounded-2xl" />
+            </div>
+          ) : messages.length > 0 ? (
+            messages.map((message) => (
+              <MessageBubble
+                key={message.message_id}
+                message={message}
+                otherUser={conversation}
+              />
+            ))
+          ) : (
+            <p className="text-subtle text-center text-[13px]">
+              Empieza la conversacion escribiendo el primer mensaje.
+            </p>
+          )}
+          <div ref={messagesEndRef} />
+        </div>
+      </div>
+    </>
+  );
+}
+
+function ChatComposer({
+  draft,
+  sending,
+  onDraftChange,
+  onSubmit,
+}: {
+  draft: string;
+  sending: boolean;
+  onDraftChange: (value: string) => void;
+  onSubmit: (event: FormEvent<HTMLFormElement>) => void;
+}) {
+  return (
+    <form
+      className="border-border-main bg-page flex h-18 shrink-0 items-center gap-3 border-t px-4"
+      onSubmit={onSubmit}
+    >
+      <input
+        type="text"
+        placeholder="Escribe un mensaje..."
+        aria-label="Mensaje"
+        className="bg-surface h-11 rounded-full px-5"
+        value={draft}
+        onChange={(event) => onDraftChange(event.target.value)}
+      />
+      <button
+        type="submit"
+        aria-label="Enviar mensaje"
+        className="btn-primary size-11 shrink-0 rounded-full p-0"
+        disabled={sending || draft.trim() === ""}
+      >
+        <SendHorizontal size={18} />
+      </button>
+    </form>
   );
 }
 
@@ -311,8 +588,18 @@ function Chat() {
   const navigate = useNavigate();
   const { conversationId } = useParams();
   const [state, dispatch] = useReducer(chatReducer, initialState);
-  const { conversations, messages, draft, loadingConversations, loadingMessages, sending, error } = state;
+  const {
+    conversations,
+    unreadConversationIDs,
+    messages,
+    draft,
+    loadingConversations,
+    loadingMessages,
+    sending,
+    error,
+  } = state;
   const socketRef = useRef<WebSocket | null>(null);
+  const messagesEndRef = useRef<HTMLDivElement | null>(null);
 
   useEffect(() => {
     const controller = new AbortController();
@@ -334,6 +621,28 @@ function Chat() {
   const activeConversationID = activeConversation?.conversation_id;
 
   useEffect(() => {
+    if (activeConversationID) {
+      dispatch({ type: "conversation:open", conversationID: activeConversationID });
+    }
+  }, [activeConversationID]);
+
+  useEffect(() => {
+    const intervalID = window.setInterval(() => {
+      void apiGet<ConversationsResponse>("/api/conversations")
+        .then((data) =>
+          dispatch({
+            type: "conversations:refresh",
+            items: data.items,
+            activeConversationID,
+          })
+        )
+        .catch(() => undefined);
+    }, 5000);
+
+    return () => window.clearInterval(intervalID);
+  }, [activeConversationID]);
+
+  useEffect(() => {
     if (!activeConversationID) {
       dispatch({ type: "messages:reset" });
       return;
@@ -351,7 +660,11 @@ function Chat() {
           controller.signal
         );
         if (!active) return;
-        dispatch({ type: showLoading ? "messages:success" : "messages:merge", items: data.items });
+        if (showLoading) {
+          dispatch({ type: "messages:success", items: data.items });
+        } else {
+          dispatch({ type: "messages:merge", items: data.items, activeConversationID });
+        }
       } catch (err) {
         if (err instanceof Error && err.name !== "AbortError") {
           dispatch({ type: "messages:error", message: err.message });
@@ -370,6 +683,10 @@ function Chat() {
   }, [activeConversationID]);
 
   useEffect(() => {
+    messagesEndRef.current?.scrollIntoView({ behavior: loadingMessages ? "auto" : "smooth", block: "end" });
+  }, [activeConversationID, loadingMessages, messages.length]);
+
+  useEffect(() => {
     if (!activeConversationID) return undefined;
 
     const socket = new WebSocket(buildWebSocketURL(activeConversationID));
@@ -381,9 +698,13 @@ function Chat() {
         dispatch({ type: "error:set", message: payload.error ?? "Error en el chat en tiempo real" });
         return;
       }
+      if (payload.type === "read" && payload.read) {
+        dispatch({ type: "messages:read", messageIDs: payload.read.message_ids });
+        return;
+      }
       if (!payload.data) return;
 
-      dispatch({ type: "message:receive", message: payload.data });
+      dispatch({ type: "message:receive", message: payload.data, activeConversationID });
     };
 
     socket.onerror = () => {
@@ -418,7 +739,7 @@ function Chat() {
       }
 
       const message = await sendMessage(activeConversation.conversation_id, draft);
-      dispatch({ type: "message:receive", message });
+      dispatch({ type: "message:receive", message, activeConversationID });
       dispatch({ type: "draft:set", value: "" });
     } catch (err) {
       dispatch({
@@ -432,134 +753,37 @@ function Chat() {
 
   return (
     <div className="bg-surface flex h-[calc(100vh-var(--spacing-navbar))] overflow-hidden">
-      <aside className="border-border-main bg-page flex w-[320px] shrink-0 flex-col border-r">
-        <div className="border-border-main border-b p-4">
-          <h1 className="text-error-title font-bold">Mensajes</h1>
-          <label className="relative mt-5 mb-0 block">
-            <Search
-              size={16}
-              className="text-placeholder pointer-events-none absolute top-1/2 left-3 -translate-y-1/2"
-            />
-            <input
-              type="search"
-              placeholder="Buscar conversacion..."
-              className="text-card-loc h-10 rounded-lg pl-10"
-            />
-          </label>
-        </div>
-
-        <div className="min-h-0 flex-1 overflow-y-auto p-6">
-          {loadingConversations ? (
-            <div className="space-y-4">
-              {Array.from({ length: 5 }, (_, index) => (
-                <div
-                  key={index}
-                  className="flex animate-pulse items-center gap-3"
-                >
-                  <div className="bg-primary-light size-11 rounded-full" />
-                  <div className="flex-1 space-y-2">
-                    <div className="bg-border-main h-3 w-1/2 rounded" />
-                    <div className="bg-border-main h-3 w-3/4 rounded" />
-                  </div>
-                </div>
-              ))}
-            </div>
-          ) : conversations.length > 0 ? (
-            conversations.map((conversation) => (
-              <ConversationRow
-                key={conversation.conversation_id}
-                conversation={conversation}
-                active={conversation.conversation_id === activeConversation?.conversation_id}
-                onOpen={() => navigate(`/chat/${conversation.conversation_id}`)}
-              />
-            ))
-          ) : (
-            <p className="text-subtle p-5 text-[13px]">Todavia no tienes conversaciones.</p>
-          )}
-        </div>
-      </aside>
+      <ConversationList
+        conversations={conversations}
+        loading={loadingConversations}
+        activeConversationID={activeConversation?.conversation_id}
+        unreadConversationIDs={unreadConversationIDs}
+        onOpen={(id) => {
+          dispatch({ type: "conversation:open", conversationID: id });
+          void navigate(`/chat/${id}`);
+        }}
+      />
 
       <section className="flex min-w-0 flex-1 flex-col">
         {activeConversation ? (
           <>
-            <header className="border-border-main bg-page flex h-18 shrink-0 items-center justify-between border-b px-6">
-              <div className="flex items-center gap-3">
-                <ChatAvatar
-                  name={activeConversation.other_user_name}
-                  image={activeConversation.other_avatar_url}
-                />
-                <div>
-                  <h2 className="text-[17px] font-bold">{activeConversation.other_user_name}</h2>
-                  <p className="bg-primary-light text-primary inline-flex max-w-90 truncate rounded-full px-2.5 py-0.5 text-[10px] font-medium">
-                    {activeConversation.item_title} · {Math.round(activeConversation.item_price)} EUR/dia
-                  </p>
-                </div>
-              </div>
-
-              <button
-                type="button"
-                className="text-primary hover:text-primary-dark h-auto gap-2 p-0 text-[13px] font-medium"
-                onClick={() => navigate(`/product/${activeConversation.item_id}`)}
-              >
-                Ver producto
-                <ArrowRight size={15} />
-              </button>
-            </header>
-
-            {error ? (
-              <p className="border-border-main bg-error-danger text-report border-b px-6 py-3 text-[13px]">{error}</p>
-            ) : null}
-
-            <div className="min-h-0 flex-1 overflow-y-auto p-6">
-              <div className="mx-auto flex max-w-245 flex-col gap-5">
-                <div className="flex justify-center">
-                  <span className="bg-ghost text-subtle rounded-full px-5 py-2 text-[11px]">
-                    {dayLabel(messages[0]?.created_at)}
-                  </span>
-                </div>
-
-                {loadingMessages ? (
-                  <div className="space-y-5">
-                    <div className="bg-border-main h-13 w-2/5 animate-pulse rounded-2xl" />
-                    <div className="bg-primary-light ml-auto h-13 w-1/2 animate-pulse rounded-2xl" />
-                  </div>
-                ) : messages.length > 0 ? (
-                  messages.map((message) => (
-                    <MessageBubble
-                      key={message.message_id}
-                      message={message}
-                      otherUser={activeConversation}
-                    />
-                  ))
-                ) : (
-                  <p className="text-subtle text-center text-[13px]">
-                    Empieza la conversacion escribiendo el primer mensaje.
-                  </p>
-                )}
-              </div>
-            </div>
-
-            <form
-              className="border-border-main bg-page flex h-18 shrink-0 items-center gap-3 border-t px-4"
+            <ChatHeader
+              conversation={activeConversation}
+              onViewProduct={() => navigate(`/product/${activeConversation.item_id}`)}
+            />
+            <MessagesPanel
+              conversation={activeConversation}
+              messages={messages}
+              loadingMessages={loadingMessages}
+              error={error}
+              messagesEndRef={messagesEndRef}
+            />
+            <ChatComposer
+              draft={draft}
+              sending={sending}
+              onDraftChange={(value) => dispatch({ type: "draft:set", value })}
               onSubmit={handleSubmit}
-            >
-              <input
-                type="text"
-                placeholder="Escribe un mensaje..."
-                aria-label="Mensaje"
-                className="bg-surface h-11 rounded-full px-5"
-                value={draft}
-                onChange={(event) => dispatch({ type: "draft:set", value: event.target.value })}
-              />
-              <button
-                type="submit"
-                aria-label="Enviar mensaje"
-                className="btn-primary size-11 shrink-0 rounded-full p-0"
-                disabled={sending || draft.trim() === ""}
-              >
-                <SendHorizontal size={18} />
-              </button>
-            </form>
+            />
           </>
         ) : (
           <div className="flex flex-1 items-center justify-center px-6">
