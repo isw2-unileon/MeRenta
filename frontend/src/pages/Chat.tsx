@@ -30,6 +30,7 @@ interface MessageResponse {
   read_at?: string;
   created_at: string;
   is_mine: boolean;
+  is_read: boolean;
 }
 
 interface MessagesResponse {
@@ -38,8 +39,13 @@ interface MessagesResponse {
 }
 
 interface ChatWebSocketEvent {
-  type: "message" | "error";
+  type: "message" | "read" | "error";
   data?: MessageResponse;
+  read?: {
+    conversation_id: string;
+    reader_id: string;
+    message_ids: string[];
+  };
   error?: string;
 }
 
@@ -55,6 +61,7 @@ const dayLabelFormatter = new Intl.DateTimeFormat("es-ES", {
 
 interface ChatState {
   conversations: ConversationResponse[];
+  unreadConversationIDs: Set<string>;
   messages: MessageResponse[];
   draft: string;
   loadingConversations: boolean;
@@ -65,21 +72,25 @@ interface ChatState {
 
 type ChatAction =
   | { type: "conversations:success"; items: ConversationResponse[] }
+  | { type: "conversations:refresh"; items: ConversationResponse[]; activeConversationID?: string }
   | { type: "conversations:error"; message: string }
+  | { type: "conversation:open"; conversationID: string }
   | { type: "messages:loading" }
   | { type: "messages:success"; items: MessageResponse[] }
-  | { type: "messages:merge"; items: MessageResponse[] }
+  | { type: "messages:merge"; items: MessageResponse[]; activeConversationID?: string }
   | { type: "messages:error"; message: string }
   | { type: "messages:reset" }
   | { type: "draft:set"; value: string }
   | { type: "sending:start" }
   | { type: "sending:end" }
-  | { type: "message:receive"; message: MessageResponse }
+  | { type: "message:receive"; message: MessageResponse; activeConversationID?: string }
+  | { type: "messages:read"; messageIDs: string[] }
   | { type: "error:clear" }
   | { type: "error:set"; message: string };
 
 const initialState: ChatState = {
   conversations: [],
+  unreadConversationIDs: new Set<string>(),
   messages: [],
   draft: "",
   loadingConversations: true,
@@ -88,12 +99,46 @@ const initialState: ChatState = {
   error: "",
 };
 
-function applyIncomingMessage(state: ChatState, message: MessageResponse): ChatState {
+function sortConversations(conversations: ConversationResponse[]): ConversationResponse[] {
+  return [...conversations].sort((a, b) => {
+    const aTime = new Date(a.last_message_at ?? a.updated_at).getTime();
+    const bTime = new Date(b.last_message_at ?? b.updated_at).getTime();
+    return bTime - aTime;
+  });
+}
+
+function refreshConversations(
+  state: ChatState,
+  items: ConversationResponse[],
+  activeConversationID?: string
+): ChatState {
+  const previousByID = new Map(state.conversations.map((conversation) => [conversation.conversation_id, conversation]));
+  const unreadConversationIDs = new Set(state.unreadConversationIDs);
+
+  for (const conversation of items) {
+    const previous = previousByID.get(conversation.conversation_id);
+    const changed =
+      previous &&
+      (previous.last_message_at !== conversation.last_message_at || previous.last_message !== conversation.last_message);
+
+    if (changed && conversation.conversation_id !== activeConversationID) {
+      unreadConversationIDs.add(conversation.conversation_id);
+    }
+  }
+
+  if (activeConversationID) {
+    unreadConversationIDs.delete(activeConversationID);
+  }
+
+  return { ...state, conversations: sortConversations(items), unreadConversationIDs, loadingConversations: false };
+}
+
+function applyIncomingMessage(state: ChatState, message: MessageResponse, activeConversationID?: string): ChatState {
   const messages = state.messages.some((item) => item.message_id === message.message_id)
     ? state.messages
     : [...state.messages, message];
 
-  const conversations = state.conversations.map((conversation) =>
+  const updatedConversations = state.conversations.map((conversation) =>
     conversation.conversation_id === message.conversation_id
       ? {
           ...conversation,
@@ -103,36 +148,61 @@ function applyIncomingMessage(state: ChatState, message: MessageResponse): ChatS
         }
       : conversation
   );
+  const unreadConversationIDs = new Set(state.unreadConversationIDs);
 
-  return { ...state, messages, conversations };
+  if (message.conversation_id === activeConversationID || message.is_mine) {
+    unreadConversationIDs.delete(message.conversation_id);
+  } else {
+    unreadConversationIDs.add(message.conversation_id);
+  }
+
+  return { ...state, messages, conversations: sortConversations(updatedConversations), unreadConversationIDs };
 }
 
-function mergeMessages(current: MessageResponse[], incoming: MessageResponse[]): MessageResponse[] {
+function mergeMessages(current: MessageResponse[], incoming: MessageResponse[]): {
+  messages: MessageResponse[];
+  added: MessageResponse[];
+} {
   const known = new Set(current.map((message) => message.message_id));
   const next = [...current];
+  const added: MessageResponse[] = [];
 
   for (const message of incoming) {
     if (!known.has(message.message_id)) {
       next.push(message);
+      added.push(message);
       known.add(message.message_id);
     }
   }
 
-  return next;
+  return { messages: next, added };
 }
 
 function chatReducer(state: ChatState, action: ChatAction): ChatState {
   switch (action.type) {
     case "conversations:success":
-      return { ...state, conversations: action.items, loadingConversations: false };
+      return { ...state, conversations: sortConversations(action.items), loadingConversations: false };
+    case "conversations:refresh":
+      return refreshConversations(state, action.items, action.activeConversationID);
     case "conversations:error":
       return { ...state, error: action.message, loadingConversations: false };
+    case "conversation:open": {
+      const unreadConversationIDs = new Set(state.unreadConversationIDs);
+      unreadConversationIDs.delete(action.conversationID);
+      return { ...state, unreadConversationIDs };
+    }
     case "messages:loading":
       return { ...state, loadingMessages: true, error: "" };
     case "messages:success":
       return { ...state, messages: action.items, loadingMessages: false };
-    case "messages:merge":
-      return { ...state, messages: mergeMessages(state.messages, action.items) };
+    case "messages:merge": {
+      const merged = mergeMessages(state.messages, action.items);
+      let nextState = { ...state, messages: merged.messages };
+      for (const message of merged.added) {
+        nextState = applyIncomingMessage(nextState, message, action.activeConversationID);
+      }
+      return nextState;
+    }
     case "messages:error":
       return { ...state, error: action.message, loadingMessages: false };
     case "messages:reset":
@@ -144,7 +214,16 @@ function chatReducer(state: ChatState, action: ChatAction): ChatState {
     case "sending:end":
       return { ...state, sending: false };
     case "message:receive":
-      return applyIncomingMessage(state, action.message);
+      return applyIncomingMessage(state, action.message, action.activeConversationID);
+    case "messages:read": {
+      const readIDs = new Set(action.messageIDs);
+      return {
+        ...state,
+        messages: state.messages.map((message) =>
+          readIDs.has(message.message_id) ? { ...message, is_read: true } : message
+        ),
+      };
+    }
     case "error:clear":
       return { ...state, error: "" };
     case "error:set":
@@ -241,21 +320,23 @@ function ChatAvatar({ name, image, small = false }: { name: string; image?: stri
 function ConversationRow({
   conversation,
   active,
+  unread,
   onOpen,
 }: {
   conversation: ConversationResponse;
   active: boolean;
+  unread: boolean;
   onOpen: () => void;
 }) {
   return (
     <button
       type="button"
       className={`border-border-main relative grid h-auto w-full grid-cols-[44px_1fr_auto] items-center gap-3 rounded-none border-b px-4 py-5 text-left transition-colors ${
-        active ? "bg-page" : "hover:bg-section-alt"
+        active ? "bg-page" : unread ? "bg-[#d6f0e6] hover:bg-[#c7eadc]" : "hover:bg-section-alt"
       }`}
       onClick={onOpen}
     >
-      {active ? <span className="bg-primary absolute top-0 bottom-0 left-0 w-1" /> : null}
+      {active || unread ? <span className="bg-primary absolute top-0 bottom-0 left-0 w-1" /> : null}
       <ChatAvatar
         name={conversation.other_user_name}
         image={conversation.other_avatar_url}
@@ -263,11 +344,11 @@ function ConversationRow({
       <span className="min-w-0">
         <span className="text-ink block truncate text-[15px] font-bold">{conversation.other_user_name}</span>
         <span className="text-primary block truncate text-[11px] font-medium">{conversation.item_title}</span>
-        <span className="text-subtle text-card-loc block truncate">
+        <span className={`${unread ? "text-ink font-medium" : "text-subtle"} text-card-loc block truncate`}>
           {conversation.last_message ?? "Sin mensajes todavía"}
         </span>
       </span>
-      <span className="text-footer-text self-start pt-1 text-[11px]">
+      <span className={`${unread ? "text-primary font-bold" : "text-footer-text"} self-start pt-1 text-[11px]`}>
         {formatConversationTime(conversation.last_message_at ?? conversation.updated_at)}
       </span>
     </button>
@@ -296,7 +377,12 @@ function MessageBubble({ message, otherUser }: { message: MessageResponse; other
           {message.body}
         </div>
         <div className={`flex items-center gap-1 text-[11px] ${isMine ? "text-subtle" : "text-footer-text"}`}>
-          {isMine ? <CheckCheck size={14} /> : null}
+          {isMine ? (
+            <CheckCheck
+              size={14}
+              className={message.is_read ? "text-[#1d9bf0]" : "text-subtle"}
+            />
+          ) : null}
           <span>{formatChatTime(message.created_at)}</span>
         </div>
       </div>
@@ -311,8 +397,9 @@ function Chat() {
   const navigate = useNavigate();
   const { conversationId } = useParams();
   const [state, dispatch] = useReducer(chatReducer, initialState);
-  const { conversations, messages, draft, loadingConversations, loadingMessages, sending, error } = state;
+  const { conversations, unreadConversationIDs, messages, draft, loadingConversations, loadingMessages, sending, error } = state;
   const socketRef = useRef<WebSocket | null>(null);
+  const messagesEndRef = useRef<HTMLDivElement | null>(null);
 
   useEffect(() => {
     const controller = new AbortController();
@@ -334,6 +421,28 @@ function Chat() {
   const activeConversationID = activeConversation?.conversation_id;
 
   useEffect(() => {
+    if (activeConversationID) {
+      dispatch({ type: "conversation:open", conversationID: activeConversationID });
+    }
+  }, [activeConversationID]);
+
+  useEffect(() => {
+    const intervalID = window.setInterval(() => {
+      void apiGet<ConversationsResponse>("/api/conversations")
+        .then((data) =>
+          dispatch({
+            type: "conversations:refresh",
+            items: data.items,
+            activeConversationID,
+          })
+        )
+        .catch(() => undefined);
+    }, 5000);
+
+    return () => window.clearInterval(intervalID);
+  }, [activeConversationID]);
+
+  useEffect(() => {
     if (!activeConversationID) {
       dispatch({ type: "messages:reset" });
       return;
@@ -348,7 +457,11 @@ function Chat() {
       try {
         const data = await apiGet<MessagesResponse>(`/api/conversations/${activeConversationID}/messages`, controller.signal);
         if (!active) return;
-        dispatch({ type: showLoading ? "messages:success" : "messages:merge", items: data.items });
+        if (showLoading) {
+          dispatch({ type: "messages:success", items: data.items });
+        } else {
+          dispatch({ type: "messages:merge", items: data.items, activeConversationID });
+        }
       } catch (err) {
         if (err instanceof Error && err.name !== "AbortError") {
           dispatch({ type: "messages:error", message: err.message });
@@ -367,6 +480,10 @@ function Chat() {
   }, [activeConversationID]);
 
   useEffect(() => {
+    messagesEndRef.current?.scrollIntoView({ behavior: loadingMessages ? "auto" : "smooth", block: "end" });
+  }, [activeConversationID, loadingMessages, messages.length]);
+
+  useEffect(() => {
     if (!activeConversationID) return undefined;
 
     const socket = new WebSocket(buildWebSocketURL(activeConversationID));
@@ -378,9 +495,13 @@ function Chat() {
         dispatch({ type: "error:set", message: payload.error ?? "Error en el chat en tiempo real" });
         return;
       }
+      if (payload.type === "read" && payload.read) {
+        dispatch({ type: "messages:read", messageIDs: payload.read.message_ids });
+        return;
+      }
       if (!payload.data) return;
 
-      dispatch({ type: "message:receive", message: payload.data });
+      dispatch({ type: "message:receive", message: payload.data, activeConversationID });
     };
 
     socket.onerror = () => {
@@ -415,7 +536,7 @@ function Chat() {
       }
 
       const message = await sendMessage(activeConversation.conversation_id, draft);
-      dispatch({ type: "message:receive", message });
+      dispatch({ type: "message:receive", message, activeConversationID });
       dispatch({ type: "draft:set", value: "" });
     } catch (err) {
       dispatch({
@@ -467,7 +588,11 @@ function Chat() {
                 key={conversation.conversation_id}
                 conversation={conversation}
                 active={conversation.conversation_id === activeConversation?.conversation_id}
-                onOpen={() => navigate(`/chat/${conversation.conversation_id}`)}
+                unread={unreadConversationIDs.has(conversation.conversation_id)}
+                onOpen={() => {
+                  dispatch({ type: "conversation:open", conversationID: conversation.conversation_id });
+                  void navigate(`/chat/${conversation.conversation_id}`);
+                }}
               />
             ))
           ) : (
@@ -533,6 +658,7 @@ function Chat() {
                     Empieza la conversacion escribiendo el primer mensaje.
                   </p>
                 )}
+                <div ref={messagesEndRef} />
               </div>
             </div>
 

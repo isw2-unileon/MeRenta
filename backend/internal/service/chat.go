@@ -34,6 +34,7 @@ type chatQuerier interface {
 	SendMessage(ctx context.Context, arg sqlcdb.SendMessageParams) (sqlcdb.MessageRow, error)
 	ListMessages(ctx context.Context, conversationID uuid.UUID) ([]sqlcdb.MessageRow, error)
 	TouchConversation(ctx context.Context, conversationID uuid.UUID) error
+	MarkMessagesRead(ctx context.Context, conversationID, readerID uuid.UUID) ([]uuid.UUID, error)
 }
 
 // ChatService handles conversation and message use cases.
@@ -119,6 +120,29 @@ func (s *ChatService) GetMessages(ctx context.Context, customerID, conversationI
 	return &model.MessagesResponse{Items: items, Total: len(items)}, nil
 }
 
+// MarkMessagesRead marks unread messages from the other participant as read.
+func (s *ChatService) MarkMessagesRead(ctx context.Context, customerID, conversationID uuid.UUID) (*model.ReadReceiptResponse, error) {
+	if err := s.EnsureParticipant(ctx, customerID, conversationID); err != nil {
+		return nil, err
+	}
+
+	messageIDs, err := s.q.MarkMessagesRead(ctx, conversationID, customerID)
+	if err != nil {
+		return nil, err
+	}
+
+	ids := make([]string, 0, len(messageIDs))
+	for _, messageID := range messageIDs {
+		ids = append(ids, messageID.String())
+	}
+
+	return &model.ReadReceiptResponse{
+		ConversationID: conversationID.String(),
+		ReaderID:       customerID.String(),
+		MessageIDs:     ids,
+	}, nil
+}
+
 // EnsureParticipant verifies that the customer belongs to the conversation.
 func (s *ChatService) EnsureParticipant(ctx context.Context, customerID, conversationID uuid.UUID) error {
 	if _, err := s.q.GetConversation(ctx, conversationID, customerID); err != nil {
@@ -191,6 +215,7 @@ func toMessageResponse(row sqlcdb.MessageRow, customerID uuid.UUID) model.Messag
 		ReadAt:         timestamptzPtr(row.ReadAt),
 		CreatedAt:      row.CreatedAt.Time,
 		IsMine:         row.SenderID == customerID,
+		IsRead:         row.IsRead,
 	}
 }
 
