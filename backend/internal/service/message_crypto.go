@@ -36,7 +36,7 @@ func (c *messageCipher) Encrypt(plaintext string) (string, error) {
 	}
 
 	ciphertext := c.aead.Seal(nil, nonce, []byte(plaintext), nil)
-	payload := append(nonce, ciphertext...)
+	payload := append(append([]byte{}, nonce...), ciphertext...)
 
 	return encryptedMessagePrefix + base64.RawStdEncoding.EncodeToString(payload), nil
 }
