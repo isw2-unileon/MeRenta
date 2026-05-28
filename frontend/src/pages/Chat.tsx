@@ -126,14 +126,26 @@ function ChatAvatar({ name, image, small = false }: { name: string; image?: stri
     );
   }
 
-  return <div className={`reviewer-avatar--blue flex shrink-0 items-center justify-center rounded-full font-bold ${size}`}>{initials}</div>;
+  return (
+    <div className={`reviewer-avatar--blue flex shrink-0 items-center justify-center rounded-full font-bold ${size}`}>
+      {initials}
+    </div>
+  );
 }
 
-function ConversationRow({ conversation, active, onOpen }: { conversation: ConversationResponse; active: boolean; onOpen: () => void }) {
+function ConversationRow({
+  conversation,
+  active,
+  onOpen,
+}: {
+  conversation: ConversationResponse;
+  active: boolean;
+  onOpen: () => void;
+}) {
   return (
     <button
       type="button"
-      className={`relative grid h-auto w-full grid-cols-[44px_1fr_auto] items-center gap-3 rounded-none border-b border-border-main px-4 py-5 text-left transition-colors ${
+      className={`border-border-main relative grid h-auto w-full grid-cols-[44px_1fr_auto] items-center gap-3 rounded-none border-b px-4 py-5 text-left transition-colors ${
         active ? "bg-page" : "hover:bg-section-alt"
       }`}
       onClick={onOpen}
@@ -146,7 +158,9 @@ function ConversationRow({ conversation, active, onOpen }: { conversation: Conve
       <span className="min-w-0">
         <span className="text-ink block truncate text-[15px] font-bold">{conversation.other_user_name}</span>
         <span className="text-primary block truncate text-[11px] font-medium">{conversation.item_title}</span>
-        <span className="text-subtle block truncate text-[12px]">{conversation.last_message || "Sin mensajes todavia"}</span>
+        <span className="text-subtle block truncate text-[12px]">
+          {conversation.last_message || "Sin mensajes todavia"}
+        </span>
       </span>
       <span className="text-footer-text self-start pt-1 text-[11px]">
         {formatConversationTime(conversation.last_message_at ?? conversation.updated_at)}
@@ -269,8 +283,8 @@ function Chat() {
                 last_message_at: message.created_at,
                 updated_at: message.created_at,
               }
-            : conversation,
-        ),
+            : conversation
+        )
       );
     };
 
@@ -321,8 +335,8 @@ function Chat() {
                 last_message_at: message.created_at,
                 updated_at: message.created_at,
               }
-            : conversation,
-        ),
+            : conversation
+        )
       );
     } catch (err) {
       setError(err instanceof Error ? err.message : "Error al enviar el mensaje");
@@ -399,7 +413,7 @@ function Chat() {
 
               <button
                 type="button"
-                className="text-primary h-auto gap-2 p-0 text-[13px] font-medium hover:text-primary-dark"
+                className="text-primary hover:text-primary-dark h-auto gap-2 p-0 text-[13px] font-medium"
                 onClick={() => navigate(`/product/${activeConversation.item_id}`)}
               >
                 Ver producto
@@ -407,12 +421,16 @@ function Chat() {
               </button>
             </header>
 
-            {error ? <p className="border-border-main bg-error-danger text-report border-b px-6 py-3 text-[13px]">{error}</p> : null}
+            {error ? (
+              <p className="border-border-main bg-error-danger text-report border-b px-6 py-3 text-[13px]">{error}</p>
+            ) : null}
 
             <div className="min-h-0 flex-1 overflow-y-auto px-6 py-6">
               <div className="mx-auto flex max-w-[980px] flex-col gap-5">
                 <div className="flex justify-center">
-                  <span className="bg-ghost text-subtle rounded-full px-5 py-2 text-[11px]">{dayLabel(messages[0]?.created_at)}</span>
+                  <span className="bg-ghost text-subtle rounded-full px-5 py-2 text-[11px]">
+                    {dayLabel(messages[0]?.created_at)}
+                  </span>
                 </div>
 
                 {loadingMessages ? (
@@ -429,7 +447,9 @@ function Chat() {
                     />
                   ))
                 ) : (
-                  <p className="text-subtle text-center text-[13px]">Empieza la conversacion escribiendo el primer mensaje.</p>
+                  <p className="text-subtle text-center text-[13px]">
+                    Empieza la conversacion escribiendo el primer mensaje.
+                  </p>
                 )}
               </div>
             </div>
