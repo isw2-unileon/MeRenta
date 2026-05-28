@@ -65,6 +65,7 @@ interface ChatState {
   unreadConversationIDs: Set<string>;
   messages: MessageResponse[];
   draft: string;
+  searchQuery: string;
   loadingConversations: boolean;
   loadingMessages: boolean;
   sending: boolean;
@@ -82,6 +83,7 @@ type ChatAction =
   | { type: "messages:error"; message: string }
   | { type: "messages:reset" }
   | { type: "draft:set"; value: string }
+  | { type: "search:set"; value: string }
   | { type: "sending:start" }
   | { type: "sending:end" }
   | { type: "message:receive"; message: MessageResponse; activeConversationID?: string }
@@ -94,6 +96,7 @@ const initialState: ChatState = {
   unreadConversationIDs: new Set<string>(),
   messages: [],
   draft: "",
+  searchQuery: "",
   loadingConversations: true,
   loadingMessages: false,
   sending: false,
@@ -168,8 +171,18 @@ function mergeMessages(
   messages: MessageResponse[];
   added: MessageResponse[];
 } {
+  const incomingByID = new Map(incoming.map((message) => [message.message_id, message]));
   const known = new Set(current.map((message) => message.message_id));
-  const next = [...current];
+  const next = current.map((message) => {
+    const updated = incomingByID.get(message.message_id);
+    if (!updated) return message;
+
+    return {
+      ...message,
+      is_read: updated.is_read,
+      read_at: updated.read_at,
+    };
+  });
   const added: MessageResponse[] = [];
 
   for (const message of incoming) {
@@ -214,6 +227,8 @@ function chatReducer(state: ChatState, action: ChatAction): ChatState {
       return { ...state, messages: [], loadingMessages: false };
     case "draft:set":
       return { ...state, draft: action.value };
+    case "search:set":
+      return { ...state, searchQuery: action.value };
     case "sending:start":
       return { ...state, sending: true, error: "" };
     case "sending:end":
@@ -398,14 +413,18 @@ function MessageBubble({ message, otherUser }: { message: MessageResponse; other
 function ConversationList({
   conversations,
   loading,
+  searchQuery,
   activeConversationID,
   unreadConversationIDs,
+  onSearchChange,
   onOpen,
 }: {
   conversations: ConversationResponse[];
   loading: boolean;
+  searchQuery: string;
   activeConversationID?: string;
   unreadConversationIDs: Set<string>;
+  onSearchChange: (value: string) => void;
   onOpen: (conversationID: string) => void;
 }) {
   return (
@@ -421,6 +440,8 @@ function ConversationList({
             type="search"
             placeholder="Buscar conversacion..."
             className="text-card-loc h-10 rounded-lg pl-10"
+            value={searchQuery}
+            onChange={(event) => onSearchChange(event.target.value)}
           />
         </label>
       </div>
@@ -452,7 +473,9 @@ function ConversationList({
             />
           ))
         ) : (
-          <p className="text-subtle p-5 text-[13px]">Todavia no tienes conversaciones.</p>
+          <p className="text-subtle p-5 text-[13px]">
+            {searchQuery.trim() ? "No hay conversaciones que coincidan." : "Todavia no tienes conversaciones."}
+          </p>
         )}
       </div>
     </aside>
@@ -593,6 +616,7 @@ function Chat() {
     unreadConversationIDs,
     messages,
     draft,
+    searchQuery,
     loadingConversations,
     loadingMessages,
     sending,
@@ -619,6 +643,17 @@ function Chat() {
     return conversations.find((conversation) => conversation.conversation_id === conversationId) ?? conversations[0];
   }, [conversationId, conversations]);
   const activeConversationID = activeConversation?.conversation_id;
+
+  const filteredConversations = useMemo(() => {
+    const query = searchQuery.trim().toLocaleLowerCase("es-ES");
+    if (!query) return conversations;
+
+    return conversations.filter((conversation) => {
+      const sellerName = conversation.other_user_name.toLocaleLowerCase("es-ES");
+      const productTitle = conversation.item_title.toLocaleLowerCase("es-ES");
+      return sellerName.includes(query) || productTitle.includes(query);
+    });
+  }, [conversations, searchQuery]);
 
   useEffect(() => {
     if (activeConversationID) {
@@ -754,10 +789,12 @@ function Chat() {
   return (
     <div className="bg-surface flex h-[calc(100vh-var(--spacing-navbar))] overflow-hidden">
       <ConversationList
-        conversations={conversations}
+        conversations={filteredConversations}
         loading={loadingConversations}
+        searchQuery={searchQuery}
         activeConversationID={activeConversation?.conversation_id}
         unreadConversationIDs={unreadConversationIDs}
+        onSearchChange={(value) => dispatch({ type: "search:set", value })}
         onOpen={(id) => {
           dispatch({ type: "conversation:open", conversationID: id });
           void navigate(`/chat/${id}`);

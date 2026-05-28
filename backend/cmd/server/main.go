@@ -70,7 +70,11 @@ func main() {
 	favSvc := service.NewFavoriteService(q)
 	favH := handler.NewFavoriteHandler(favSvc)
 
-	chatSvc := service.NewChatService(q)
+	chatSvc, err := service.NewChatService(q, cfg.MessageEncryptionKey)
+	if err != nil {
+		slog.Error("error creating chat service", "error", err)
+		return
+	}
 	chatHub := handler.NewChatHub()
 	chatH := handler.NewChatHandler(chatSvc, chatHub)
 

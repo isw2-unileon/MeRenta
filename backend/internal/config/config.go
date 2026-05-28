@@ -25,6 +25,7 @@ type Config struct {
 	CORSAllowOrigin        string
 	SupabaseURL            string
 	SupabaseServiceRoleKey string
+	MessageEncryptionKey   []byte
 }
 
 // Load reads configuration from environment variables and applies defaults.
@@ -46,6 +47,7 @@ func Load() *Config {
 
 	supabaseURL := mustGetEnv("SUPABASE_URL")
 	supabaseServiceRoleKey := mustGetEnv("SUPABASE_SERVICE_ROLE_KEY")
+	messageEncryptionKey := getMessageEncryptionKey(jwtSecretBytes)
 
 	return &Config{
 		Port:                   getEnv("PORT", "8080"),
@@ -60,7 +62,25 @@ func Load() *Config {
 		CORSAllowOrigin:        corsAllowOrigin,
 		SupabaseURL:            supabaseURL,
 		SupabaseServiceRoleKey: supabaseServiceRoleKey,
+		MessageEncryptionKey:   messageEncryptionKey,
 	}
+}
+
+func getMessageEncryptionKey(fallback []byte) []byte {
+	raw := strings.TrimSpace(getEnv("MESSAGE_ENCRYPTION_KEY", ""))
+	if raw == "" {
+		return fallback[:32]
+	}
+
+	key, err := base64.StdEncoding.DecodeString(raw)
+	if err != nil {
+		log.Fatal("MESSAGE_ENCRYPTION_KEY must be a valid base64 string")
+	}
+	if len(key) != 32 {
+		log.Fatal("MESSAGE_ENCRYPTION_KEY must decode to exactly 32 bytes")
+	}
+
+	return key
 }
 
 func mustGetEnv(key string) string {
