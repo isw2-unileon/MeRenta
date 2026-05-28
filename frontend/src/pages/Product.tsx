@@ -237,7 +237,7 @@ function Product() {
   }, [id]);
 
   /**
-   * Date selection state machine:
+   * Date selection state machine (calendar clicks):
    * - No start → first click sets start.
    * - Start set, no end → click after start sets end; click before/on start resets.
    * - Both set → any click resets to a new start.
@@ -255,6 +255,14 @@ function Product() {
         return { start: state.dateRange.start, end: date };
       })(),
     });
+  };
+
+  /**
+   * Date change handler for the booking card inputs.
+   * Directly sets start and end without the click-cycle logic.
+   */
+  const handleDateChange = (start: Date | null, end: Date | null) => {
+    dispatch({ type: "set-date-range", value: { start, end } });
   };
 
   const rentalDays =
@@ -350,6 +358,7 @@ function Product() {
                   selectedStart={state.dateRange.start}
                   selectedEnd={state.dateRange.end}
                   onDateSelect={handleDateSelect}
+                  navigateTo={state.dateRange.start}
                 />
               </div>
             </div>
@@ -365,6 +374,7 @@ function Product() {
                 selectedEnd={state.dateRange.end}
                 minDays={item.min_days}
                 maxDay={item.max_days}
+                onDateChange={handleDateChange}
               />
 
               <InsuranceCard days={rentalDays} />

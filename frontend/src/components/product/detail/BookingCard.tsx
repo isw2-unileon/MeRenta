@@ -29,13 +29,34 @@ interface BookingCardProps {
   maxDay?: number | null;
   /** Whether the authenticated user owns this listing. */
   isOwner?: boolean;
+  /**
+   * Callback fired when the user changes a date from the booking card inputs.
+   * Receives the new start and end dates (either may be null).
+   */
+  onDateChange?: (start: Date | null, end: Date | null) => void;
 }
 
 interface ConversationResponse {
   conversation_id: string;
 }
 
-/** Formats a Date as localised Spanish short date, e.g. "15 may 2025". */
+/** Formats a Date as "YYYY-MM-DD" (the value format required by input[type="date"]). */
+function toISODateStr(date: Date): string {
+  const y = date.getFullYear();
+  const m = String(date.getMonth() + 1).padStart(2, "0");
+  const d = String(date.getDate()).padStart(2, "0");
+  return `${y}-${m}-${d}`;
+}
+
+/** Parses a "YYYY-MM-DD" string into a local midnight Date. */
+function parseISODateStr(value: string): Date {
+  const [y, mo, d] = value.split("-").map(Number);
+  const date = new Date(y, (mo ?? 1) - 1, d ?? 1);
+  date.setHours(0, 0, 0, 0);
+  return date;
+}
+
+/** Formats a Date as localised Spanish short date, e.g. "28 may 2026". */
 function formatDateEs(date: Date): string {
   return date.toLocaleDateString("es-ES", {
     day: "numeric",
@@ -89,10 +110,42 @@ function BookingCard({
   minDays,
   maxDay,
   isOwner = false,
+  onDateChange,
 }: BookingCardProps) {
   const navigate = useNavigate();
   const [messageLoading, setMessageLoading] = useState(false);
   const [messageError, setMessageError] = useState("");
+
+  /** Today as "YYYY-MM-DD" — used as the minimum selectable date. */
+  const todayStr = toISODateStr(new Date());
+
+  /** One day after the selected start — minimum valid end date. */
+  const minEndStr = selectedStart
+    ? toISODateStr(new Date(selectedStart.getFullYear(), selectedStart.getMonth(), selectedStart.getDate() + 1))
+    : todayStr;
+
+  const handleStartInputChange = (value: string) => {
+    if (!value) {
+      onDateChange?.(null, null);
+      return;
+    }
+    const date = parseISODateStr(value);
+    // Clear end date if it's no longer after the new start
+    const newEnd = selectedEnd && selectedEnd > date ? selectedEnd : null;
+    onDateChange?.(date, newEnd);
+  };
+
+  const handleEndInputChange = (value: string) => {
+    if (!value) {
+      onDateChange?.(selectedStart, null);
+      return;
+    }
+    const date = parseISODateStr(value);
+    // Only accept end if it's strictly after start
+    if (selectedStart && date > selectedStart) {
+      onDateChange?.(selectedStart, date);
+    }
+  };
 
   const days =
     selectedStart && selectedEnd
@@ -150,14 +203,37 @@ function BookingCard({
       {/* ── Rental dates summary ── */}
       <p className="booking-field-label mb-2">Fechas del alquiler</p>
       <div className="booking-dates mb-4">
-        <div className="flex flex-1 flex-col justify-center px-3">
+        {/* Start date cell — shows formatted text; invisible input acts as the trigger */}
+        <div className="relative flex flex-1 flex-col justify-between px-3 py-2">
           <p className="booking-date-label">Recogida</p>
           <p className="booking-date-value">{selectedStart ? formatDateEs(selectedStart) : "Selecciona fecha"}</p>
+          <input
+            id="booking-start-date"
+            type="date"
+            className="booking-date-overlay"
+            value={selectedStart ? toISODateStr(selectedStart) : ""}
+            min={todayStr}
+            onChange={(e) => handleStartInputChange(e.target.value)}
+            aria-label="Fecha de recogida"
+          />
         </div>
         <div className="booking-dates-divider" />
-        <div className="flex flex-1 flex-col justify-center px-3">
+        {/* End date cell */}
+        <div className="relative flex flex-1 flex-col justify-between px-3 py-2">
           <p className="booking-date-label">Devolución</p>
-          <p className="booking-date-value">{selectedEnd ? formatDateEs(selectedEnd) : "Selecciona fecha"}</p>
+          <p className={`booking-date-value${!selectedStart ? "booking-date-value--muted" : ""}`}>
+            {selectedEnd ? formatDateEs(selectedEnd) : "Selecciona fecha"}
+          </p>
+          <input
+            id="booking-end-date"
+            type="date"
+            className="booking-date-overlay"
+            value={selectedEnd ? toISODateStr(selectedEnd) : ""}
+            min={minEndStr}
+            disabled={!selectedStart}
+            onChange={(e) => handleEndInputChange(e.target.value)}
+            aria-label="Fecha de devolución"
+          />
         </div>
       </div>
       <p className="booking-row-label -mt-2 mb-4">{periodHint}</p>

@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 
 interface ProductCalendarProps {
   /** Set of ISO date strings ("YYYY-MM-DD") that are already booked. */
@@ -9,6 +9,11 @@ interface ProductCalendarProps {
   selectedEnd: Date | null;
   /** Callback fired when the user clicks an available day cell. */
   onDateSelect: (date: Date) => void;
+  /**
+   * When provided, the calendar navigates to the month of this date.
+   * Used to sync the calendar view when dates are changed from the booking card.
+   */
+  navigateTo?: Date | null;
 }
 
 const WEEKDAY_LABELS = ["L", "M", "X", "J", "V", "S", "D"] as const;
@@ -60,7 +65,13 @@ function isInRange(date: Date, start: Date | null, end: Date | null): boolean {
  * @param onDateSelect Called with the clicked Date when the user taps a valid cell.
  * @returns Calendar JSX.
  */
-function ProductCalendar({ occupiedDates, selectedStart, selectedEnd, onDateSelect }: ProductCalendarProps) {
+function ProductCalendar({
+  occupiedDates,
+  selectedStart,
+  selectedEnd,
+  onDateSelect,
+  navigateTo,
+}: ProductCalendarProps) {
   const today = new Date();
   today.setHours(0, 0, 0, 0);
 
@@ -70,6 +81,12 @@ function ProductCalendar({ occupiedDates, selectedStart, selectedEnd, onDateSele
     d.setHours(0, 0, 0, 0);
     return d;
   });
+
+  // Navigate the calendar view when a date is selected from the booking card inputs
+  useEffect(() => {
+    if (!navigateTo) return;
+    setViewMonth(new Date(navigateTo.getFullYear(), navigateTo.getMonth(), 1));
+  }, [navigateTo]);
 
   const year = viewMonth.getFullYear();
   const month = viewMonth.getMonth();
