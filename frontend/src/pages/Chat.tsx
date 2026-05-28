@@ -68,6 +68,7 @@ type ChatAction =
   | { type: "conversations:error"; message: string }
   | { type: "messages:loading" }
   | { type: "messages:success"; items: MessageResponse[] }
+  | { type: "messages:merge"; items: MessageResponse[] }
   | { type: "messages:error"; message: string }
   | { type: "messages:reset" }
   | { type: "draft:set"; value: string }
@@ -106,6 +107,20 @@ function applyIncomingMessage(state: ChatState, message: MessageResponse): ChatS
   return { ...state, messages, conversations };
 }
 
+function mergeMessages(current: MessageResponse[], incoming: MessageResponse[]): MessageResponse[] {
+  const known = new Set(current.map((message) => message.message_id));
+  const next = [...current];
+
+  for (const message of incoming) {
+    if (!known.has(message.message_id)) {
+      next.push(message);
+      known.add(message.message_id);
+    }
+  }
+
+  return next;
+}
+
 function chatReducer(state: ChatState, action: ChatAction): ChatState {
   switch (action.type) {
     case "conversations:success":
@@ -116,6 +131,8 @@ function chatReducer(state: ChatState, action: ChatAction): ChatState {
       return { ...state, loadingMessages: true, error: "" };
     case "messages:success":
       return { ...state, messages: action.items, loadingMessages: false };
+    case "messages:merge":
+      return { ...state, messages: mergeMessages(state.messages, action.items) };
     case "messages:error":
       return { ...state, error: action.message, loadingMessages: false };
     case "messages:reset":
@@ -323,15 +340,30 @@ function Chat() {
     }
 
     const controller = new AbortController();
-    dispatch({ type: "messages:loading" });
+    let active = true;
 
-    apiGet<MessagesResponse>(`/api/conversations/${activeConversationID}/messages`, controller.signal)
-      .then((data) => dispatch({ type: "messages:success", items: data.items }))
-      .catch((err: Error) => {
-        if (err.name !== "AbortError") dispatch({ type: "messages:error", message: err.message });
-      });
+    const loadMessages = async (showLoading: boolean) => {
+      if (showLoading) dispatch({ type: "messages:loading" });
 
-    return () => controller.abort();
+      try {
+        const data = await apiGet<MessagesResponse>(`/api/conversations/${activeConversationID}/messages`, controller.signal);
+        if (!active) return;
+        dispatch({ type: showLoading ? "messages:success" : "messages:merge", items: data.items });
+      } catch (err) {
+        if (err instanceof Error && err.name !== "AbortError") {
+          dispatch({ type: "messages:error", message: err.message });
+        }
+      }
+    };
+
+    void loadMessages(true);
+    const intervalID = window.setInterval(() => void loadMessages(false), 2500);
+
+    return () => {
+      active = false;
+      window.clearInterval(intervalID);
+      controller.abort();
+    };
   }, [activeConversationID]);
 
   useEffect(() => {
