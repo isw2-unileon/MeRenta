@@ -188,14 +188,11 @@ function ProductCard({ item, isFavorite, onToggleFavorite, onOpen }: ProductCard
   }
 
   return (
-    <article className="border-border-main bg-page relative overflow-hidden rounded-xl border transition-shadow hover:shadow-md">
-      <button
-        type="button"
-        className="absolute inset-0 z-0 cursor-pointer"
-        aria-label={`Ver ${item.title}`}
-        onClick={onOpen}
-      />
-      <div className="relative z-10">
+    <article
+      className="border-border-main bg-page relative cursor-pointer overflow-hidden rounded-xl border transition-shadow hover:shadow-md"
+      onClick={onOpen}
+    >
+      <div className="relative">
         <div className="bg-primary-light relative h-42 overflow-hidden">
           {item.primary_image_url ? (
             <img
