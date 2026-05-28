@@ -9,6 +9,7 @@ import { OwnerCard } from "@/components/product/detail/OwnerCard";
 import { ProductCalendar } from "@/components/product/detail/ProductCalendar";
 import { ProductImageGallery } from "@/components/product/detail/ProductImageGallery";
 import { StarRating } from "@/components/product/detail/StarRating";
+import { useAuth } from "@/hooks/useAuth";
 import type { ApiResponse } from "@/types/common";
 import type { CustomerProfile } from "@/types/customer";
 import type { ItemImageResponse, ItemResponse } from "@/types/item";
@@ -198,6 +199,7 @@ function ProductError({ message, onBack }: ProductErrorProps) {
 function Product() {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
+  useAuth();
 
   const [state, dispatch] = useReducer(productReducer, INITIAL_STATE);
   const { isFav, toggle } = useFavorites();
@@ -267,7 +269,6 @@ function Product() {
   const condition = state.item?.condition
     ? (CONDITION_LABELS[state.item.condition] ?? state.item.condition)
     : undefined;
-
   const item = state.item;
 
   // ── Render ─────────────────────────────────────────────────────────────────

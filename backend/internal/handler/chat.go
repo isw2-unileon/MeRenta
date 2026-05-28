@@ -88,6 +88,20 @@ func (h *ChatHandler) ListMessages(c *gin.Context) {
 		return
 	}
 
+	readReceipt, err := h.svc.MarkMessagesRead(c.Request.Context(), customerID, conversationID)
+	if err != nil {
+		if errors.Is(err, service.ErrConversationNotFound) {
+			response.Error(c, http.StatusNotFound, err.Error())
+			return
+		}
+		slog.Error("mark messages read failed", "error", err)
+		response.Error(c, http.StatusInternalServerError, "internal server error")
+		return
+	}
+	if len(readReceipt.MessageIDs) > 0 {
+		h.hub.Broadcast(conversationID, model.ChatWebSocketOut{Type: "read", Read: readReceipt})
+	}
+
 	res, err := h.svc.GetMessages(c.Request.Context(), customerID, conversationID)
 	if err != nil {
 		if errors.Is(err, service.ErrConversationNotFound) {

@@ -55,6 +55,7 @@ type MessageRow struct {
 	Body           string             `json:"body"`
 	ReadAt         pgtype.Timestamptz `json:"read_at"`
 	CreatedAt      pgtype.Timestamptz `json:"created_at"`
+	IsRead         bool               `json:"is_read"`
 }
 
 const getItemChatInfo = `
@@ -200,19 +201,19 @@ func (q *Queries) GetConversation(ctx context.Context, conversationID, customerI
 const sendMessage = `
 INSERT INTO message (conversation_id, sender_id, content)
 VALUES ($1, $2, $3)
-RETURNING message_id, conversation_id, sender_id, content, NULL::timestamptz AS read_at, sent_at
+RETURNING message_id, conversation_id, sender_id, content, NULL::timestamptz AS read_at, sent_at, is_read
 `
 
 // SendMessage appends a message to a conversation.
 func (q *Queries) SendMessage(ctx context.Context, arg SendMessageParams) (MessageRow, error) {
 	row := q.db.QueryRow(ctx, sendMessage, arg.ConversationID, arg.SenderID, arg.Body)
 	var m MessageRow
-	err := row.Scan(&m.MessageID, &m.ConversationID, &m.SenderID, &m.Body, &m.ReadAt, &m.CreatedAt)
+	err := row.Scan(&m.MessageID, &m.ConversationID, &m.SenderID, &m.Body, &m.ReadAt, &m.CreatedAt, &m.IsRead)
 	return m, err
 }
 
 const listMessages = `
-SELECT message_id, conversation_id, sender_id, content, NULL::timestamptz AS read_at, sent_at
+SELECT message_id, conversation_id, sender_id, content, NULL::timestamptz AS read_at, sent_at, is_read
 FROM message
 WHERE conversation_id = $1
 ORDER BY sent_at ASC, message_id ASC
@@ -229,7 +230,7 @@ func (q *Queries) ListMessages(ctx context.Context, conversationID uuid.UUID) ([
 	messages := make([]MessageRow, 0)
 	for rows.Next() {
 		var m MessageRow
-		if err := rows.Scan(&m.MessageID, &m.ConversationID, &m.SenderID, &m.Body, &m.ReadAt, &m.CreatedAt); err != nil {
+		if err := rows.Scan(&m.MessageID, &m.ConversationID, &m.SenderID, &m.Body, &m.ReadAt, &m.CreatedAt, &m.IsRead); err != nil {
 			return nil, err
 		}
 		messages = append(messages, m)
@@ -246,4 +247,33 @@ SELECT 1
 func (q *Queries) TouchConversation(ctx context.Context, conversationID uuid.UUID) error {
 	_, err := q.db.Exec(ctx, touchConversation)
 	return err
+}
+
+const markMessagesRead = `
+UPDATE message
+SET is_read = true
+WHERE conversation_id = $1
+  AND sender_id <> $2
+  AND is_read = false
+RETURNING message_id
+`
+
+// MarkMessagesRead marks unread messages from the other participant as read.
+func (q *Queries) MarkMessagesRead(ctx context.Context, conversationID, readerID uuid.UUID) ([]uuid.UUID, error) {
+	rows, err := q.db.Query(ctx, markMessagesRead, conversationID, readerID)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+
+	messageIDs := make([]uuid.UUID, 0)
+	for rows.Next() {
+		var messageID uuid.UUID
+		if err := rows.Scan(&messageID); err != nil {
+			return nil, err
+		}
+		messageIDs = append(messageIDs, messageID)
+	}
+
+	return messageIDs, rows.Err()
 }
