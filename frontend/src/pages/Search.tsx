@@ -6,6 +6,7 @@ import { useFavorites } from "@/hooks/useFavorites";
 
 import type { ApiResponse } from "@/types/common";
 import type { SearchItemResponse, SearchItemsResponse } from "@/types/item";
+import * as React from "react";
 
 const PAGE_SIZE = 12;
 
@@ -187,87 +188,92 @@ function ProductCard({ item, isFavorite, onToggleFavorite, onOpen }: ProductCard
   }
 
   return (
-    <article
-      className="border-border-main bg-page cursor-pointer overflow-hidden rounded-xl border transition-shadow hover:shadow-md"
-      onClick={onOpen}
-    >
-      <div className="bg-primary-light relative h-42 overflow-hidden">
-        {item.primary_image_url ? (
-          <img
-            src={item.primary_image_url}
-            alt={item.title}
-            className="h-full w-full object-cover"
-          />
-        ) : (
-          <div className="h-full w-full bg-[linear-gradient(135deg,#e1f5ee_0%,#d7f1e9_55%,#dff6ed_100%)]" />
-        )}
-
-        <span
-          className={`absolute top-3 left-4 rounded-full px-3 py-1 text-[11px] font-medium ${
-            isAvailable ? "text-primary bg-[#e8faf3]" : "bg-[#fff0c4] text-[#9b7411]"
-          }`}
-        >
-          {isAvailable ? "Disponible" : "No disponible"}
-        </span>
-
-        <button
-          type="button"
-          className={`absolute top-3 right-3 flex size-8 items-center justify-center rounded-full bg-white p-0 transition-colors ${
-            isFavorite ? "text-heart-active" : "text-subtle hover:text-heart-active"
-          }`}
-          aria-label={isFavorite ? "Quitar de favoritos" : "Guardar favorito"}
-          onClick={handleToggle}
-        >
-          <Heart
-            size={17}
-            fill={isFavorite ? "currentColor" : "none"}
-          />
-        </button>
-      </div>
-
-      <div className="p-4">
-        <h2 className="text-ink mb-3 line-clamp-2 min-h-9.5 text-[15px] leading-snug font-medium">{item.title}</h2>
-
-        {/* Owner info */}
-        <div className="mb-3 flex items-center gap-2">
-          {item.owner_avatar_url ? (
+    <article className="border-border-main bg-page relative overflow-hidden rounded-xl border transition-shadow hover:shadow-md">
+      <button
+        type="button"
+        className="absolute inset-0 z-0 cursor-pointer"
+        aria-label={`Ver ${item.title}`}
+        onClick={onOpen}
+      />
+      <div className="relative z-10">
+        <div className="bg-primary-light relative h-42 overflow-hidden">
+          {item.primary_image_url ? (
             <img
-              src={item.owner_avatar_url}
-              alt={`${item.owner_first_name} ${item.owner_last_name}`}
-              className="size-6 rounded-full object-cover"
+              src={item.primary_image_url}
+              alt={item.title}
+              className="h-full w-full object-cover"
             />
           ) : (
-            <span className="bg-primary text-primary-contrast flex size-6 shrink-0 items-center justify-center rounded-full text-[10px] font-bold">
-              {item.owner_first_name.charAt(0).toUpperCase()}
-              {item.owner_last_name.charAt(0).toUpperCase()}
-            </span>
+            <div className="h-full w-full bg-[linear-gradient(135deg,#e1f5ee_0%,#d7f1e9_55%,#dff6ed_100%)]" />
           )}
-          <p className="text-card-loc text-subtle truncate">
-            {item.owner_first_name} {item.owner_last_name}
-          </p>
-        </div>
 
-        <div className="mb-5 flex items-center justify-between">
-          <p className="text-card-loc text-subtle">{item.city || "Sin ubicación"}</p>
-          <p className="text-card-loc text-rating flex items-center gap-1">
-            <Star
-              size={13}
-              fill="currentColor"
-            />
-            {rating} ({reviews})
-          </p>
-        </div>
+          <span
+            className={`absolute top-3 left-4 rounded-full px-3 py-1 text-[11px] font-medium ${
+              isAvailable ? "text-primary bg-[#e8faf3]" : "bg-[#fff0c4] text-[#9b7411]"
+            }`}
+          >
+            {isAvailable ? "Disponible" : "No disponible"}
+          </span>
 
-        <div className="flex items-center justify-between gap-3">
-          <p className="text-primary text-[17px] font-bold">{Math.round(item.price_per_day)} EUR/dia</p>
           <button
             type="button"
-            className="btn-primary btn--sm min-w-23"
-            disabled={!isAvailable}
-            onClick={handleAlquilar}
+            className={`absolute top-3 right-3 flex size-8 items-center justify-center rounded-full bg-white p-0 transition-colors ${
+              isFavorite ? "text-heart-active" : "text-subtle hover:text-heart-active"
+            }`}
+            aria-label={isFavorite ? "Quitar de favoritos" : "Guardar favorito"}
+            onClick={handleToggle}
           >
-            {isAvailable ? "Alquilar" : "No disponible"}
+            <Heart
+              size={17}
+              fill={isFavorite ? "currentColor" : "none"}
+            />
           </button>
+        </div>
+
+        <div className="p-4">
+          <h2 className="text-ink mb-3 line-clamp-2 min-h-9.5 text-[15px] leading-snug font-medium">{item.title}</h2>
+
+          {/* Owner info */}
+          <div className="mb-3 flex items-center gap-2">
+            {item.owner_avatar_url ? (
+              <img
+                src={item.owner_avatar_url}
+                alt={`${item.owner_first_name} ${item.owner_last_name}`}
+                className="size-6 rounded-full object-cover"
+              />
+            ) : (
+              <span className="bg-primary text-primary-contrast flex size-6 shrink-0 items-center justify-center rounded-full text-[10px] font-bold">
+                {item.owner_first_name.charAt(0).toUpperCase()}
+                {item.owner_last_name.charAt(0).toUpperCase()}
+              </span>
+            )}
+            <p className="text-card-loc text-subtle truncate">
+              {item.owner_first_name} {item.owner_last_name}
+            </p>
+          </div>
+
+          <div className="mb-5 flex items-center justify-between">
+            <p className="text-card-loc text-subtle">{item.city || "Sin ubicación"}</p>
+            <p className="text-card-loc text-rating flex items-center gap-1">
+              <Star
+                size={13}
+                fill="currentColor"
+              />
+              {rating} ({reviews})
+            </p>
+          </div>
+
+          <div className="flex items-center justify-between gap-3">
+            <p className="text-primary text-[17px] font-bold">{Math.round(item.price_per_day)} EUR/dia</p>
+            <button
+              type="button"
+              className="btn-primary btn--sm min-w-23"
+              disabled={!isAvailable}
+              onClick={handleAlquilar}
+            >
+              {isAvailable ? "Alquilar" : "No disponible"}
+            </button>
+          </div>
         </div>
       </div>
     </article>

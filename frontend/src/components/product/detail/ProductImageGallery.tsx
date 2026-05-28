@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { ChevronLeft, ChevronRight, Heart, X } from "lucide-react";
 
 import type { ItemImageResponse } from "@/types/item";
@@ -36,6 +36,7 @@ interface ProductImageGalleryProps {
 function ProductImageGallery({ images, title, isAvailable, isFavorite, onToggleFavorite }: ProductImageGalleryProps) {
   const [activeIndex, setActiveIndex] = useState(0);
   const [lightboxOpen, setLightboxOpen] = useState(false);
+  const dialogRef = useRef<HTMLDialogElement | null>(null);
 
   const hasImages = images.length > 0;
   const mainImage = hasImages ? images[activeIndex] : undefined;
@@ -57,11 +58,10 @@ function ProductImageGallery({ images, title, isAvailable, isFavorite, onToggleF
     setActiveIndex((i) => (i + 1) % images.length);
   };
 
-  // Keyboard navigation and Escape to close
+  // Keyboard navigation for the lightbox
   useEffect(() => {
     if (!lightboxOpen) return;
     const handleKey = (e: KeyboardEvent) => {
-      if (e.key === "Escape") closeLightbox();
       if (e.key === "ArrowLeft") setActiveIndex((i) => (i - 1 + images.length) % images.length);
       if (e.key === "ArrowRight") setActiveIndex((i) => (i + 1) % images.length);
     };
@@ -69,18 +69,35 @@ function ProductImageGallery({ images, title, isAvailable, isFavorite, onToggleF
     return () => document.removeEventListener("keydown", handleKey);
   }, [lightboxOpen, images.length]);
 
+  useEffect(() => {
+    const dialog = dialogRef.current;
+    if (!dialog) return;
+
+    if (lightboxOpen) {
+      if (!dialog.open) dialog.showModal();
+    } else if (dialog.open) {
+      dialog.close();
+    }
+  }, [lightboxOpen]);
+
   return (
     <>
       <div>
         {/* ── Main image ── */}
         <div className="relative">
           {hasImages && mainImage ? (
-            <img
-              className="product-main-img cursor-zoom-in"
-              src={mainImage.image_url}
-              alt={title}
+            <button
+              type="button"
+              className="block"
+              aria-label={`Abrir ${title} en vista ampliada`}
               onClick={openLightbox}
-            />
+            >
+              <img
+                className="product-main-img cursor-zoom-in"
+                src={mainImage.image_url}
+                alt={title}
+              />
+            </button>
           ) : (
             <img
               className="product-main-img bg-primary-light rounded-lg"
@@ -148,12 +165,12 @@ function ProductImageGallery({ images, title, isAvailable, isFavorite, onToggleF
 
       {/* ── Lightbox ── */}
       {lightboxOpen && (
-        <div
+        <dialog
+          ref={dialogRef}
           className="fixed inset-0 z-50 flex items-center justify-center bg-black/85"
-          onClick={closeLightbox}
-          role="dialog"
-          aria-modal="true"
           aria-label={`${title} - imagen ampliada`}
+          onCancel={closeLightbox}
+          onClose={closeLightbox}
         >
           {/* Close */}
           <button
@@ -183,7 +200,6 @@ function ProductImageGallery({ images, title, isAvailable, isFavorite, onToggleF
               src={lightboxImage.image_url}
               alt={`${title} - imagen ${activeIndex + 1}`}
               className="max-h-[90vh] max-w-[90vw] rounded-lg object-contain shadow-2xl"
-              onClick={(e) => e.stopPropagation()}
             />
           )}
 
@@ -205,7 +221,7 @@ function ProductImageGallery({ images, title, isAvailable, isFavorite, onToggleF
               {activeIndex + 1} / {images.length}
             </p>
           )}
-        </div>
+        </dialog>
       )}
     </>
   );
