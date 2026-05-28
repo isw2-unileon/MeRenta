@@ -20,6 +20,7 @@ func Setup(
 	itemImgH *handler.ItemImageHandler,
 	addrH *handler.AddressHandler,
 	favH *handler.FavoriteHandler,
+	chatH *handler.ChatHandler,
 	jwtMgr *jwt.Manager,
 	corsAllowOrigin string,
 	readiness func(context.Context) error,
@@ -83,6 +84,14 @@ func Setup(
 	favs.POST("/:id", favH.Add)
 	favs.DELETE("/:id", favH.Remove)
 	favs.GET("/:id/check", favH.Check)
+
+	// conversations
+	conversations := protected.Group("/conversations")
+	conversations.GET("", chatH.ListConversations)
+	conversations.POST("", chatH.StartConversation)
+	conversations.GET("/:id/messages", chatH.ListMessages)
+	conversations.POST("/:id/messages", chatH.SendMessage)
+	conversations.GET("/:id/ws", chatH.WebSocket)
 
 	// admin
 	admin := api.Group("/admin")
