@@ -4,6 +4,7 @@ import (
 	"context"
 
 	"github.com/google/uuid"
+	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgtype"
 )
 
@@ -79,10 +80,9 @@ func (q *Queries) ListReceivedReviews(ctx context.Context, arg ListReceivedRevie
 	}
 	defer rows.Close()
 
-	var reviews []ReceivedReviewRow
-	for rows.Next() {
+	reviews, err := pgx.CollectRows(rows, func(row pgx.CollectableRow) (ReceivedReviewRow, error) {
 		var r ReceivedReviewRow
-		if err := rows.Scan(
+		err := row.Scan(
 			&r.ReviewID,
 			&r.ReviewerID,
 			&r.ReviewedID,
@@ -93,12 +93,10 @@ func (q *Queries) ListReceivedReviews(ctx context.Context, arg ListReceivedRevie
 			&r.LastName,
 			&r.AvatarURL,
 			&r.TotalCount,
-		); err != nil {
-			return nil, err
-		}
-		reviews = append(reviews, r)
-	}
-	if err := rows.Err(); err != nil {
+		)
+		return r, err
+	})
+	if err != nil {
 		return nil, err
 	}
 

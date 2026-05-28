@@ -200,7 +200,7 @@ function getStatusLabel(product: SearchItemResponse) {
 }
 
 function uniqueProductCities(products: SearchItemResponse[]) {
-  return Array.from(new Set(products.map((product) => product.city).filter(Boolean)));
+  return Array.from(new Set(products.flatMap((product) => (product.city ? [product.city] : []))));
 }
 
 function reviewerInitials(review: ReceivedReview) {
@@ -343,7 +343,7 @@ function ReviewsSection({ state }: ReviewsSectionProps) {
 
       {state.loading && (
         <div className="profile-info-panel mt-3 flex min-h-36 items-center justify-center p-6">
-          <p className="text-subtle">Cargando valoraciones...</p>
+          <p className="text-subtle">Cargando valoraciones…</p>
         </div>
       )}
 
@@ -509,7 +509,7 @@ function MyProfile() {
         <div className="mx-auto flex h-full max-w-340 flex-col items-start justify-center gap-5 px-6 py-6 md:flex-row md:items-center md:justify-between md:px-10">
           <div>
             <div className="mt-2 flex items-center gap-5">
-              <div className="flex w-avatar-hero flex-col items-center gap-2">
+              <div className="w-avatar-hero flex flex-col items-center gap-2">
                 <span className="profile-public-badge">Tu perfil</span>
                 {user?.avatar_url ? (
                   <img
