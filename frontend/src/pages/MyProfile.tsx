@@ -473,8 +473,8 @@ function MyProfile() {
     .join(" - ");
 
   const verifications = [
-    { label: "Email verificado", done: Boolean(user?.email) },
-    { label: "Telefono verificado", done: Boolean(user?.phone) },
+    { label: "Email vinculado", done: Boolean(user?.email) },
+    { label: "Telefono vinculado", done: Boolean(user?.phone) },
   ];
 
   useEffect(() => {
@@ -543,7 +543,7 @@ function MyProfile() {
           {profileStats.map((stat, index) => (
             <div
               key={stat.label}
-              className={`px-0 ${index > 0 ? "border-border-input border-l pl-9" : ""}`}
+              className={`text-center ${index > 0 ? "border-border-input border-l" : ""}`}
             >
               <p className={stat.label === "Valoracion media" ? "profile-stat-value--rating" : "profile-stat-value"}>
                 {stat.label === "Valoracion media" && !reviewsState.loading ? (
@@ -562,9 +562,9 @@ function MyProfile() {
       </section>
 
       <main className="mx-auto max-w-340 px-6 pt-9 pb-12 md:px-10">
-        <div className="max-w-196">
+        <div className="mx-auto max-w-196">
           <section className="profile-info-panel px-5 py-4">
-            <p className="profile-verif-heading mb-2">Verificaciones</p>
+            <p className="profile-verif-heading mb-2">Datos vinculados</p>
             <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
               {verifications.map((verification) => (
                 <p
