@@ -3,6 +3,7 @@ import { useNavigate, useParams } from "react-router-dom";
 import { ArrowRight, CheckCheck, Search, SendHorizontal } from "lucide-react";
 
 import type { ApiResponse } from "@/types/common";
+import * as React from "react";
 
 interface ConversationResponse {
   conversation_id: string;
@@ -100,7 +101,7 @@ const initialState: ChatState = {
 };
 
 function sortConversations(conversations: ConversationResponse[]): ConversationResponse[] {
-  return [...conversations].sort((a, b) => {
+  return conversations.toSorted((a, b) => {
     const aTime = new Date(a.last_message_at ?? a.updated_at).getTime();
     const bTime = new Date(b.last_message_at ?? b.updated_at).getTime();
     return bTime - aTime;
@@ -119,7 +120,8 @@ function refreshConversations(
     const previous = previousByID.get(conversation.conversation_id);
     const changed =
       previous &&
-      (previous.last_message_at !== conversation.last_message_at || previous.last_message !== conversation.last_message);
+      (previous.last_message_at !== conversation.last_message_at ||
+        previous.last_message !== conversation.last_message);
 
     if (changed && conversation.conversation_id !== activeConversationID) {
       unreadConversationIDs.add(conversation.conversation_id);
@@ -159,7 +161,10 @@ function applyIncomingMessage(state: ChatState, message: MessageResponse, active
   return { ...state, messages, conversations: sortConversations(updatedConversations), unreadConversationIDs };
 }
 
-function mergeMessages(current: MessageResponse[], incoming: MessageResponse[]): {
+function mergeMessages(
+  current: MessageResponse[],
+  incoming: MessageResponse[]
+): {
   messages: MessageResponse[];
   added: MessageResponse[];
 } {
@@ -390,6 +395,192 @@ function MessageBubble({ message, otherUser }: { message: MessageResponse; other
   );
 }
 
+function ConversationList({
+  conversations,
+  loading,
+  activeConversationID,
+  unreadConversationIDs,
+  onOpen,
+}: {
+  conversations: ConversationResponse[];
+  loading: boolean;
+  activeConversationID?: string;
+  unreadConversationIDs: Set<string>;
+  onOpen: (conversationID: string) => void;
+}) {
+  return (
+    <aside className="border-border-main bg-page flex w-[320px] shrink-0 flex-col border-r">
+      <div className="border-border-main border-b p-4">
+        <h1 className="text-error-title font-bold">Mensajes</h1>
+        <label className="relative mt-5 mb-0 block">
+          <Search
+            size={16}
+            className="text-placeholder pointer-events-none absolute top-1/2 left-3 -translate-y-1/2"
+          />
+          <input
+            type="search"
+            placeholder="Buscar conversacion..."
+            className="text-card-loc h-10 rounded-lg pl-10"
+          />
+        </label>
+      </div>
+
+      <div className="min-h-0 flex-1 overflow-y-auto p-6">
+        {loading ? (
+          <div className="space-y-4">
+            {Array.from({ length: 5 }, (_, index) => (
+              <div
+                key={index}
+                className="flex animate-pulse items-center gap-3"
+              >
+                <div className="bg-primary-light size-11 rounded-full" />
+                <div className="flex-1 space-y-2">
+                  <div className="bg-border-main h-3 w-1/2 rounded" />
+                  <div className="bg-border-main h-3 w-3/4 rounded" />
+                </div>
+              </div>
+            ))}
+          </div>
+        ) : conversations.length > 0 ? (
+          conversations.map((conversation) => (
+            <ConversationRow
+              key={conversation.conversation_id}
+              conversation={conversation}
+              active={conversation.conversation_id === activeConversationID}
+              unread={unreadConversationIDs.has(conversation.conversation_id)}
+              onOpen={() => onOpen(conversation.conversation_id)}
+            />
+          ))
+        ) : (
+          <p className="text-subtle p-5 text-[13px]">Todavia no tienes conversaciones.</p>
+        )}
+      </div>
+    </aside>
+  );
+}
+
+function ChatHeader({
+  conversation,
+  onViewProduct,
+}: {
+  conversation: ConversationResponse;
+  onViewProduct: () => void;
+}) {
+  return (
+    <header className="border-border-main bg-page flex h-18 shrink-0 items-center justify-between border-b px-6">
+      <div className="flex items-center gap-3">
+        <ChatAvatar
+          name={conversation.other_user_name}
+          image={conversation.other_avatar_url}
+        />
+        <div>
+          <h2 className="text-[17px] font-bold">{conversation.other_user_name}</h2>
+          <p className="bg-primary-light text-primary inline-flex max-w-90 truncate rounded-full px-2.5 py-0.5 text-[10px] font-medium">
+            {conversation.item_title} · {Math.round(conversation.item_price)} EUR/dia
+          </p>
+        </div>
+      </div>
+
+      <button
+        type="button"
+        className="text-primary hover:text-primary-dark h-auto gap-2 p-0 text-[13px] font-medium"
+        onClick={onViewProduct}
+      >
+        Ver producto
+        <ArrowRight size={15} />
+      </button>
+    </header>
+  );
+}
+
+function MessagesPanel({
+  conversation,
+  messages,
+  loadingMessages,
+  error,
+  messagesEndRef,
+}: {
+  conversation: ConversationResponse;
+  messages: MessageResponse[];
+  loadingMessages: boolean;
+  error: string;
+  messagesEndRef: React.RefObject<HTMLDivElement | null>;
+}) {
+  return (
+    <>
+      {error ? (
+        <p className="border-border-main bg-error-danger text-report border-b px-6 py-3 text-[13px]">{error}</p>
+      ) : null}
+
+      <div className="min-h-0 flex-1 overflow-y-auto p-6">
+        <div className="mx-auto flex max-w-245 flex-col gap-5">
+          <div className="flex justify-center">
+            <span className="bg-ghost text-subtle rounded-full px-5 py-2 text-[11px]">
+              {dayLabel(messages[0]?.created_at)}
+            </span>
+          </div>
+
+          {loadingMessages ? (
+            <div className="space-y-5">
+              <div className="bg-border-main h-13 w-2/5 animate-pulse rounded-2xl" />
+              <div className="bg-primary-light ml-auto h-13 w-1/2 animate-pulse rounded-2xl" />
+            </div>
+          ) : messages.length > 0 ? (
+            messages.map((message) => (
+              <MessageBubble
+                key={message.message_id}
+                message={message}
+                otherUser={conversation}
+              />
+            ))
+          ) : (
+            <p className="text-subtle text-center text-[13px]">
+              Empieza la conversacion escribiendo el primer mensaje.
+            </p>
+          )}
+          <div ref={messagesEndRef} />
+        </div>
+      </div>
+    </>
+  );
+}
+
+function ChatComposer({
+  draft,
+  sending,
+  onDraftChange,
+  onSubmit,
+}: {
+  draft: string;
+  sending: boolean;
+  onDraftChange: (value: string) => void;
+  onSubmit: (event: FormEvent<HTMLFormElement>) => void;
+}) {
+  return (
+    <form
+      className="border-border-main bg-page flex h-18 shrink-0 items-center gap-3 border-t px-4"
+      onSubmit={onSubmit}
+    >
+      <input
+        type="text"
+        placeholder="Escribe un mensaje..."
+        aria-label="Mensaje"
+        className="bg-surface h-11 rounded-full px-5"
+        value={draft}
+        onChange={(event) => onDraftChange(event.target.value)}
+      />
+      <button
+        type="submit"
+        aria-label="Enviar mensaje"
+        className="btn-primary size-11 shrink-0 rounded-full p-0"
+        disabled={sending || draft.trim() === ""}
+      >
+        <SendHorizontal size={18} />
+      </button>
+    </form>
+  );
+}
+
 /**
  * Messaging hub for user conversations.
  */
@@ -397,7 +588,16 @@ function Chat() {
   const navigate = useNavigate();
   const { conversationId } = useParams();
   const [state, dispatch] = useReducer(chatReducer, initialState);
-  const { conversations, unreadConversationIDs, messages, draft, loadingConversations, loadingMessages, sending, error } = state;
+  const {
+    conversations,
+    unreadConversationIDs,
+    messages,
+    draft,
+    loadingConversations,
+    loadingMessages,
+    sending,
+    error,
+  } = state;
   const socketRef = useRef<WebSocket | null>(null);
   const messagesEndRef = useRef<HTMLDivElement | null>(null);
 
@@ -553,139 +753,37 @@ function Chat() {
 
   return (
     <div className="bg-surface flex h-[calc(100vh-var(--spacing-navbar))] overflow-hidden">
-      <aside className="border-border-main bg-page flex w-[320px] shrink-0 flex-col border-r">
-        <div className="border-border-main border-b p-4">
-          <h1 className="text-error-title font-bold">Mensajes</h1>
-          <label className="relative mt-5 mb-0 block">
-            <Search
-              size={16}
-              className="text-placeholder pointer-events-none absolute top-1/2 left-3 -translate-y-1/2"
-            />
-            <input
-              type="search"
-              placeholder="Buscar conversacion..."
-              className="text-card-loc h-10 rounded-lg pl-10"
-            />
-          </label>
-        </div>
-
-        <div className="min-h-0 flex-1 overflow-y-auto p-6">
-          {loadingConversations ? (
-            <div className="space-y-4">
-              {Array.from({ length: 5 }, (_, index) => (
-                <div
-                  key={index}
-                  className="flex animate-pulse items-center gap-3"
-                >
-                  <div className="bg-primary-light size-11 rounded-full" />
-                  <div className="flex-1 space-y-2">
-                    <div className="bg-border-main h-3 w-1/2 rounded" />
-                    <div className="bg-border-main h-3 w-3/4 rounded" />
-                  </div>
-                </div>
-              ))}
-            </div>
-          ) : conversations.length > 0 ? (
-            conversations.map((conversation) => (
-              <ConversationRow
-                key={conversation.conversation_id}
-                conversation={conversation}
-                active={conversation.conversation_id === activeConversation?.conversation_id}
-                unread={unreadConversationIDs.has(conversation.conversation_id)}
-                onOpen={() => {
-                  dispatch({ type: "conversation:open", conversationID: conversation.conversation_id });
-                  void navigate(`/chat/${conversation.conversation_id}`);
-                }}
-              />
-            ))
-          ) : (
-            <p className="text-subtle p-5 text-[13px]">Todavia no tienes conversaciones.</p>
-          )}
-        </div>
-      </aside>
+      <ConversationList
+        conversations={conversations}
+        loading={loadingConversations}
+        activeConversationID={activeConversation?.conversation_id}
+        unreadConversationIDs={unreadConversationIDs}
+        onOpen={(id) => {
+          dispatch({ type: "conversation:open", conversationID: id });
+          void navigate(`/chat/${id}`);
+        }}
+      />
 
       <section className="flex min-w-0 flex-1 flex-col">
         {activeConversation ? (
           <>
-            <header className="border-border-main bg-page flex h-18 shrink-0 items-center justify-between border-b px-6">
-              <div className="flex items-center gap-3">
-                <ChatAvatar
-                  name={activeConversation.other_user_name}
-                  image={activeConversation.other_avatar_url}
-                />
-                <div>
-                  <h2 className="text-[17px] font-bold">{activeConversation.other_user_name}</h2>
-                  <p className="bg-primary-light text-primary inline-flex max-w-90 truncate rounded-full px-2.5 py-0.5 text-[10px] font-medium">
-                    {activeConversation.item_title} · {Math.round(activeConversation.item_price)} EUR/dia
-                  </p>
-                </div>
-              </div>
-
-              <button
-                type="button"
-                className="text-primary hover:text-primary-dark h-auto gap-2 p-0 text-[13px] font-medium"
-                onClick={() => navigate(`/product/${activeConversation.item_id}`)}
-              >
-                Ver producto
-                <ArrowRight size={15} />
-              </button>
-            </header>
-
-            {error ? (
-              <p className="border-border-main bg-error-danger text-report border-b px-6 py-3 text-[13px]">{error}</p>
-            ) : null}
-
-            <div className="min-h-0 flex-1 overflow-y-auto p-6">
-              <div className="mx-auto flex max-w-245 flex-col gap-5">
-                <div className="flex justify-center">
-                  <span className="bg-ghost text-subtle rounded-full px-5 py-2 text-[11px]">
-                    {dayLabel(messages[0]?.created_at)}
-                  </span>
-                </div>
-
-                {loadingMessages ? (
-                  <div className="space-y-5">
-                    <div className="bg-border-main h-13 w-2/5 animate-pulse rounded-2xl" />
-                    <div className="bg-primary-light ml-auto h-13 w-1/2 animate-pulse rounded-2xl" />
-                  </div>
-                ) : messages.length > 0 ? (
-                  messages.map((message) => (
-                    <MessageBubble
-                      key={message.message_id}
-                      message={message}
-                      otherUser={activeConversation}
-                    />
-                  ))
-                ) : (
-                  <p className="text-subtle text-center text-[13px]">
-                    Empieza la conversacion escribiendo el primer mensaje.
-                  </p>
-                )}
-                <div ref={messagesEndRef} />
-              </div>
-            </div>
-
-            <form
-              className="border-border-main bg-page flex h-18 shrink-0 items-center gap-3 border-t px-4"
+            <ChatHeader
+              conversation={activeConversation}
+              onViewProduct={() => navigate(`/product/${activeConversation.item_id}`)}
+            />
+            <MessagesPanel
+              conversation={activeConversation}
+              messages={messages}
+              loadingMessages={loadingMessages}
+              error={error}
+              messagesEndRef={messagesEndRef}
+            />
+            <ChatComposer
+              draft={draft}
+              sending={sending}
+              onDraftChange={(value) => dispatch({ type: "draft:set", value })}
               onSubmit={handleSubmit}
-            >
-              <input
-                type="text"
-                placeholder="Escribe un mensaje..."
-                aria-label="Mensaje"
-                className="bg-surface h-11 rounded-full px-5"
-                value={draft}
-                onChange={(event) => dispatch({ type: "draft:set", value: event.target.value })}
-              />
-              <button
-                type="submit"
-                aria-label="Enviar mensaje"
-                className="btn-primary size-11 shrink-0 rounded-full p-0"
-                disabled={sending || draft.trim() === ""}
-              >
-                <SendHorizontal size={18} />
-              </button>
-            </form>
+            />
           </>
         ) : (
           <div className="flex flex-1 items-center justify-center px-6">
