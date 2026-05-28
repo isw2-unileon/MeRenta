@@ -1,6 +1,8 @@
+import { useState } from "react";
 import { useNavigate } from "react-router-dom";
 
 import { StarRating } from "@/components/product/detail/StarRating";
+import type { ApiResponse } from "@/types/common";
 
 /** Fixed service fee applied to every rental (EUR). */
 const SERVICE_FEE = 5;
@@ -27,6 +29,10 @@ interface BookingCardProps {
   maxDay?: number | null;
 }
 
+interface ConversationResponse {
+  conversation_id: string;
+}
+
 /** Formats a Date as localised Spanish short date, e.g. "15 may 2025". */
 function formatDateEs(date: Date): string {
   return date.toLocaleDateString("es-ES", {
@@ -39,6 +45,20 @@ function formatDateEs(date: Date): string {
 /** Formats a number as a price string with comma decimal, e.g. "6,90". */
 function fmtPrice(value: number): string {
   return value.toFixed(2).replace(".", ",");
+}
+
+async function startConversation(itemId: string): Promise<ConversationResponse> {
+  const res = await fetch("/api/conversations", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    credentials: "include",
+    body: JSON.stringify({ item_id: itemId }),
+  });
+  const json = (await res.json()) as ApiResponse<ConversationResponse>;
+  if (!res.ok || !json.success || !json.data) {
+    throw new Error(json.error ?? "Error al iniciar la conversacion");
+  }
+  return json.data;
 }
 
 /**
@@ -68,6 +88,8 @@ function BookingCard({
   maxDay,
 }: BookingCardProps) {
   const navigate = useNavigate();
+  const [messageLoading, setMessageLoading] = useState(false);
+  const [messageError, setMessageError] = useState("");
 
   const days =
     selectedStart && selectedEnd
@@ -89,8 +111,17 @@ function BookingCard({
     void navigate(`/checkout/${itemId}?start=${start}&end=${end}`);
   };
 
-  const handleMessage = () => {
-    void navigate(`/chat`);
+  const handleMessage = async () => {
+    setMessageLoading(true);
+    setMessageError("");
+    try {
+      const conversation = await startConversation(itemId);
+      void navigate(`/chat/${conversation.conversation_id}`);
+    } catch (err) {
+      setMessageError(err instanceof Error ? err.message : "Error al iniciar la conversacion");
+    } finally {
+      setMessageLoading(false);
+    }
   };
 
   return (
@@ -175,10 +206,13 @@ function BookingCard({
           type="button"
           className="btn-secondary btn--md w-full"
           onClick={handleMessage}
+          disabled={messageLoading}
         >
-          Enviar mensaje al propietario
+          {messageLoading ? "Abriendo chat..." : "Enviar mensaje al propietario"}
         </button>
       </div>
+
+      {messageError && <p className="field-error mt-3 text-center">{messageError}</p>}
 
       {/* Disclaimer */}
       <p className="booking-disclaimer mt-3 text-center">No se hará ningún cargo hasta que el propietario acepte</p>

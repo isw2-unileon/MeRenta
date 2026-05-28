@@ -70,7 +70,11 @@ func main() {
 	favSvc := service.NewFavoriteService(q)
 	favH := handler.NewFavoriteHandler(favSvc)
 
-	r := router.Setup(authH, itemH, itemImgH, addrH, favH, jwtMgr, cfg.CORSAllowOrigin, pool.Ping)
+	chatSvc := service.NewChatService(q)
+	chatHub := handler.NewChatHub()
+	chatH := handler.NewChatHandler(chatSvc, chatHub)
+
+	r := router.Setup(authH, itemH, itemImgH, addrH, favH, chatH, jwtMgr, cfg.CORSAllowOrigin, pool.Ping)
 	portNum, err := strconv.Atoi(cfg.Port)
 	if err != nil || portNum < 1 || portNum > 65535 {
 		slog.Error("invalid port", "port", cfg.Port)
