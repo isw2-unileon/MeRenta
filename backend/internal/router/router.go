@@ -60,6 +60,10 @@ func Setup(
 
 	// authenticated user profile
 	protected.GET("/me", authH.Me)
+	protected.PATCH("/me", authH.UpdateMe)
+	protected.PATCH("/me/email", authH.UpdateEmail)
+	protected.PATCH("/me/password", authH.UpdatePassword)
+	protected.POST("/me/avatar", authH.UploadAvatar)
 
 	// addresses
 	addresses := protected.Group("/addresses")
