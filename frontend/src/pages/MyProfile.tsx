@@ -243,6 +243,7 @@ function ProfileProductCard({ product }: ProductCardProps) {
   const navigate = useNavigate();
   const tone = PRODUCT_TONES[product.category] ?? PRODUCT_TONES.other;
   const statusLabel = getStatusLabel(product);
+  const isAvailable = product.is_available && product.item_status !== "retired" && product.item_status !== "rented";
 
   return (
     <article className="border-border-main bg-page overflow-hidden rounded-xl border">
@@ -261,12 +262,10 @@ function ProfileProductCard({ product }: ProductCardProps) {
         ) : null}
         <span
           className={`absolute top-3 left-4 rounded-full px-3 py-1 text-[11px] font-medium ${
-            product.is_available && product.item_status !== "retired"
-              ? "text-primary bg-white/80"
-              : "text-subtle bg-white/80"
+            isAvailable ? "bg-primary-light text-primary" : "bg-[#fff0c4] text-[#9b7411]"
           }`}
         >
-          {statusLabel}
+          {isAvailable ? statusLabel : "No disponible"}
         </span>
       </button>
 
@@ -539,7 +538,7 @@ function MyProfile() {
       </section>
 
       <section className="profile-stats-strip h-auto py-5">
-        <div className="mx-auto grid w-full max-w-340 grid-cols-2 gap-y-5 md:grid-cols-3 lg:grid-cols-6">
+        <div className="mx-auto grid w-full max-w-250 grid-cols-2 gap-y-5 md:grid-cols-3 lg:grid-cols-5">
           {profileStats.map((stat, index) => (
             <div
               key={stat.label}
