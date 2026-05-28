@@ -665,17 +665,12 @@
     font-weight: var(--font-weight-medium);
     color: var(--color-ink);
   }
-  input.booking-date-overlay {
+  input.booking-date-hidden {
     position: absolute;
-    inset: 0;
-    width: 100%;
-    height: 100%;
+    width: 1px;
+    height: 1px;
     opacity: 0;
-    cursor: pointer;
-    z-index: 1;
-  }
-  input.booking-date-overlay:disabled {
-    cursor: default;
+    pointer-events: none;
   }
   p.booking-date-value--muted {
     color: var(--color-subtle);
