@@ -85,6 +85,41 @@ type SearchItemCardsRow struct {
 	TotalCount      int64              `json:"total_count"`
 }
 
+const listOwnerItemCards = `
+SELECT
+    i.item_id,
+    i.owner_id,
+    i.address_id,
+    i.category,
+    i.title,
+    i.item_status,
+    i.price_per_day,
+    i.is_available,
+    i.published_at,
+    a.city,
+    COALESCE(img.image_url, '') AS primary_image_url,
+    COUNT(*) OVER() AS total_count
+FROM item i
+JOIN address a ON a.address_id = i.address_id
+LEFT JOIN LATERAL (
+    SELECT image_url
+    FROM item_image
+    WHERE item_id = i.item_id
+    ORDER BY display_order, image_id
+    LIMIT 1
+) img ON true
+WHERE i.owner_id = $1
+ORDER BY i.published_at DESC
+LIMIT $2 OFFSET $3
+`
+
+// ListOwnerItemCardsParams defines pagination for owner item cards.
+type ListOwnerItemCardsParams struct {
+	OwnerID uuid.UUID `json:"owner_id"`
+	Limit   int       `json:"limit"`
+	Offset  int       `json:"offset"`
+}
+
 const countItemCardsByCategory = `
 SELECT
     i.category,
@@ -204,6 +239,48 @@ func (q *Queries) SearchItemCards(ctx context.Context, arg SearchItemCardsParams
 		arg.MinPrice,
 		arg.MaxPrice,
 		arg.Sort,
+		arg.Limit,
+		arg.Offset,
+	)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+
+	var items []SearchItemCardsRow
+	for rows.Next() {
+		var i SearchItemCardsRow
+		if err := rows.Scan(
+			&i.ItemID,
+			&i.OwnerID,
+			&i.AddressID,
+			&i.Category,
+			&i.Title,
+			&i.ItemStatus,
+			&i.PricePerDay,
+			&i.IsAvailable,
+			&i.PublishedAt,
+			&i.City,
+			&i.PrimaryImageURL,
+			&i.TotalCount,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+
+	return items, nil
+}
+
+// ListOwnerItemCards returns item cards owned by a customer.
+func (q *Queries) ListOwnerItemCards(ctx context.Context, arg ListOwnerItemCardsParams) ([]SearchItemCardsRow, error) {
+	rows, err := q.db.Query(
+		ctx,
+		listOwnerItemCards,
+		arg.OwnerID,
 		arg.Limit,
 		arg.Offset,
 	)
