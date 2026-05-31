@@ -30,3 +30,25 @@ SELECT
 FROM address
 WHERE address_id = $1
 LIMIT 1;
+
+-- name: UpdateAddress :one
+UPDATE address
+SET
+    street = $2,
+    number = $3,
+    floor = $4,
+    city = $5,
+    province = $6,
+    postal_code = $7,
+    country = $8,
+    latitude = $9,
+    longitude = $10
+WHERE address_id = $1
+RETURNING
+    address_id, customer_id, street, number, floor,
+    city, province, postal_code, country,
+    latitude, longitude;
+
+-- name: DeleteAddress :exec
+DELETE FROM address
+WHERE address_id = $1;

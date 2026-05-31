@@ -60,11 +60,18 @@ func Setup(
 
 	// authenticated user profile
 	protected.GET("/me", authH.Me)
+	protected.PATCH("/me", authH.UpdateMe)
+	protected.DELETE("/me", authH.DeleteMe)
+	protected.PATCH("/me/email", authH.UpdateEmail)
+	protected.PATCH("/me/password", authH.UpdatePassword)
+	protected.POST("/me/avatar", authH.UploadAvatar)
 
 	// addresses
 	addresses := protected.Group("/addresses")
 	addresses.GET("", addrH.List)
 	addresses.POST("", addrH.Create)
+	addresses.PATCH("/:id", addrH.Update)
+	addresses.DELETE("/:id", addrH.Delete)
 
 	// customers (public profiles only — sensitive data excluded)
 	customers := protected.Group("/customers")

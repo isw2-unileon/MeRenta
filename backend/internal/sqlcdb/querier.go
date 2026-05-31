@@ -32,7 +32,9 @@ type Querier interface {
 	// ============================================
 	// DELETE
 	// ============================================
+	DeleteAddress(ctx context.Context, addressID uuid.UUID) error
 	DeleteCustomer(ctx context.Context, customerID uuid.UUID) error
+	DeleteCustomerAccountData(ctx context.Context, customerID uuid.UUID) error
 	// ============================================
 	// DELETE
 	// ============================================
@@ -68,6 +70,7 @@ type Querier interface {
 	SearchItems(ctx context.Context, arg SearchItemsParams) ([]Item, error)
 	SoftDeleteCustomer(ctx context.Context, customerID uuid.UUID) error
 	SoftDeleteItem(ctx context.Context, itemID uuid.UUID) error
+	UpdateAddress(ctx context.Context, arg UpdateAddressParams) (Address, error)
 	UpdateCustomerAvatar(ctx context.Context, arg UpdateCustomerAvatarParams) error
 	UpdateCustomerEmail(ctx context.Context, arg UpdateCustomerEmailParams) (UpdateCustomerEmailRow, error)
 	UpdateCustomerPassword(ctx context.Context, arg UpdateCustomerPasswordParams) error

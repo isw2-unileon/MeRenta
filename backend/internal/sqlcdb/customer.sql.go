@@ -118,6 +118,143 @@ func (q *Queries) DeleteCustomer(ctx context.Context, customerID uuid.UUID) erro
 	return err
 }
 
+const deleteCustomerAccountData = `-- name: DeleteCustomerAccountData :exec
+DELETE FROM message
+WHERE sender_id = $1
+   OR conversation_id IN (
+       SELECT c.conversation_id
+       FROM conversation c
+       LEFT JOIN item i ON i.item_id = c.item_id
+       WHERE c.customer_1_id = $1
+          OR c.customer_2_id = $1
+          OR i.owner_id = $1
+   );
+
+DELETE FROM conversation
+WHERE customer_1_id = $1
+   OR customer_2_id = $1
+   OR item_id IN (SELECT item_id FROM item WHERE owner_id = $1);
+
+DELETE FROM review
+WHERE reviewer_id = $1 OR reviewed_id = $1;
+
+DELETE FROM favorite
+WHERE customer_id = $1
+   OR item_id IN (SELECT item_id FROM item WHERE owner_id = $1);
+
+DELETE FROM incident
+WHERE reporter_id = $1
+   OR rental_id IN (
+       SELECT r.rental_id
+       FROM rental r
+       JOIN booking b ON b.booking_id = r.booking_id
+       LEFT JOIN item i ON i.item_id = b.item_id
+       WHERE b.renter_id = $1 OR i.owner_id = $1
+   );
+
+DELETE FROM payment
+WHERE payer_id = $1
+   OR rental_id IN (
+       SELECT r.rental_id
+       FROM rental r
+       JOIN booking b ON b.booking_id = r.booking_id
+       LEFT JOIN item i ON i.item_id = b.item_id
+       WHERE b.renter_id = $1 OR i.owner_id = $1
+   );
+
+DELETE FROM rental
+WHERE booking_id IN (
+    SELECT b.booking_id
+    FROM booking b
+    LEFT JOIN item i ON i.item_id = b.item_id
+    WHERE b.renter_id = $1 OR i.owner_id = $1
+);
+
+DELETE FROM booking
+WHERE renter_id = $1
+   OR item_id IN (SELECT item_id FROM item WHERE owner_id = $1);
+
+DELETE FROM item_image
+WHERE item_id IN (SELECT item_id FROM item WHERE owner_id = $1);
+
+DELETE FROM item
+WHERE owner_id = $1;
+
+DELETE FROM address
+WHERE customer_id = $1;
+
+DELETE FROM customer
+WHERE customer_id = $1
+`
+
+func (q *Queries) DeleteCustomerAccountData(ctx context.Context, customerID uuid.UUID) error {
+	deleteStatements := []string{
+		`DELETE FROM message
+WHERE sender_id = $1
+   OR conversation_id IN (
+       SELECT c.conversation_id
+       FROM conversation c
+       LEFT JOIN item i ON i.item_id = c.item_id
+       WHERE c.customer_1_id = $1
+          OR c.customer_2_id = $1
+          OR i.owner_id = $1
+   )`,
+		`DELETE FROM conversation
+WHERE customer_1_id = $1
+   OR customer_2_id = $1
+   OR item_id IN (SELECT item_id FROM item WHERE owner_id = $1)`,
+		`DELETE FROM review
+WHERE reviewer_id = $1 OR reviewed_id = $1`,
+		`DELETE FROM favorite
+WHERE customer_id = $1
+   OR item_id IN (SELECT item_id FROM item WHERE owner_id = $1)`,
+		`DELETE FROM incident
+WHERE reporter_id = $1
+   OR rental_id IN (
+       SELECT r.rental_id
+       FROM rental r
+       JOIN booking b ON b.booking_id = r.booking_id
+       LEFT JOIN item i ON i.item_id = b.item_id
+       WHERE b.renter_id = $1 OR i.owner_id = $1
+   )`,
+		`DELETE FROM payment
+WHERE payer_id = $1
+   OR rental_id IN (
+       SELECT r.rental_id
+       FROM rental r
+       JOIN booking b ON b.booking_id = r.booking_id
+       LEFT JOIN item i ON i.item_id = b.item_id
+       WHERE b.renter_id = $1 OR i.owner_id = $1
+   )`,
+		`DELETE FROM rental
+WHERE booking_id IN (
+    SELECT b.booking_id
+    FROM booking b
+    LEFT JOIN item i ON i.item_id = b.item_id
+    WHERE b.renter_id = $1 OR i.owner_id = $1
+)`,
+		`DELETE FROM booking
+WHERE renter_id = $1
+   OR item_id IN (SELECT item_id FROM item WHERE owner_id = $1)`,
+		`DELETE FROM item_image
+WHERE item_id IN (SELECT item_id FROM item WHERE owner_id = $1)`,
+		`DELETE FROM item
+WHERE owner_id = $1`,
+		`DELETE FROM address
+WHERE customer_id = $1`,
+		`DELETE FROM customer
+WHERE customer_id = $1`,
+	}
+
+	for _, stmt := range deleteStatements {
+		if _, err := q.db.Exec(ctx, stmt, customerID); err != nil {
+			return err
+		}
+	}
+
+	return nil
+}
+
 const existsCustomerByEmail = `-- name: ExistsCustomerByEmail :one
 SELECT EXISTS (
     SELECT 1 FROM customer WHERE email = $1
