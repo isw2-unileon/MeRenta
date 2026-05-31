@@ -1,6 +1,6 @@
-import { useCallback, useEffect, useMemo, useReducer, useRef, type FormEvent } from "react";
+import { useCallback, useEffect, useMemo, useReducer, useRef, useState, type FormEvent } from "react";
 import { useNavigate, useParams } from "react-router-dom";
-import { ArrowRight, CheckCheck, Search, SendHorizontal } from "lucide-react";
+import { ArrowRight, CheckCheck, Search, SendHorizontal, Trash2, X } from "lucide-react";
 
 import type { ApiResponse } from "@/types/common";
 import { useAuth } from "@/hooks/useAuth";
@@ -78,6 +78,7 @@ type ChatAction =
   | { type: "conversations:refresh"; items: ConversationResponse[]; activeConversationID?: string }
   | { type: "conversations:error"; message: string }
   | { type: "conversation:open"; conversationID: string }
+  | { type: "conversation:delete"; conversationID: string }
   | { type: "messages:loading" }
   | { type: "messages:success"; items: MessageResponse[] }
   | { type: "messages:merge"; items: MessageResponse[]; activeConversationID?: string }
@@ -221,6 +222,18 @@ function chatReducer(state: ChatState, action: ChatAction): ChatState {
       unreadCountsByConversationID.delete(action.conversationID);
       return { ...state, unreadCountsByConversationID };
     }
+    case "conversation:delete": {
+      const unreadCountsByConversationID = new Map(state.unreadCountsByConversationID);
+      unreadCountsByConversationID.delete(action.conversationID);
+      return {
+        ...state,
+        conversations: state.conversations.filter(
+          (conversation) => conversation.conversation_id !== action.conversationID
+        ),
+        messages: state.messages.filter((message) => message.conversation_id !== action.conversationID),
+        unreadCountsByConversationID,
+      };
+    }
     case "messages:loading":
       return { ...state, loadingMessages: true, error: "" };
     case "messages:success":
@@ -300,6 +313,21 @@ function dayLabel(iso?: string): string {
   return dayLabelFormatter.format(new Date(iso));
 }
 
+function wait(ms: number, signal?: AbortSignal): Promise<void> {
+  return new Promise((resolve, reject) => {
+    const timeoutID = window.setTimeout(resolve, ms);
+
+    signal?.addEventListener(
+      "abort",
+      () => {
+        window.clearTimeout(timeoutID);
+        reject(new DOMException("Aborted", "AbortError"));
+      },
+      { once: true }
+    );
+  });
+}
+
 async function apiGet<T>(url: string, signal?: AbortSignal): Promise<T> {
   const res = await fetch(url, { credentials: "include", signal });
   const json = (await res.json()) as ApiResponse<T>;
@@ -307,6 +335,25 @@ async function apiGet<T>(url: string, signal?: AbortSignal): Promise<T> {
     throw new Error(json.message ?? json.error ?? "Error al cargar los datos");
   }
   return json.data;
+}
+
+async function apiGetWithRetry<T>(url: string, signal?: AbortSignal): Promise<T> {
+  const delays = [700, 1400, 2500];
+
+  const attempt = async (index: number): Promise<T> => {
+    try {
+      return await apiGet<T>(url, signal);
+    } catch (err) {
+      if (err instanceof Error && err.name === "AbortError") throw err;
+      if (index >= delays.length) {
+        throw err instanceof Error ? err : new Error("Error al cargar los datos");
+      }
+      await wait(delays[index] ?? 0, signal);
+      return attempt(index + 1);
+    }
+  };
+
+  return attempt(0);
 }
 
 async function sendMessage(conversationID: string, body: string): Promise<MessageResponse> {
@@ -321,6 +368,17 @@ async function sendMessage(conversationID: string, body: string): Promise<Messag
     throw new Error(json.message ?? json.error ?? "Error al enviar el mensaje");
   }
   return json.data;
+}
+
+async function deleteConversation(conversationID: string): Promise<void> {
+  const res = await fetch(`/api/conversations/${conversationID}`, {
+    method: "DELETE",
+    credentials: "include",
+  });
+  const json = (await res.json()) as ApiResponse<{ deleted: boolean }>;
+  if (!res.ok || !json.success) {
+    throw new Error(json.message ?? json.error ?? "Error al eliminar la conversación");
+  }
 }
 
 async function markConversationRead(conversationID: string): Promise<void> {
@@ -364,36 +422,56 @@ function ConversationRow({
   conversation,
   active,
   unreadCount,
+  selecting,
+  selected,
   onOpen,
+  onSelect,
 }: {
   conversation: ConversationResponse;
   active: boolean;
   unreadCount: number;
+  selecting: boolean;
+  selected: boolean;
   onOpen: () => void;
+  onSelect: () => void;
 }) {
   const unread = unreadCount > 0;
   const unreadLabel = unreadCount > 99 ? "99+" : String(unreadCount);
 
   return (
-    <button
-      type="button"
-      className={`border-border-main relative grid h-auto w-full grid-cols-[44px_1fr_auto] items-center gap-3 rounded-none border-b px-4 py-5 text-left transition-colors ${
+    <div
+      className={`border-border-main relative grid h-auto w-full items-center gap-3 rounded-none border-b px-4 py-5 text-left transition-colors ${
         active ? "bg-page" : unread ? "bg-[#d6f0e6] hover:bg-[#c7eadc]" : "hover:bg-section-alt"
       }`}
-      onClick={onOpen}
+      style={{ gridTemplateColumns: selecting ? "28px 44px minmax(0, 1fr) auto" : "44px minmax(0, 1fr) auto" }}
     >
       {active || unread ? <span className="bg-primary absolute top-0 bottom-0 left-0 w-1" /> : null}
-      <ChatAvatar
-        name={conversation.other_user_name}
-        image={conversation.other_avatar_url}
-      />
-      <span className="min-w-0">
-        <span className="text-ink block truncate text-[15px] font-bold">{conversation.other_user_name}</span>
-        <span className="text-primary block truncate text-[11px] font-medium">{conversation.item_title}</span>
-        <span className={`${unread ? "text-ink font-medium" : "text-subtle"} text-card-loc block truncate`}>
-          {conversation.last_message ?? "Sin mensajes todavía"}
+      {selecting ? (
+        <input
+          type="checkbox"
+          className="size-4 accent-[#dc2626]"
+          aria-label={`Seleccionar conversación con ${conversation.other_user_name}`}
+          checked={selected}
+          onChange={onSelect}
+        />
+      ) : null}
+      <button
+        type="button"
+        className="contents text-left"
+        onClick={selecting ? onSelect : onOpen}
+      >
+        <ChatAvatar
+          name={conversation.other_user_name}
+          image={conversation.other_avatar_url}
+        />
+        <span className="min-w-0">
+          <span className="text-ink block truncate text-[15px] font-bold">{conversation.other_user_name}</span>
+          <span className="text-primary block truncate text-[11px] font-medium">{conversation.item_title}</span>
+          <span className={`${unread ? "text-ink font-medium" : "text-subtle"} text-card-loc block truncate`}>
+            {conversation.last_message ?? "Sin mensajes todavía"}
+          </span>
         </span>
-      </span>
+      </button>
       <span className="flex flex-col items-end gap-2 self-start pt-1">
         <span className={`${unread ? "text-primary font-bold" : "text-footer-text"} text-[11px]`}>
           {formatConversationTime(conversation.last_message_at ?? conversation.updated_at)}
@@ -404,7 +482,7 @@ function ConversationRow({
           </span>
         ) : null}
       </span>
-    </button>
+    </div>
   );
 }
 
@@ -449,17 +527,29 @@ function ConversationList({
   searchQuery,
   activeConversationID,
   unreadCountsByConversationID,
+  selecting,
+  selectedConversationIDs,
   onSearchChange,
   onOpen,
+  onToggleSelecting,
+  onToggleSelected,
+  onDeleteSelected,
 }: {
   conversations: ConversationResponse[];
   loading: boolean;
   searchQuery: string;
   activeConversationID?: string;
   unreadCountsByConversationID: Map<string, number>;
+  selecting: boolean;
+  selectedConversationIDs: Set<string>;
   onSearchChange: (value: string) => void;
   onOpen: (conversationID: string) => void;
+  onToggleSelecting: () => void;
+  onToggleSelected: (conversationID: string) => void;
+  onDeleteSelected: () => void;
 }) {
+  const selectedCount = selectedConversationIDs.size;
+
   return (
     <aside className="border-border-main bg-page flex w-[320px] shrink-0 flex-col border-r">
       <div className="border-border-main border-b p-4">
@@ -477,6 +567,30 @@ function ConversationList({
             onChange={(event) => onSearchChange(event.target.value)}
           />
         </label>
+        <div className="mt-3 flex items-center gap-2">
+          <button
+            type="button"
+            className={`inline-flex h-9 flex-1 items-center justify-center gap-2 rounded-lg px-3 text-[13px] font-bold transition-colors ${
+              selecting
+                ? "border border-[#fecaca] bg-[#fef2f2] text-[#b91c1c]"
+                : "border border-[#fecaca] bg-transparent text-[#b91c1c] hover:bg-[#fef2f2]"
+            }`}
+            onClick={onToggleSelecting}
+          >
+            <Trash2 size={15} />
+            {selecting ? "Cancelar" : "Eliminar mensajes"}
+          </button>
+          {selecting ? (
+            <button
+              type="button"
+              className="inline-flex h-9 items-center justify-center rounded-lg bg-[#dc2626] px-3 text-[13px] font-bold text-white transition-colors hover:bg-[#b91c1c] disabled:cursor-not-allowed disabled:opacity-50"
+              disabled={selectedCount === 0}
+              onClick={onDeleteSelected}
+            >
+              Eliminar{selectedCount > 0 ? ` (${selectedCount})` : ""}
+            </button>
+          ) : null}
+        </div>
       </div>
 
       <div className="min-h-0 flex-1 overflow-y-auto p-6">
@@ -502,12 +616,15 @@ function ConversationList({
               conversation={conversation}
               active={conversation.conversation_id === activeConversationID}
               unreadCount={unreadCountsByConversationID.get(conversation.conversation_id) ?? 0}
+              selecting={selecting}
+              selected={selectedConversationIDs.has(conversation.conversation_id)}
               onOpen={() => onOpen(conversation.conversation_id)}
+              onSelect={() => onToggleSelected(conversation.conversation_id)}
             />
           ))
         ) : (
           <p className="text-subtle p-5 text-[13px]">
-            {searchQuery.trim() ? "No hay conversaciones que coincidan." : "Todavia no tienes conversaciones."}
+            {searchQuery.trim() ? "No hay conversaciones que coincidan." : "Todavía no tienes conversaciones."}
           </p>
         )}
       </div>
@@ -637,6 +754,62 @@ function ChatComposer({
   );
 }
 
+function DeleteConversationDialog({
+  count,
+  deleting,
+  onCancel,
+  onConfirm,
+}: {
+  count: number;
+  deleting: boolean;
+  onCancel: () => void;
+  onConfirm: () => void;
+}) {
+  if (count === 0) return null;
+  const label = count === 1 ? "la conversación seleccionada" : `las ${count} conversaciones seleccionadas`;
+
+  return (
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 px-4">
+      <div className="bg-page border-border-main w-full max-w-100 rounded-lg border p-5 shadow-xl">
+        <div className="flex items-start justify-between gap-4">
+          <div>
+            <h2 className="text-ink text-logo-footer font-bold">Eliminar conversaciones</h2>
+            <p className="text-subtle mt-2 text-[14px]">Desea eliminar {label}?</p>
+          </div>
+          <button
+            type="button"
+            className="text-subtle hover:bg-section-alt inline-flex size-8 shrink-0 items-center justify-center rounded-full"
+            aria-label="Cerrar"
+            onClick={onCancel}
+            disabled={deleting}
+          >
+            <X size={18} />
+          </button>
+        </div>
+
+        <div className="mt-6 flex justify-end gap-3">
+          <button
+            type="button"
+            className="btn-secondary btn--md"
+            onClick={onCancel}
+            disabled={deleting}
+          >
+            Cancelar
+          </button>
+          <button
+            type="button"
+            className="inline-flex h-10 items-center justify-center rounded-lg bg-[#dc2626] px-4 text-[14px] font-bold text-white transition-colors hover:bg-[#b91c1c]"
+            onClick={onConfirm}
+            disabled={deleting}
+          >
+            {deleting ? "Eliminando..." : "Si, eliminar"}
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
 /**
  * Messaging hub for user conversations.
  */
@@ -645,6 +818,10 @@ function Chat() {
   const { conversationId } = useParams();
   const { user, accessToken } = useAuth();
   const [state, dispatch] = useReducer(chatReducer, initialState);
+  const [selectingConversations, setSelectingConversations] = useState(false);
+  const [selectedConversationIDs, setSelectedConversationIDs] = useState<Set<string>>(new Set());
+  const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
+  const [deletingConversation, setDeletingConversation] = useState(false);
   const {
     conversations,
     unreadCountsByConversationID,
@@ -669,7 +846,7 @@ function Chat() {
     const controller = new AbortController();
     dispatch({ type: "error:clear" });
 
-    apiGet<ConversationsResponse>("/api/conversations", controller.signal)
+    apiGetWithRetry<ConversationsResponse>("/api/conversations", controller.signal)
       .then((data) => dispatch({ type: "conversations:success", items: data.items }))
       .catch((err: Error) => {
         if (err.name !== "AbortError") dispatch({ type: "conversations:error", message: err.message });
@@ -730,7 +907,7 @@ function Chat() {
       if (showLoading) dispatch({ type: "messages:loading" });
 
       try {
-        const data = await apiGet<MessagesResponse>(
+        const data = await apiGetWithRetry<MessagesResponse>(
           `/api/conversations/${activeConversationID}/messages`,
           controller.signal
         );
@@ -743,7 +920,7 @@ function Chat() {
           dispatch({ type: "messages:merge", items, activeConversationID });
         }
       } catch (err) {
-        if (err instanceof Error && err.name !== "AbortError") {
+        if (showLoading && err instanceof Error && err.name !== "AbortError") {
           dispatch({ type: "messages:error", message: err.message });
         }
       }
@@ -830,6 +1007,51 @@ function Chat() {
     }
   }
 
+  const toggleSelectedConversation = (conversationID: string) => {
+    setSelectedConversationIDs((current) => {
+      const next = new Set(current);
+      if (next.has(conversationID)) {
+        next.delete(conversationID);
+      } else {
+        next.add(conversationID);
+      }
+      return next;
+    });
+  };
+
+  const toggleSelectingConversations = () => {
+    setSelectingConversations((current) => !current);
+    setSelectedConversationIDs(new Set());
+    setDeleteDialogOpen(false);
+  };
+
+  async function handleConfirmDeleteConversation() {
+    const ids = Array.from(selectedConversationIDs);
+    if (ids.length === 0) return;
+
+    setDeletingConversation(true);
+    dispatch({ type: "error:clear" });
+    try {
+      await Promise.all(ids.map((id) => deleteConversation(id)));
+      for (const id of ids) {
+        dispatch({ type: "conversation:delete", conversationID: id });
+      }
+      if (activeConversationID && ids.includes(activeConversationID)) {
+        void navigate("/chat");
+      }
+      setSelectedConversationIDs(new Set());
+      setSelectingConversations(false);
+      setDeleteDialogOpen(false);
+    } catch (err) {
+      dispatch({
+        type: "error:set",
+        message: err instanceof Error ? err.message : "Error al eliminar las conversaciones",
+      });
+    } finally {
+      setDeletingConversation(false);
+    }
+  }
+
   return (
     <div className="bg-surface flex h-[calc(100vh-var(--spacing-navbar))] overflow-hidden">
       <ConversationList
@@ -838,11 +1060,16 @@ function Chat() {
         searchQuery={searchQuery}
         activeConversationID={activeConversation?.conversation_id}
         unreadCountsByConversationID={unreadCountsByConversationID}
+        selecting={selectingConversations}
+        selectedConversationIDs={selectedConversationIDs}
         onSearchChange={(value) => dispatch({ type: "search:set", value })}
         onOpen={(id) => {
           dispatch({ type: "conversation:open", conversationID: id });
           void navigate(`/chat/${id}`);
         }}
+        onToggleSelecting={toggleSelectingConversations}
+        onToggleSelected={toggleSelectedConversation}
+        onDeleteSelected={() => setDeleteDialogOpen(true)}
       />
 
       <section className="flex min-w-0 flex-1 flex-col">
@@ -872,6 +1099,14 @@ function Chat() {
           </div>
         )}
       </section>
+      <DeleteConversationDialog
+        count={deleteDialogOpen ? selectedConversationIDs.size : 0}
+        deleting={deletingConversation}
+        onCancel={() => {
+          if (!deletingConversation) setDeleteDialogOpen(false);
+        }}
+        onConfirm={() => void handleConfirmDeleteConversation()}
+      />
     </div>
   );
 }
