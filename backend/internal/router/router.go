@@ -22,6 +22,7 @@ func Setup(
 	favH *handler.FavoriteHandler,
 	chatH *handler.ChatHandler,
 	reviewH *handler.ReviewHandler,
+	paymentH *handler.PaymentHandler,
 	jwtMgr *jwt.Manager,
 	corsAllowOrigin string,
 	readiness func(context.Context) error,
@@ -98,6 +99,10 @@ func Setup(
 	conversations.GET("/:id/messages", chatH.ListMessages)
 	conversations.POST("/:id/messages", chatH.SendMessage)
 	conversations.GET("/:id/ws", chatH.WebSocket)
+
+	// payment
+	payment := protected.Group("/payment")
+	payment.POST("/intent", paymentH.CreateIntent)
 
 	// admin
 	admin := api.Group("/admin")

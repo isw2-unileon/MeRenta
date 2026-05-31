@@ -16,7 +16,7 @@ type favoriteQuerier interface {
 	AddFavorite(ctx context.Context, arg sqlcdb.AddFavoriteParams) error
 	RemoveFavorite(ctx context.Context, arg sqlcdb.RemoveFavoriteParams) error
 	IsFavorite(ctx context.Context, arg sqlcdb.IsFavoriteParams) (bool, error)
-	ListFavoriteItems(ctx context.Context, customerID uuid.UUID) ([]sqlcdb.FavoriteItemRow, error)
+	ListFavoriteItems(ctx context.Context, customerID uuid.UUID) ([]sqlcdb.ListFavoriteItemsRow, error)
 	ExistsItemByID(ctx context.Context, itemID uuid.UUID) (bool, error)
 }
 
@@ -81,8 +81,8 @@ func (s *FavoriteService) ListFavorites(ctx context.Context, customerID uuid.UUI
 	return &model.FavoritesResponse{Items: items, Total: len(items)}, nil
 }
 
-// toFavoriteItemResponse maps a FavoriteItemRow to the API response model.
-func toFavoriteItemResponse(row sqlcdb.FavoriteItemRow) (model.FavoriteItemResponse, error) {
+// toFavoriteItemResponse maps a ListFavoriteItemsRow to the API response model.
+func toFavoriteItemResponse(row sqlcdb.ListFavoriteItemsRow) (model.FavoriteItemResponse, error) {
 	price, err := numericToFloat64(row.PricePerDay)
 	if err != nil {
 		return model.FavoriteItemResponse{}, fmt.Errorf("converting price_per_day: %w", err)
@@ -95,7 +95,7 @@ func toFavoriteItemResponse(row sqlcdb.FavoriteItemRow) (model.FavoriteItemRespo
 		PricePerDay:     price,
 		IsAvailable:     row.IsAvailable,
 		City:            row.City,
-		PrimaryImageURL: row.PrimaryImageURL,
+		PrimaryImageURL: row.PrimaryImageUrl,
 		SavedAt:         row.SavedAt.Time,
 	}, nil
 }

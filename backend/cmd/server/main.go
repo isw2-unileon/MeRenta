@@ -81,7 +81,9 @@ func main() {
 	reviewSvc := service.NewReviewService(q)
 	reviewH := handler.NewReviewHandler(reviewSvc)
 
-	r := router.Setup(authH, itemH, itemImgH, addrH, favH, chatH, reviewH, jwtMgr, cfg.CORSAllowOrigin, pool.Ping)
+	paymentH := handler.NewPaymentHandler(service.NewPaymentService(cfg.StripeSecretKey))
+
+	r := router.Setup(authH, itemH, itemImgH, addrH, favH, chatH, reviewH, paymentH, jwtMgr, cfg.CORSAllowOrigin, pool.Ping)
 	portNum, err := strconv.Atoi(cfg.Port)
 	if err != nil || portNum < 1 || portNum > 65535 {
 		slog.Error("invalid port", "port", cfg.Port)

@@ -33,7 +33,7 @@ const signedURLTTL = 315_360_000
 
 // itemImageQuerier is the minimal DB interface required by ItemImageService.
 type itemImageQuerier interface {
-	GetItemByID(ctx context.Context, itemID uuid.UUID) (sqlcdb.Item, error)
+	GetItemByID(ctx context.Context, itemID uuid.UUID) (sqlcdb.GetItemByIDRow, error)
 	CreateItemImage(ctx context.Context, arg sqlcdb.CreateItemImageParams) (sqlcdb.ItemImage, error)
 	GetItemImages(ctx context.Context, itemID uuid.UUID) ([]sqlcdb.ItemImage, error)
 	DeleteItemImages(ctx context.Context, itemID uuid.UUID) error
