@@ -90,6 +90,7 @@ func registerProtectedRoutes(
 	items := protected.Group("/items")
 	items.GET("", itemH.List)
 	items.POST("", itemH.Create)
+	items.GET("/mine", itemH.ListMine)
 	items.GET("/:id", itemH.Get)
 	items.GET("/:id/images", itemImgH.ListImages)
 	items.POST("/:id/images", itemImgH.AddImages)
