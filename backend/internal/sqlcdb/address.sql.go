@@ -71,6 +71,16 @@ func (q *Queries) CreateAddress(ctx context.Context, arg CreateAddressParams) (A
 	return i, err
 }
 
+const deleteAddress = `-- name: DeleteAddress :exec
+DELETE FROM address
+WHERE address_id = $1
+`
+
+func (q *Queries) DeleteAddress(ctx context.Context, addressID uuid.UUID) error {
+	_, err := q.db.Exec(ctx, deleteAddress, addressID)
+	return err
+}
+
 const getAddressByID = `-- name: GetAddressByID :one
 SELECT
     address_id, customer_id, street, number, floor,
@@ -140,4 +150,66 @@ func (q *Queries) GetAddressesByCustomer(ctx context.Context, customerID uuid.UU
 		return nil, err
 	}
 	return items, nil
+}
+
+const updateAddress = `-- name: UpdateAddress :one
+UPDATE address
+SET
+    street = $2,
+    number = $3,
+    floor = $4,
+    city = $5,
+    province = $6,
+    postal_code = $7,
+    country = $8,
+    latitude = $9,
+    longitude = $10
+WHERE address_id = $1
+RETURNING
+    address_id, customer_id, street, number, floor,
+    city, province, postal_code, country,
+    latitude, longitude
+`
+
+type UpdateAddressParams struct {
+	AddressID  uuid.UUID      `json:"address_id"`
+	Street     string         `json:"street"`
+	Number     string         `json:"number"`
+	Floor      pgtype.Text    `json:"floor"`
+	City       string         `json:"city"`
+	Province   string         `json:"province"`
+	PostalCode string         `json:"postal_code"`
+	Country    string         `json:"country"`
+	Latitude   pgtype.Numeric `json:"latitude"`
+	Longitude  pgtype.Numeric `json:"longitude"`
+}
+
+func (q *Queries) UpdateAddress(ctx context.Context, arg UpdateAddressParams) (Address, error) {
+	row := q.db.QueryRow(ctx, updateAddress,
+		arg.AddressID,
+		arg.Street,
+		arg.Number,
+		arg.Floor,
+		arg.City,
+		arg.Province,
+		arg.PostalCode,
+		arg.Country,
+		arg.Latitude,
+		arg.Longitude,
+	)
+	var i Address
+	err := row.Scan(
+		&i.AddressID,
+		&i.CustomerID,
+		&i.Street,
+		&i.Number,
+		&i.Floor,
+		&i.City,
+		&i.Province,
+		&i.PostalCode,
+		&i.Country,
+		&i.Latitude,
+		&i.Longitude,
+	)
+	return i, err
 }

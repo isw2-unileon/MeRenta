@@ -1,11 +1,12 @@
-import { useCallback, useEffect, useMemo, useReducer, useRef, useState, type FormEvent, type ReactNode } from "react";
-import { useNavigate, useSearchParams } from "react-router-dom";
+import { useCallback, useEffect, useMemo, useReducer, useState, type FormEvent, type ReactNode } from "react";
+import { Link, useSearchParams } from "react-router-dom";
 import { ChevronLeft, ChevronRight, Heart, Search as SearchIcon, Star, X } from "lucide-react";
 
 import { useFavorites } from "@/hooks/useFavorites";
 
 import type { ApiResponse } from "@/types/common";
 import type { SearchItemResponse, SearchItemsResponse } from "@/types/item";
+import * as React from "react";
 
 const PAGE_SIZE = 12;
 
@@ -20,6 +21,7 @@ const CATEGORY_LABELS: Record<string, string> = {
   photography: "Fotografía",
   camping: "Camping",
   clothing: "Ropa",
+  leisure: "Ocio",
   other: "Otros",
 };
 
@@ -34,6 +36,7 @@ const CATEGORY_ORDER = [
   "photography",
   "camping",
   "clothing",
+  "leisure",
   "other",
 ];
 
@@ -52,6 +55,20 @@ const SORT_OPTIONS = [
   { value: "price_asc", label: "Precio: menor a mayor" },
   { value: "price_desc", label: "Precio: mayor a menor" },
   { value: "oldest", label: "Mas antiguos" },
+];
+const SEARCH_SKELETON_IDS = [
+  "search-skel-1",
+  "search-skel-2",
+  "search-skel-3",
+  "search-skel-4",
+  "search-skel-5",
+  "search-skel-6",
+  "search-skel-7",
+  "search-skel-8",
+  "search-skel-9",
+  "search-skel-10",
+  "search-skel-11",
+  "search-skel-12",
 ];
 
 interface SearchState {
@@ -156,7 +173,7 @@ interface FilterSectionProps {
 function FilterSection({ title, children }: FilterSectionProps) {
   return (
     <section className="border-border-main border-b p-5">
-      <h3 className="mb-3 text-[15px] font-bold">{title}</h3>
+      <h3 className="mb-3 text-[15px] font-semibold">{title}</h3>
       {children}
     </section>
   );
@@ -166,97 +183,116 @@ interface ProductCardProps {
   item: SearchItemResponse;
   isFavorite: boolean;
   onToggleFavorite: () => void;
-  onOpen: () => void;
+  /** Route to navigate to when the card is clicked. */
+  to: string;
 }
 
-function ProductCard({ item, isFavorite, onToggleFavorite, onOpen }: ProductCardProps) {
+function ProductCard({ item, isFavorite, onToggleFavorite, to }: ProductCardProps) {
   const { rating, reviews } = seededRating(item.item_id);
   const isReserved = item.item_status === "rented";
   const isAvailable = item.is_available && !isReserved;
 
   function handleToggle(event: React.MouseEvent) {
+    event.preventDefault();
     event.stopPropagation();
     onToggleFavorite();
   }
 
   return (
-    <article className="border-border-main bg-page overflow-hidden rounded-xl border">
-      <div className="bg-primary-light relative h-42 overflow-hidden">
-        {item.primary_image_url ? (
-          <img
-            src={item.primary_image_url}
-            alt={item.title}
-            className="h-full w-full object-cover"
-          />
-        ) : (
-          <div className="h-full w-full bg-[linear-gradient(135deg,#e1f5ee_0%,#d7f1e9_55%,#dff6ed_100%)]" />
-        )}
-
-        <span
-          className={`absolute top-3 left-4 rounded-full px-3 py-1 text-[11px] font-medium ${
-            isAvailable ? "text-primary bg-[#e8faf3]" : "bg-[#fff0c4] text-[#9b7411]"
-          }`}
-        >
-          {isAvailable ? "Disponible" : "No disponible"}
-        </span>
-
-        <button
-          type="button"
-          className={`absolute top-3 right-3 flex size-8 items-center justify-center rounded-full bg-white p-0 transition-colors ${
-            isFavorite ? "text-heart-active" : "text-subtle hover:text-heart-active"
-          }`}
-          aria-label={isFavorite ? "Quitar de favoritos" : "Guardar favorito"}
-          onClick={handleToggle}
-        >
-          <Heart
-            size={17}
-            fill={isFavorite ? "currentColor" : "none"}
-          />
-        </button>
-      </div>
-
-      <div className="p-4">
-        <button
-          type="button"
-          className="mb-5 block h-auto w-full p-0 text-left"
-          onClick={onOpen}
-        >
-          <h2 className="text-ink line-clamp-2 min-h-9.5 text-[15px] leading-snug font-medium">{item.title}</h2>
-        </button>
-
-        <div className="mb-6 flex items-center justify-between">
-          <p className="text-card-loc text-subtle">{item.city || "Sin ubicación"}</p>
-          <p className="text-card-loc text-rating flex items-center gap-1">
-            <Star
-              size={13}
-              fill="currentColor"
+    <Link
+      to={to}
+      className="border-border-main bg-page relative block overflow-hidden rounded-xl border transition-shadow hover:shadow-md"
+    >
+      <div className="relative">
+        <div className="bg-primary-light relative h-42 overflow-hidden">
+          {item.primary_image_url ? (
+            <img
+              src={item.primary_image_url}
+              alt={item.title}
+              className="h-full w-full object-cover"
             />
-            {rating} ({reviews})
-          </p>
-        </div>
+          ) : (
+            <div className="h-full w-full bg-[linear-gradient(135deg,#e1f5ee_0%,#d7f1e9_55%,#dff6ed_100%)]" />
+          )}
 
-        <div className="flex items-center justify-between gap-3">
-          <p className="text-primary text-[17px] font-bold">{Math.round(item.price_per_day)} EUR/dia</p>
+          <span
+            className={`absolute top-3 left-4 rounded-full px-3 py-1 text-[11px] font-medium ${
+              isAvailable ? "text-primary bg-[#e8faf3]" : "bg-[#fff0c4] text-[#9b7411]"
+            }`}
+          >
+            {isAvailable ? "Disponible" : "No disponible"}
+          </span>
+
           <button
             type="button"
-            className="btn-primary btn--sm min-w-23"
-            disabled={!isAvailable}
-            onClick={onOpen}
+            className={`absolute top-3 right-3 flex size-8 items-center justify-center rounded-full bg-white p-0 transition-colors ${
+              isFavorite ? "text-heart-active" : "text-subtle hover:text-heart-active"
+            }`}
+            aria-label={isFavorite ? "Quitar de favoritos" : "Guardar favorito"}
+            onClick={handleToggle}
           >
-            {isAvailable ? "Alquilar" : "No disponible"}
+            <Heart
+              size={17}
+              fill={isFavorite ? "currentColor" : "none"}
+            />
           </button>
         </div>
+
+        <div className="p-4">
+          <h2 className="text-ink mb-3 line-clamp-2 min-h-9.5 text-[15px] leading-snug font-medium">{item.title}</h2>
+
+          {/* Owner info */}
+          <div className="mb-3 flex items-center gap-2">
+            {item.owner_avatar_url ? (
+              <img
+                src={item.owner_avatar_url}
+                alt={`${item.owner_first_name} ${item.owner_last_name}`}
+                className="size-6 rounded-full object-cover"
+              />
+            ) : (
+              <span className="bg-primary text-primary-contrast flex size-6 shrink-0 items-center justify-center rounded-full text-[10px] font-bold">
+                {item.owner_first_name.charAt(0).toUpperCase()}
+                {item.owner_last_name.charAt(0).toUpperCase()}
+              </span>
+            )}
+            <p className="text-card-loc text-subtle truncate">
+              {item.owner_first_name} {item.owner_last_name}
+            </p>
+          </div>
+
+          <div className="mb-5 flex items-center justify-between">
+            <p className="text-card-loc text-subtle">{item.city || "Sin ubicación"}</p>
+            <p className="text-card-loc text-rating flex items-center gap-1">
+              <Star
+                size={13}
+                fill="currentColor"
+              />
+              {rating} ({reviews})
+            </p>
+          </div>
+
+          <div className="flex items-center justify-between gap-3">
+            <p className="text-primary text-[17px] font-bold">{Math.round(item.price_per_day)} EUR/dia</p>
+            <button
+              type="button"
+              className="btn-primary btn--sm min-w-23"
+              disabled={!isAvailable}
+            >
+              {isAvailable ? "Alquilar" : "No disponible"}
+            </button>
+          </div>
+        </div>
       </div>
-    </article>
+    </Link>
   );
 }
 
 function SearchSkeleton() {
   return (
     <>
-      {Array.from({ length: 12 }, (_, index) => (
+      {SEARCH_SKELETON_IDS.map((id) => (
         <div
-          key={index}
+          key={id}
           className="border-border-main bg-page animate-pulse overflow-hidden rounded-xl border"
         >
           <div className="bg-primary-light h-42" />
@@ -275,15 +311,30 @@ function SearchSkeleton() {
 }
 
 interface SearchHeaderProps {
-  draftQuery: string;
-  setDraftQuery: (val: string) => void;
-  submitSearch: (e: FormEvent<HTMLFormElement>) => void;
+  initialQuery: string;
   resultLabel: string;
   sort: string;
   updateParam: (key: string, value: string) => void;
 }
 
-function SearchHeader({ draftQuery, setDraftQuery, submitSearch, resultLabel, sort, updateParam }: SearchHeaderProps) {
+function SearchHeader({ initialQuery, resultLabel, sort, updateParam }: SearchHeaderProps) {
+  const [draftQuery, setDraftQuery] = useState(initialQuery);
+
+  useEffect(() => {
+    if (draftQuery.trim() === initialQuery) return;
+
+    const timeoutId = window.setTimeout(() => {
+      updateParam("q", draftQuery.trim());
+    }, 350);
+
+    return () => window.clearTimeout(timeoutId);
+  }, [draftQuery, initialQuery, updateParam]);
+
+  const submitSearch = (event: FormEvent<HTMLFormElement>) => {
+    event.preventDefault();
+    updateParam("q", draftQuery.trim());
+  };
+
   return (
     <div className="border-border-main bg-section-alt border-b">
       <div className="mx-auto grid max-w-340 grid-cols-[minmax(0,1fr)_280px] items-center gap-7 px-10 py-4">
@@ -544,19 +595,9 @@ function SearchSidebar({
 // ==========================================
 
 function Search() {
-  const navigate = useNavigate();
   const [searchParams, setSearchParams] = useSearchParams();
   const { toggle, isFav } = useFavorites();
   const query = searchParams.get("q") ?? "";
-
-  // CORRECCIÓN 1: Usamos useRef en lugar de useState para mutaciones que no requieren renderizado
-  const [draftQuery, setDraftQuery] = useState<string>(query);
-  const prevQueryRef = useRef<string>(query);
-
-  if (query !== prevQueryRef.current) {
-    prevQueryRef.current = query;
-    setDraftQuery(query);
-  }
 
   const [state, dispatch] = useReducer(searchReducer, initialSearchState);
 
@@ -586,16 +627,6 @@ function Search() {
     [searchParams, setSearchParams]
   );
 
-  useEffect(() => {
-    if (draftQuery.trim() === query) return;
-
-    const timeoutId = window.setTimeout(() => {
-      updateParam("q", draftQuery.trim());
-    }, 350);
-
-    return () => window.clearTimeout(timeoutId);
-  }, [draftQuery, query, updateParam]);
-
   // CORRECCIÓN 2: Ocultamos el fetch de la vista del linter utilizando una función extraída.
   useEffect(() => {
     const controller = new AbortController();
@@ -623,11 +654,6 @@ function Search() {
 
   const totalPages = Math.max(1, Math.ceil(state.total / PAGE_SIZE));
   const pageWindow = useMemo(() => getPageWindow(page, totalPages), [page, totalPages]);
-
-  const submitSearch = (event: FormEvent<HTMLFormElement>) => {
-    event.preventDefault();
-    updateParam("q", draftQuery.trim());
-  };
 
   const clearFilters = () => {
     const next = new URLSearchParams();
@@ -688,9 +714,8 @@ function Search() {
   return (
     <div className="bg-surface min-h-screen">
       <SearchHeader
-        draftQuery={draftQuery}
-        setDraftQuery={setDraftQuery}
-        submitSearch={submitSearch}
+        key={query}
+        initialQuery={query}
         resultLabel={resultLabel}
         sort={sort}
         updateParam={updateParam}
@@ -734,7 +759,7 @@ function Search() {
                   item={item}
                   isFavorite={isFav(item.item_id)}
                   onToggleFavorite={() => toggle(item.item_id, isFav(item.item_id))}
-                  onOpen={() => navigate(`/product/${item.item_id}`)}
+                  to={`/product/${item.item_id}`}
                 />
               ))
             )}
@@ -742,7 +767,7 @@ function Search() {
 
           {!state.loading && state.items.length === 0 && !state.error && (
             <div className="flex min-h-90 flex-col items-center justify-center text-center">
-              <h2 className="text-section-hd font-bold">No hay productos con estos filtros</h2>
+              <h2 className="text-section-hd font-semibold">No hay productos con estos filtros</h2>
               <p className="text-body-color mt-2">Prueba con otra busqueda o limpia los filtros activos.</p>
             </div>
           )}
@@ -768,7 +793,7 @@ function Search() {
                     if (prevPage === undefined || pageNumber - prevPage <= 1) return null;
                     return (
                       <span className="border-border-input text-subtle flex h-10 min-w-10 items-center justify-center rounded-lg border bg-white px-3">
-                        ...
+                        …
                       </span>
                     );
                   })()}

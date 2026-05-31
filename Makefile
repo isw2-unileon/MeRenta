@@ -6,7 +6,7 @@ BACKEND_BIN := backend/bin/server
         build-backend build-frontend build \
         run-backend-prod run-frontend-prod \
         test test-backend test-frontend test-coverage \
-        lint lint-backend lint-frontend \
+        lint lint-backend lint-frontend doctor \
         e2e \
         fmt fmt-backend fmt-frontend \
         format-check format-check-backend format-check-frontend \
@@ -20,7 +20,7 @@ BACKEND_BIN := backend/bin/server
 ## Install backend dependencies and tools
 install-backend:
 	go install github.com/air-verse/air@latest
-	curl -sSfL https://raw.githubusercontent.com/golangci/golangci-lint/HEAD/install.sh | sh -s -- -b $(GOPATH)/bin
+	go install github.com/golangci/golangci-lint/v2/cmd/golangci-lint@v2.11.3
 	go mod download
 
 ## Install frontend dependencies
@@ -145,6 +145,10 @@ lint-backend:
 ## Lint frontend
 lint-frontend:
 	cd frontend && npm run lint
+
+## Run react-doctor diagnostics on the frontend
+doctor:
+	cd frontend && echo "y" | npm run doctor
 
 ## Lint everything
 lint: lint-backend lint-frontend

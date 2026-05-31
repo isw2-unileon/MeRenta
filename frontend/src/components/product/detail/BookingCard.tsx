@@ -1,6 +1,9 @@
+import { useRef, useState } from "react";
 import { useNavigate } from "react-router-dom";
 
 import { StarRating } from "@/components/product/detail/StarRating";
+import type { ApiResponse } from "@/types/common";
+import * as React from "react";
 
 /** Fixed service fee applied to every rental (EUR). */
 const SERVICE_FEE = 5;
@@ -25,9 +28,36 @@ interface BookingCardProps {
   minDays: number;
   /** Maximum number of rental days configured by the owner. Null means unlimited. */
   maxDay?: number | null;
+  /** Whether the authenticated user owns this listing. */
+  isOwner?: boolean;
+  /**
+   * Callback fired when the user changes a date from the booking card inputs.
+   * Receives the new start and end dates (either may be null).
+   */
+  onDateChange?: (start: Date | null, end: Date | null) => void;
 }
 
-/** Formats a Date as localised Spanish short date, e.g. "15 may 2025". */
+interface ConversationResponse {
+  conversation_id: string;
+}
+
+/** Formats a Date as "YYYY-MM-DD" (the value format required by input[type="date"]). */
+function toISODateStr(date: Date): string {
+  const y = date.getFullYear();
+  const m = String(date.getMonth() + 1).padStart(2, "0");
+  const d = String(date.getDate()).padStart(2, "0");
+  return `${y}-${m}-${d}`;
+}
+
+/** Parses a "YYYY-MM-DD" string into a local midnight Date. */
+function parseISODateStr(value: string): Date {
+  const [y, mo, d] = value.split("-").map(Number);
+  const date = new Date(y ?? 0, (mo ?? 1) - 1, d ?? 1);
+  date.setHours(0, 0, 0, 0);
+  return date;
+}
+
+/** Formats a Date as localized Spanish short date, e.g. "28 May 2026". */
 function formatDateEs(date: Date): string {
   return date.toLocaleDateString("es-ES", {
     day: "numeric",
@@ -39,6 +69,35 @@ function formatDateEs(date: Date): string {
 /** Formats a number as a price string with comma decimal, e.g. "6,90". */
 function fmtPrice(value: number): string {
   return value.toFixed(2).replace(".", ",");
+}
+
+/** Opens the native date picker for the given input ref. */
+function openPicker(ref: React.RefObject<HTMLInputElement | null>): void {
+  const input = ref.current;
+  if (!input || input.disabled) return;
+  if (typeof input.showPicker === "function") {
+    try {
+      input.showPicker();
+    } catch {
+      input.focus();
+    }
+  } else {
+    input.focus();
+  }
+}
+
+async function startConversation(itemId: string): Promise<ConversationResponse> {
+  const res = await fetch("/api/conversations", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    credentials: "include",
+    body: JSON.stringify({ item_id: itemId }),
+  });
+  const json = (await res.json()) as ApiResponse<ConversationResponse>;
+  if (!res.ok || !json.success || !json.data) {
+    throw new Error(json.error ?? "Error al iniciar la conversación");
+  }
+  return json.data;
 }
 
 /**
@@ -55,6 +114,8 @@ function fmtPrice(value: number): string {
  * @param selectedEnd Rental end date or null.
  * @param minDays Minimum rental days configured for the listing.
  * @param maxDay Maximum rental days configured for the listing. Null means unlimited.
+ * @param isOwner Whether the authenticated user owns this listing. If true, the "Enviar mensaje" button is hidden.
+ * @param onDateChange Callback fired when the user changes a date from the booking card inputs. Receives the new start and end dates (either may be null).
  * @returns Booking card JSX.
  */
 function BookingCard({
@@ -66,8 +127,46 @@ function BookingCard({
   selectedEnd,
   minDays,
   maxDay,
+  isOwner = false,
+  onDateChange,
 }: BookingCardProps) {
   const navigate = useNavigate();
+  const [messageLoading, setMessageLoading] = useState(false);
+  const [messageError, setMessageError] = useState("");
+
+  const startInputRef = useRef<HTMLInputElement>(null);
+  const endInputRef = useRef<HTMLInputElement>(null);
+
+  /** Today as "YYYY-MM-DD" — used as the minimum selectable date. */
+  const todayStr = toISODateStr(new Date());
+
+  /** One day after the selected start — minimum valid end date. */
+  const minEndStr = selectedStart
+    ? toISODateStr(new Date(selectedStart.getFullYear(), selectedStart.getMonth(), selectedStart.getDate() + 1))
+    : todayStr;
+
+  const handleStartInputChange = (value: string) => {
+    if (!value) {
+      onDateChange?.(null, null);
+      return;
+    }
+    const date = parseISODateStr(value);
+    // Clear end date if it's no longer after the new start
+    const newEnd = selectedEnd && selectedEnd > date ? selectedEnd : null;
+    onDateChange?.(date, newEnd);
+  };
+
+  const handleEndInputChange = (value: string) => {
+    if (!value) {
+      onDateChange?.(selectedStart, null);
+      return;
+    }
+    const date = parseISODateStr(value);
+    // Only accept end if it's strictly after start
+    if (selectedStart && date > selectedStart) {
+      onDateChange?.(selectedStart, date);
+    }
+  };
 
   const days =
     selectedStart && selectedEnd
@@ -89,8 +188,17 @@ function BookingCard({
     void navigate(`/checkout/${itemId}?start=${start}&end=${end}`);
   };
 
-  const handleMessage = () => {
-    void navigate(`/chat`);
+  const handleMessage = async () => {
+    setMessageLoading(true);
+    setMessageError("");
+    try {
+      const conversation = await startConversation(itemId);
+      void navigate(`/chat/${conversation.conversation_id}`);
+    } catch (err) {
+      setMessageError(err instanceof Error ? err.message : "Error al iniciar la conversación");
+    } finally {
+      setMessageLoading(false);
+    }
   };
 
   return (
@@ -116,15 +224,53 @@ function BookingCard({
       {/* ── Rental dates summary ── */}
       <p className="booking-field-label mb-2">Fechas del alquiler</p>
       <div className="booking-dates mb-4">
-        <div className="flex flex-1 flex-col justify-center px-3">
+        {/* Start date cell: clicking opens the native date picker via ref */}
+        <button
+          type="button"
+          className="flex flex-1 flex-col justify-between px-3 py-2 text-left"
+          onClick={() => openPicker(startInputRef)}
+          aria-label="Seleccionar fecha de recogida"
+        >
           <p className="booking-date-label">Recogida</p>
           <p className="booking-date-value">{selectedStart ? formatDateEs(selectedStart) : "Selecciona fecha"}</p>
-        </div>
+        </button>
+        <input
+          ref={startInputRef}
+          type="date"
+          className="booking-date-hidden"
+          value={selectedStart ? toISODateStr(selectedStart) : ""}
+          min={todayStr}
+          onChange={(e) => handleStartInputChange(e.target.value)}
+          aria-label="Fecha de recogida"
+          tabIndex={-1}
+        />
+
         <div className="booking-dates-divider" />
-        <div className="flex flex-1 flex-col justify-center px-3">
+
+        {/* End date cell */}
+        <button
+          type="button"
+          className="flex flex-1 flex-col justify-between px-3 py-2 text-left"
+          onClick={() => openPicker(endInputRef)}
+          disabled={!selectedStart}
+          aria-label="Seleccionar fecha de devolución"
+        >
           <p className="booking-date-label">Devolución</p>
-          <p className="booking-date-value">{selectedEnd ? formatDateEs(selectedEnd) : "Selecciona fecha"}</p>
-        </div>
+          <p className={`booking-date-value${!selectedStart ? "booking-date-value--muted" : ""}`}>
+            {selectedEnd ? formatDateEs(selectedEnd) : "Selecciona fecha"}
+          </p>
+        </button>
+        <input
+          ref={endInputRef}
+          type="date"
+          className="booking-date-hidden"
+          value={selectedEnd ? toISODateStr(selectedEnd) : ""}
+          min={minEndStr}
+          disabled={!selectedStart}
+          onChange={(e) => handleEndInputChange(e.target.value)}
+          aria-label="Fecha de devolución"
+          tabIndex={-1}
+        />
       </div>
       <p className="booking-row-label -mt-2 mb-4">{periodHint}</p>
 
@@ -171,14 +317,19 @@ function BookingCard({
         >
           Solicitar alquiler
         </button>
-        <button
-          type="button"
-          className="btn-secondary btn--md w-full"
-          onClick={handleMessage}
-        >
-          Enviar mensaje al propietario
-        </button>
+        {!isOwner && (
+          <button
+            type="button"
+            className="btn-secondary btn--md w-full"
+            onClick={handleMessage}
+            disabled={messageLoading}
+          >
+            {messageLoading ? "Abriendo chat..." : "Enviar mensaje al propietario"}
+          </button>
+        )}
       </div>
+
+      {messageError && <p className="field-error mt-3 text-center">{messageError}</p>}
 
       {/* Disclaimer */}
       <p className="booking-disclaimer mt-3 text-center">No se hará ningún cargo hasta que el propietario acepte</p>

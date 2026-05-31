@@ -73,7 +73,37 @@ func (h *ItemHandler) List(c *gin.Context) {
 	response.OK(c, http.StatusOK, res)
 }
 
-// Get handles GET /api/items/:id — returns a single item listing.
+// ListMine handles GET /api/items/mine -- returns item cards owned by the current user.
+//
+// Query params: page, limit.
+// Response 200: model.SearchItemsResponse
+func (h *ItemHandler) ListMine(c *gin.Context) {
+	ownerID, ok := c.Get("customer_id")
+	if !ok {
+		response.Error(c, http.StatusUnauthorized, "missing auth context")
+		return
+	}
+
+	id, ok := ownerID.(uuid.UUID)
+	if !ok {
+		response.Error(c, http.StatusUnauthorized, "invalid auth context")
+		return
+	}
+
+	page := parsePositiveInt(c.DefaultQuery("page", "1"), 1, 500)
+	limit := parsePositiveInt(c.DefaultQuery("limit", "48"), 48, 48)
+
+	res, err := h.svc.ListOwnerItems(c.Request.Context(), id, page, limit)
+	if err != nil {
+		slog.Error("list owner items failed", "owner_id", id, "error", err)
+		response.Error(c, http.StatusInternalServerError, "internal server error")
+		return
+	}
+
+	response.OK(c, http.StatusOK, res)
+}
+
+// Get handles GET /api/items/:id -- returns a single item listing.
 //
 // Response 200: model.ItemResponse
 // Response 400: invalid UUID in path

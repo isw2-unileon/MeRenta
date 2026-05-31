@@ -26,9 +26,13 @@ SELECT
     i.published_at,
     a.city,
     img.image_url AS primary_image_url,
+    c.first_name  AS owner_first_name,
+    c.last_name   AS owner_last_name,
+    COALESCE(c.avatar_url, '') AS owner_avatar_url,
     COUNT(*) OVER() AS total_count
 FROM item i
-JOIN address a ON a.address_id = i.address_id
+JOIN address  a ON a.address_id  = i.address_id
+JOIN customer c ON c.customer_id = i.owner_id
 LEFT JOIN LATERAL (
     SELECT image_url
     FROM item_image
@@ -82,7 +86,45 @@ type SearchItemCardsRow struct {
 	PublishedAt     pgtype.Timestamptz `json:"published_at"`
 	City            string             `json:"city"`
 	PrimaryImageURL string             `json:"primary_image_url"`
+	OwnerFirstName  string             `json:"owner_first_name"`
+	OwnerLastName   string             `json:"owner_last_name"`
+	OwnerAvatarURL  string             `json:"owner_avatar_url"`
 	TotalCount      int64              `json:"total_count"`
+}
+
+const listOwnerItemCards = `
+SELECT
+    i.item_id,
+    i.owner_id,
+    i.address_id,
+    i.category,
+    i.title,
+    i.item_status,
+    i.price_per_day,
+    i.is_available,
+    i.published_at,
+    a.city,
+    COALESCE(img.image_url, '') AS primary_image_url,
+    COUNT(*) OVER() AS total_count
+FROM item i
+JOIN address a ON a.address_id = i.address_id
+LEFT JOIN LATERAL (
+    SELECT image_url
+    FROM item_image
+    WHERE item_id = i.item_id
+    ORDER BY display_order, image_id
+    LIMIT 1
+) img ON true
+WHERE i.owner_id = $1
+ORDER BY i.published_at DESC
+LIMIT $2 OFFSET $3
+`
+
+// ListOwnerItemCardsParams defines pagination for owner item cards.
+type ListOwnerItemCardsParams struct {
+	OwnerID uuid.UUID `json:"owner_id"`
+	Limit   int       `json:"limit"`
+	Offset  int       `json:"offset"`
 }
 
 const countItemCardsByCategory = `
@@ -227,6 +269,9 @@ func (q *Queries) SearchItemCards(ctx context.Context, arg SearchItemCardsParams
 			&i.PublishedAt,
 			&i.City,
 			&i.PrimaryImageURL,
+			&i.OwnerFirstName,
+			&i.OwnerLastName,
+			&i.OwnerAvatarURL,
 			&i.TotalCount,
 		); err != nil {
 			return nil, err
@@ -238,6 +283,23 @@ func (q *Queries) SearchItemCards(ctx context.Context, arg SearchItemCardsParams
 	}
 
 	return items, nil
+}
+
+// ListOwnerItemCards returns item cards owned by a customer.
+func (q *Queries) ListOwnerItemCards(ctx context.Context, arg ListOwnerItemCardsParams) ([]SearchItemCardsRow, error) {
+	rows, err := q.db.Query(
+		ctx,
+		listOwnerItemCards,
+		arg.OwnerID,
+		arg.Limit,
+		arg.Offset,
+	)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+
+	return collectOwnerItemCardRows(rows)
 }
 
 func countItemCardsRows[T any](ctx context.Context, db DBTX, sql string, scan func(pgx.Rows) (T, error), args ...any) ([]T, error) {

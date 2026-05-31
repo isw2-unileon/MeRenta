@@ -81,23 +81,41 @@ RETURNING
 `
 
 type CreateItemParams struct {
-	OwnerID     uuid.UUID      `json:"owner_id"`
-	AddressID   uuid.UUID      `json:"address_id"`
-	Category    CategoryEnum   `json:"category"`
-	Title       string         `json:"title"`
-	Description pgtype.Text    `json:"description"`
-	UsageRules  pgtype.Text    `json:"usage_rules"`
-	Condition   ItemCondition  `json:"condition"`
-	PricePerDay pgtype.Numeric `json:"price_per_day"`
-	Deposit     pgtype.Numeric `json:"deposit"`
-	MinDays     int32          `json:"min_days"`
-	MaxDays     pgtype.Int4    `json:"max_days"`
+	OwnerID       uuid.UUID      `json:"owner_id"`
+	AddressID     uuid.UUID      `json:"address_id"`
+	Category      CategoryEnum   `json:"category"`
+	Title         string         `json:"title"`
+	Description   pgtype.Text    `json:"description"`
+	UsageRules    pgtype.Text    `json:"usage_rules"`
+	ItemCondition ItemCondition  `json:"item_condition"`
+	PricePerDay   pgtype.Numeric `json:"price_per_day"`
+	Deposit       pgtype.Numeric `json:"deposit"`
+	MinDays       int32          `json:"min_days"`
+	MaxDays       pgtype.Int4    `json:"max_days"`
+}
+
+type CreateItemRow struct {
+	ItemID        uuid.UUID          `json:"item_id"`
+	OwnerID       uuid.UUID          `json:"owner_id"`
+	AddressID     uuid.UUID          `json:"address_id"`
+	Category      CategoryEnum       `json:"category"`
+	Title         string             `json:"title"`
+	Description   pgtype.Text        `json:"description"`
+	UsageRules    pgtype.Text        `json:"usage_rules"`
+	ItemCondition ItemCondition      `json:"item_condition"`
+	ItemStatus    ItemStatus         `json:"item_status"`
+	PricePerDay   pgtype.Numeric     `json:"price_per_day"`
+	Deposit       pgtype.Numeric     `json:"deposit"`
+	MinDays       int32              `json:"min_days"`
+	MaxDays       pgtype.Int4        `json:"max_days"`
+	IsAvailable   bool               `json:"is_available"`
+	PublishedAt   pgtype.Timestamptz `json:"published_at"`
 }
 
 // ============================================
 // CREATE
 // ============================================
-func (q *Queries) CreateItem(ctx context.Context, arg CreateItemParams) (Item, error) {
+func (q *Queries) CreateItem(ctx context.Context, arg CreateItemParams) (CreateItemRow, error) {
 	row := q.db.QueryRow(ctx, createItem,
 		arg.OwnerID,
 		arg.AddressID,
@@ -105,13 +123,13 @@ func (q *Queries) CreateItem(ctx context.Context, arg CreateItemParams) (Item, e
 		arg.Title,
 		arg.Description,
 		arg.UsageRules,
-		arg.Condition,
+		arg.ItemCondition,
 		arg.PricePerDay,
 		arg.Deposit,
 		arg.MinDays,
 		arg.MaxDays,
 	)
-	var i Item
+	var i CreateItemRow
 	err := row.Scan(
 		&i.ItemID,
 		&i.OwnerID,
@@ -120,7 +138,7 @@ func (q *Queries) CreateItem(ctx context.Context, arg CreateItemParams) (Item, e
 		&i.Title,
 		&i.Description,
 		&i.UsageRules,
-		&i.Condition,
+		&i.ItemCondition,
 		&i.ItemStatus,
 		&i.PricePerDay,
 		&i.Deposit,
@@ -182,12 +200,30 @@ WHERE item_id = $1
 LIMIT 1
 `
 
+type GetItemByIDRow struct {
+	ItemID        uuid.UUID          `json:"item_id"`
+	OwnerID       uuid.UUID          `json:"owner_id"`
+	AddressID     uuid.UUID          `json:"address_id"`
+	Category      CategoryEnum       `json:"category"`
+	Title         string             `json:"title"`
+	Description   pgtype.Text        `json:"description"`
+	UsageRules    pgtype.Text        `json:"usage_rules"`
+	ItemCondition ItemCondition      `json:"item_condition"`
+	ItemStatus    ItemStatus         `json:"item_status"`
+	PricePerDay   pgtype.Numeric     `json:"price_per_day"`
+	Deposit       pgtype.Numeric     `json:"deposit"`
+	MinDays       int32              `json:"min_days"`
+	MaxDays       pgtype.Int4        `json:"max_days"`
+	IsAvailable   bool               `json:"is_available"`
+	PublishedAt   pgtype.Timestamptz `json:"published_at"`
+}
+
 // ============================================
 // READ
 // ============================================
-func (q *Queries) GetItemByID(ctx context.Context, itemID uuid.UUID) (Item, error) {
+func (q *Queries) GetItemByID(ctx context.Context, itemID uuid.UUID) (GetItemByIDRow, error) {
 	row := q.db.QueryRow(ctx, getItemByID, itemID)
-	var i Item
+	var i GetItemByIDRow
 	err := row.Scan(
 		&i.ItemID,
 		&i.OwnerID,
@@ -196,7 +232,7 @@ func (q *Queries) GetItemByID(ctx context.Context, itemID uuid.UUID) (Item, erro
 		&i.Title,
 		&i.Description,
 		&i.UsageRules,
-		&i.Condition,
+		&i.ItemCondition,
 		&i.ItemStatus,
 		&i.PricePerDay,
 		&i.Deposit,
@@ -235,15 +271,32 @@ type ListItemsParams struct {
 	Offset int32 `json:"offset"`
 }
 
-func (q *Queries) ListItems(ctx context.Context, arg ListItemsParams) ([]Item, error) {
+type ListItemsRow struct {
+	ItemID      uuid.UUID          `json:"item_id"`
+	OwnerID     uuid.UUID          `json:"owner_id"`
+	AddressID   uuid.UUID          `json:"address_id"`
+	Category    CategoryEnum       `json:"category"`
+	Title       string             `json:"title"`
+	Description pgtype.Text        `json:"description"`
+	UsageRules  pgtype.Text        `json:"usage_rules"`
+	ItemStatus  ItemStatus         `json:"item_status"`
+	PricePerDay pgtype.Numeric     `json:"price_per_day"`
+	Deposit     pgtype.Numeric     `json:"deposit"`
+	MinDays     int32              `json:"min_days"`
+	MaxDays     pgtype.Int4        `json:"max_days"`
+	IsAvailable bool               `json:"is_available"`
+	PublishedAt pgtype.Timestamptz `json:"published_at"`
+}
+
+func (q *Queries) ListItems(ctx context.Context, arg ListItemsParams) ([]ListItemsRow, error) {
 	rows, err := q.db.Query(ctx, listItems, arg.Limit, arg.Offset)
 	if err != nil {
 		return nil, err
 	}
 	defer rows.Close()
-	var items []Item
+	var items []ListItemsRow
 	for rows.Next() {
-		var i Item
+		var i ListItemsRow
 		if err := rows.Scan(
 			&i.ItemID,
 			&i.OwnerID,
@@ -299,15 +352,32 @@ type ListItemsByCategoryParams struct {
 	Offset   int32        `json:"offset"`
 }
 
-func (q *Queries) ListItemsByCategory(ctx context.Context, arg ListItemsByCategoryParams) ([]Item, error) {
+type ListItemsByCategoryRow struct {
+	ItemID      uuid.UUID          `json:"item_id"`
+	OwnerID     uuid.UUID          `json:"owner_id"`
+	AddressID   uuid.UUID          `json:"address_id"`
+	Category    CategoryEnum       `json:"category"`
+	Title       string             `json:"title"`
+	Description pgtype.Text        `json:"description"`
+	UsageRules  pgtype.Text        `json:"usage_rules"`
+	ItemStatus  ItemStatus         `json:"item_status"`
+	PricePerDay pgtype.Numeric     `json:"price_per_day"`
+	Deposit     pgtype.Numeric     `json:"deposit"`
+	MinDays     int32              `json:"min_days"`
+	MaxDays     pgtype.Int4        `json:"max_days"`
+	IsAvailable bool               `json:"is_available"`
+	PublishedAt pgtype.Timestamptz `json:"published_at"`
+}
+
+func (q *Queries) ListItemsByCategory(ctx context.Context, arg ListItemsByCategoryParams) ([]ListItemsByCategoryRow, error) {
 	rows, err := q.db.Query(ctx, listItemsByCategory, arg.Category, arg.Limit, arg.Offset)
 	if err != nil {
 		return nil, err
 	}
 	defer rows.Close()
-	var items []Item
+	var items []ListItemsByCategoryRow
 	for rows.Next() {
-		var i Item
+		var i ListItemsByCategoryRow
 		if err := rows.Scan(
 			&i.ItemID,
 			&i.OwnerID,
@@ -362,15 +432,32 @@ type ListItemsByOwnerParams struct {
 	Offset  int32     `json:"offset"`
 }
 
-func (q *Queries) ListItemsByOwner(ctx context.Context, arg ListItemsByOwnerParams) ([]Item, error) {
+type ListItemsByOwnerRow struct {
+	ItemID      uuid.UUID          `json:"item_id"`
+	OwnerID     uuid.UUID          `json:"owner_id"`
+	AddressID   uuid.UUID          `json:"address_id"`
+	Category    CategoryEnum       `json:"category"`
+	Title       string             `json:"title"`
+	Description pgtype.Text        `json:"description"`
+	UsageRules  pgtype.Text        `json:"usage_rules"`
+	ItemStatus  ItemStatus         `json:"item_status"`
+	PricePerDay pgtype.Numeric     `json:"price_per_day"`
+	Deposit     pgtype.Numeric     `json:"deposit"`
+	MinDays     int32              `json:"min_days"`
+	MaxDays     pgtype.Int4        `json:"max_days"`
+	IsAvailable bool               `json:"is_available"`
+	PublishedAt pgtype.Timestamptz `json:"published_at"`
+}
+
+func (q *Queries) ListItemsByOwner(ctx context.Context, arg ListItemsByOwnerParams) ([]ListItemsByOwnerRow, error) {
 	rows, err := q.db.Query(ctx, listItemsByOwner, arg.OwnerID, arg.Limit, arg.Offset)
 	if err != nil {
 		return nil, err
 	}
 	defer rows.Close()
-	var items []Item
+	var items []ListItemsByOwnerRow
 	for rows.Next() {
-		var i Item
+		var i ListItemsByOwnerRow
 		if err := rows.Scan(
 			&i.ItemID,
 			&i.OwnerID,
@@ -426,15 +513,32 @@ type SearchItemsParams struct {
 	Offset int32  `json:"offset"`
 }
 
-func (q *Queries) SearchItems(ctx context.Context, arg SearchItemsParams) ([]Item, error) {
+type SearchItemsRow struct {
+	ItemID      uuid.UUID          `json:"item_id"`
+	OwnerID     uuid.UUID          `json:"owner_id"`
+	AddressID   uuid.UUID          `json:"address_id"`
+	Category    CategoryEnum       `json:"category"`
+	Title       string             `json:"title"`
+	Description pgtype.Text        `json:"description"`
+	UsageRules  pgtype.Text        `json:"usage_rules"`
+	ItemStatus  ItemStatus         `json:"item_status"`
+	PricePerDay pgtype.Numeric     `json:"price_per_day"`
+	Deposit     pgtype.Numeric     `json:"deposit"`
+	MinDays     int32              `json:"min_days"`
+	MaxDays     pgtype.Int4        `json:"max_days"`
+	IsAvailable bool               `json:"is_available"`
+	PublishedAt pgtype.Timestamptz `json:"published_at"`
+}
+
+func (q *Queries) SearchItems(ctx context.Context, arg SearchItemsParams) ([]SearchItemsRow, error) {
 	rows, err := q.db.Query(ctx, searchItems, arg.Title, arg.Limit, arg.Offset)
 	if err != nil {
 		return nil, err
 	}
 	defer rows.Close()
-	var items []Item
+	var items []SearchItemsRow
 	for rows.Next() {
-		var i Item
+		var i SearchItemsRow
 		if err := rows.Scan(
 			&i.ItemID,
 			&i.OwnerID,
@@ -515,10 +619,27 @@ type UpdateItemParams struct {
 	MaxDays     pgtype.Int4    `json:"max_days"`
 }
 
+type UpdateItemRow struct {
+	ItemID      uuid.UUID          `json:"item_id"`
+	OwnerID     uuid.UUID          `json:"owner_id"`
+	AddressID   uuid.UUID          `json:"address_id"`
+	Category    CategoryEnum       `json:"category"`
+	Title       string             `json:"title"`
+	Description pgtype.Text        `json:"description"`
+	UsageRules  pgtype.Text        `json:"usage_rules"`
+	ItemStatus  ItemStatus         `json:"item_status"`
+	PricePerDay pgtype.Numeric     `json:"price_per_day"`
+	Deposit     pgtype.Numeric     `json:"deposit"`
+	MinDays     int32              `json:"min_days"`
+	MaxDays     pgtype.Int4        `json:"max_days"`
+	IsAvailable bool               `json:"is_available"`
+	PublishedAt pgtype.Timestamptz `json:"published_at"`
+}
+
 // ============================================
 // UPDATE
 // ============================================
-func (q *Queries) UpdateItem(ctx context.Context, arg UpdateItemParams) (Item, error) {
+func (q *Queries) UpdateItem(ctx context.Context, arg UpdateItemParams) (UpdateItemRow, error) {
 	row := q.db.QueryRow(ctx, updateItem,
 		arg.ItemID,
 		arg.Title,
@@ -530,7 +651,7 @@ func (q *Queries) UpdateItem(ctx context.Context, arg UpdateItemParams) (Item, e
 		arg.MinDays,
 		arg.MaxDays,
 	)
-	var i Item
+	var i UpdateItemRow
 	err := row.Scan(
 		&i.ItemID,
 		&i.OwnerID,

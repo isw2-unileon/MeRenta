@@ -24,6 +24,18 @@ func parseUUIDParam(c *gin.Context) (uuid.UUID, bool) {
 	return id, true
 }
 
+// parseUUIDString parses a UUID from a request payload field.
+// On failure it writes a 400 response and returns false.
+func parseUUIDString(c *gin.Context, value string) (uuid.UUID, bool) {
+	id, err := uuid.Parse(value)
+	if err != nil {
+		response.Error(c, http.StatusBadRequest, "invalid id")
+		return uuid.UUID{}, false
+	}
+
+	return id, true
+}
+
 // getCustomerID extracts the authenticated customer's UUID from the Gin context.
 // On failure it writes a 401 response and returns false.
 func getCustomerID(c *gin.Context) (uuid.UUID, bool) {

@@ -70,6 +70,7 @@ const (
 	CategoryEnumPhotography CategoryEnum = "photography"
 	CategoryEnumCamping     CategoryEnum = "camping"
 	CategoryEnumOther       CategoryEnum = "other"
+	CategoryEnumLeisure     CategoryEnum = "leisure"
 )
 
 func (e *CategoryEnum) Scan(src interface{}) error {
@@ -134,6 +135,7 @@ type NullItemCondition struct {
 	Valid         bool          `json:"valid"` // Valid is true if ItemCondition is not NULL
 }
 
+// Scan implements the Scanner interface.
 func (ns *NullItemCondition) Scan(value interface{}) error {
 	if value == nil {
 		ns.ItemCondition, ns.Valid = "", false
@@ -143,6 +145,7 @@ func (ns *NullItemCondition) Scan(value interface{}) error {
 	return ns.ItemCondition.Scan(value)
 }
 
+// Value implements the driver Valuer interface.
 func (ns NullItemCondition) Value() (driver.Value, error) {
 	if !ns.Valid {
 		return nil, nil
@@ -250,6 +253,14 @@ type Address struct {
 	Longitude  pgtype.Numeric `json:"longitude"`
 }
 
+type Conversation struct {
+	ConversationID uuid.UUID          `json:"conversation_id"`
+	Customer1ID    uuid.UUID          `json:"customer_1_id"`
+	Customer2ID    uuid.UUID          `json:"customer_2_id"`
+	ItemID         uuid.UUID          `json:"item_id"`
+	CreatedAt      pgtype.Timestamptz `json:"created_at"`
+}
+
 type Customer struct {
 	CustomerID       uuid.UUID          `json:"customer_id"`
 	FirstName        string             `json:"first_name"`
@@ -264,22 +275,28 @@ type Customer struct {
 	StripeCustomerID pgtype.Text        `json:"stripe_customer_id"`
 }
 
+type Favorite struct {
+	CustomerID uuid.UUID          `json:"customer_id"`
+	ItemID     uuid.UUID          `json:"item_id"`
+	SavedAt    pgtype.Timestamptz `json:"saved_at"`
+}
+
 type Item struct {
-	ItemID      uuid.UUID          `json:"item_id"`
-	OwnerID     uuid.UUID          `json:"owner_id"`
-	AddressID   uuid.UUID          `json:"address_id"`
-	Category    CategoryEnum       `json:"category"`
-	Title       string             `json:"title"`
-	Description pgtype.Text        `json:"description"`
-	UsageRules  pgtype.Text        `json:"usage_rules"`
-	Condition   ItemCondition      `json:"condition"`
-	ItemStatus  ItemStatus         `json:"item_status"`
-	PricePerDay pgtype.Numeric     `json:"price_per_day"`
-	Deposit     pgtype.Numeric     `json:"deposit"`
-	MinDays     int32              `json:"min_days"`
-	MaxDays     pgtype.Int4        `json:"max_days"`
-	IsAvailable bool               `json:"is_available"`
-	PublishedAt pgtype.Timestamptz `json:"published_at"`
+	ItemID        uuid.UUID          `json:"item_id"`
+	OwnerID       uuid.UUID          `json:"owner_id"`
+	AddressID     uuid.UUID          `json:"address_id"`
+	Category      CategoryEnum       `json:"category"`
+	Title         string             `json:"title"`
+	Description   pgtype.Text        `json:"description"`
+	ItemCondition ItemCondition      `json:"item_condition"`
+	ItemStatus    ItemStatus         `json:"item_status"`
+	PricePerDay   pgtype.Numeric     `json:"price_per_day"`
+	Deposit       pgtype.Numeric     `json:"deposit"`
+	IsAvailable   bool               `json:"is_available"`
+	PublishedAt   pgtype.Timestamptz `json:"published_at"`
+	MinDays       int32              `json:"min_days"`
+	MaxDays       pgtype.Int4        `json:"max_days"`
+	UsageRules    pgtype.Text        `json:"usage_rules"`
 }
 
 type ItemImage struct {
@@ -287,4 +304,22 @@ type ItemImage struct {
 	ItemID       uuid.UUID `json:"item_id"`
 	ImageUrl     string    `json:"image_url"`
 	DisplayOrder int32     `json:"display_order"`
+}
+
+type Message struct {
+	MessageID      uuid.UUID          `json:"message_id"`
+	ConversationID uuid.UUID          `json:"conversation_id"`
+	SenderID       uuid.UUID          `json:"sender_id"`
+	Content        string             `json:"content"`
+	SentAt         pgtype.Timestamptz `json:"sent_at"`
+	IsRead         bool               `json:"is_read"`
+}
+
+type Review struct {
+	ReviewID   uuid.UUID          `json:"review_id"`
+	ReviewerID uuid.UUID          `json:"reviewer_id"`
+	ReviewedID uuid.UUID          `json:"reviewed_id"`
+	Rating     int32              `json:"rating"`
+	Comment    string             `json:"comment"`
+	ReviewedAt pgtype.Timestamptz `json:"reviewed_at"`
 }

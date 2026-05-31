@@ -10,6 +10,8 @@ export default defineConfig(({ mode }) => {
   return {
     plugins: [react(), tailwindcss()],
 
+    envDir: path.resolve(__dirname, "../"),
+
     resolve: {
       alias: {
         "@": path.resolve(__dirname, "./src"),
@@ -26,6 +28,7 @@ export default defineConfig(({ mode }) => {
             "/api": {
               target: env.VITE_API_BASE_URL,
               changeOrigin: true,
+              ws: true,
             },
 
             "/health": {

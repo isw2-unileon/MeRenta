@@ -12,6 +12,10 @@ import (
 )
 
 type Querier interface {
+	// ============================================
+	// CREATE / DELETE
+	// ============================================
+	AddFavorite(ctx context.Context, arg AddFavoriteParams) error
 	CountAvailableItems(ctx context.Context) (int64, error)
 	CountCustomers(ctx context.Context) (int64, error)
 	CountItems(ctx context.Context) (int64, error)
@@ -24,7 +28,7 @@ type Querier interface {
 	// ============================================
 	// CREATE
 	// ============================================
-	CreateItem(ctx context.Context, arg CreateItemParams) (Item, error)
+	CreateItem(ctx context.Context, arg CreateItemParams) (CreateItemRow, error)
 	// ============================================
 	// CREATE
 	// ============================================
@@ -32,7 +36,9 @@ type Querier interface {
 	// ============================================
 	// DELETE
 	// ============================================
+	DeleteAddress(ctx context.Context, addressID uuid.UUID) error
 	DeleteCustomer(ctx context.Context, customerID uuid.UUID) error
+	DeleteCustomerAccountData(ctx context.Context, customerID uuid.UUID) error
 	// ============================================
 	// DELETE
 	// ============================================
@@ -54,20 +60,28 @@ type Querier interface {
 	// ============================================
 	// READ
 	// ============================================
-	GetItemByID(ctx context.Context, itemID uuid.UUID) (Item, error)
+	GetItemByID(ctx context.Context, itemID uuid.UUID) (GetItemByIDRow, error)
 	// ============================================
 	// READ
 	// ============================================
 	GetItemImages(ctx context.Context, itemID uuid.UUID) ([]ItemImage, error)
+	// ============================================
+	// READ
+	// ============================================
+	IsFavorite(ctx context.Context, arg IsFavoriteParams) (bool, error)
 	ListCustomers(ctx context.Context, arg ListCustomersParams) ([]ListCustomersRow, error)
 	ListCustomersByStatus(ctx context.Context, arg ListCustomersByStatusParams) ([]ListCustomersByStatusRow, error)
-	ListItems(ctx context.Context, arg ListItemsParams) ([]Item, error)
-	ListItemsByCategory(ctx context.Context, arg ListItemsByCategoryParams) ([]Item, error)
-	ListItemsByOwner(ctx context.Context, arg ListItemsByOwnerParams) ([]Item, error)
+	ListFavoriteItems(ctx context.Context, customerID uuid.UUID) ([]ListFavoriteItemsRow, error)
+	ListItems(ctx context.Context, arg ListItemsParams) ([]ListItemsRow, error)
+	ListItemsByCategory(ctx context.Context, arg ListItemsByCategoryParams) ([]ListItemsByCategoryRow, error)
+	ListItemsByOwner(ctx context.Context, arg ListItemsByOwnerParams) ([]ListItemsByOwnerRow, error)
+	RemoveFavorite(ctx context.Context, arg RemoveFavoriteParams) error
 	SearchCustomers(ctx context.Context, arg SearchCustomersParams) ([]SearchCustomersRow, error)
-	SearchItems(ctx context.Context, arg SearchItemsParams) ([]Item, error)
+	SearchItemCards(ctx context.Context, arg SearchItemCardsParams) ([]SearchItemCardsRow, error)
+	SearchItems(ctx context.Context, arg SearchItemsParams) ([]SearchItemsRow, error)
 	SoftDeleteCustomer(ctx context.Context, customerID uuid.UUID) error
 	SoftDeleteItem(ctx context.Context, itemID uuid.UUID) error
+	UpdateAddress(ctx context.Context, arg UpdateAddressParams) (Address, error)
 	UpdateCustomerAvatar(ctx context.Context, arg UpdateCustomerAvatarParams) error
 	UpdateCustomerEmail(ctx context.Context, arg UpdateCustomerEmailParams) (UpdateCustomerEmailRow, error)
 	UpdateCustomerPassword(ctx context.Context, arg UpdateCustomerPasswordParams) error
@@ -81,7 +95,7 @@ type Querier interface {
 	// ============================================
 	// UPDATE
 	// ============================================
-	UpdateItem(ctx context.Context, arg UpdateItemParams) (Item, error)
+	UpdateItem(ctx context.Context, arg UpdateItemParams) (UpdateItemRow, error)
 	UpdateItemAvailability(ctx context.Context, arg UpdateItemAvailabilityParams) error
 	UpdateItemStatus(ctx context.Context, arg UpdateItemStatusParams) (UpdateItemStatusRow, error)
 }

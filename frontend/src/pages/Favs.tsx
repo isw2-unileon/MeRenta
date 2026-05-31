@@ -17,6 +17,7 @@ const CATEGORY_LABELS: Record<string, string> = {
   photography: "Fotografía",
   camping: "Camping",
   clothing: "Ropa",
+  leisure: "Ocio",
   other: "Otros",
 };
 
@@ -24,6 +25,16 @@ const SORT_OPTIONS = [
   { value: "recent", label: "Añadir reciente" },
   { value: "price_asc", label: "Precio: menor a mayor" },
   { value: "price_desc", label: "Precio: mayor a menor" },
+];
+const FAVS_SKELETON_IDS = [
+  "fav-skel-1",
+  "fav-skel-2",
+  "fav-skel-3",
+  "fav-skel-4",
+  "fav-skel-5",
+  "fav-skel-6",
+  "fav-skel-7",
+  "fav-skel-8",
 ];
 
 interface FavsState {
@@ -308,9 +319,9 @@ function EmptySlot() {
 function FavsSkeleton() {
   return (
     <>
-      {Array.from({ length: 8 }, (_, i) => (
+      {FAVS_SKELETON_IDS.map((id) => (
         <div
-          key={i}
+          key={id}
           className="border-border-main bg-page animate-pulse overflow-hidden rounded-xl border"
         >
           <div className="bg-primary-light h-42" />
@@ -373,6 +384,7 @@ function Favs() {
   const GRID_COLS = 4;
   const remainder = filtered.length % GRID_COLS;
   const emptySlots = remainder === 0 ? 0 : GRID_COLS - remainder;
+  const emptySlotKeys = Array.from({ length: emptySlots }, (_, index) => `empty-slot-${filtered.length + index}`);
 
   return (
     <div className="mx-auto max-w-340 px-10 py-8">
@@ -469,8 +481,8 @@ function Favs() {
               onRemove={removing.has(item.item_id) ? () => undefined : handleRemove}
             />
           ))}
-          {Array.from({ length: emptySlots }, (_, i) => (
-            <EmptySlot key={`empty-${i}`} />
+          {emptySlotKeys.map((key) => (
+            <EmptySlot key={key} />
           ))}
         </div>
       )}

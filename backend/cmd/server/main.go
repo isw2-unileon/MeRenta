@@ -54,13 +54,14 @@ func main() {
 		cfg.JWTLeeway,
 	)
 
-	authSvc := service.NewAuthService(q, jwtMgr)
+	storageCli := storage.NewSupabaseClient(cfg.SupabaseURL, cfg.SupabaseServiceRoleKey)
+
+	authSvc := service.NewAuthService(q, jwtMgr, storageCli, "avatar")
 	authH := handler.NewAuthHandler(authSvc)
 
 	itemSvc := service.NewItemService(q)
 	itemH := handler.NewItemHandler(itemSvc)
 
-	storageCli := storage.NewSupabaseClient(cfg.SupabaseURL, cfg.SupabaseServiceRoleKey)
 	itemImgSvc := service.NewItemImageService(q, storageCli, "item")
 	itemImgH := handler.NewItemImageHandler(itemImgSvc)
 
@@ -70,7 +71,20 @@ func main() {
 	favSvc := service.NewFavoriteService(q)
 	favH := handler.NewFavoriteHandler(favSvc)
 
-	r := router.Setup(authH, itemH, itemImgH, addrH, favH, jwtMgr, cfg.CORSAllowOrigin, pool.Ping)
+	chatSvc, err := service.NewChatService(q, cfg.MessageEncryptionKey)
+	if err != nil {
+		slog.Error("error creating chat service", "error", err)
+		return
+	}
+	chatHub := handler.NewChatHub()
+	chatH := handler.NewChatHandler(chatSvc, chatHub)
+
+	reviewSvc := service.NewReviewService(q)
+	reviewH := handler.NewReviewHandler(reviewSvc)
+
+	paymentH := handler.NewPaymentHandler(service.NewPaymentService(cfg.StripeSecretKey))
+
+	r := router.Setup(authH, itemH, itemImgH, addrH, favH, chatH, reviewH, paymentH, jwtMgr, cfg.CORSAllowOrigin, pool.Ping)
 	portNum, err := strconv.Atoi(cfg.Port)
 	if err != nil || portNum < 1 || portNum > 65535 {
 		slog.Error("invalid port", "port", cfg.Port)
