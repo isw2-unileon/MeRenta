@@ -21,6 +21,7 @@ func Setup(
 	addrH *handler.AddressHandler,
 	favH *handler.FavoriteHandler,
 	chatH *handler.ChatHandler,
+	reviewH *handler.ReviewHandler,
 	jwtMgr *jwt.Manager,
 	corsAllowOrigin string,
 	readiness func(context.Context) error,
@@ -35,7 +36,7 @@ func Setup(
 
 	protected := api.Group("/")
 	protected.Use(middleware.JWTAuth(jwtMgr))
-	registerProtectedRoutes(protected, authH, itemH, itemImgH, addrH, favH, chatH)
+	registerProtectedRoutes(protected, authH, itemH, itemImgH, addrH, favH, chatH, reviewH)
 
 	registerAdminRoutes(api, jwtMgr)
 
@@ -72,6 +73,7 @@ func registerProtectedRoutes(
 	addrH *handler.AddressHandler,
 	favH *handler.FavoriteHandler,
 	chatH *handler.ChatHandler,
+	reviewH *handler.ReviewHandler,
 ) {
 	protected.GET("/session", authH.Session)
 	protected.GET("/me", authH.Me)
@@ -105,6 +107,9 @@ func registerProtectedRoutes(
 	conversations.GET("/:id/messages", chatH.ListMessages)
 	conversations.POST("/:id/messages", chatH.SendMessage)
 	conversations.GET("/:id/ws", chatH.WebSocket)
+
+	reviews := protected.Group("/reviews")
+	reviews.GET("/received", reviewH.ListReceived)
 }
 
 func registerAdminRoutes(api *gin.RouterGroup, jwtMgr *jwt.Manager) {
