@@ -25,6 +25,7 @@ type ConversationResponse struct {
 	LastMessage    string     `json:"last_message,omitempty"`
 	LastMessageAt  *time.Time `json:"last_message_at,omitempty"`
 	UpdatedAt      time.Time  `json:"updated_at"`
+	UnreadCount    int        `json:"unread_count"`
 }
 
 // ConversationsResponse wraps the authenticated user's conversations.

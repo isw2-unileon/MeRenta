@@ -36,6 +36,8 @@ type chatQuerier interface {
 	TouchConversation(ctx context.Context, conversationID uuid.UUID) error
 	MarkMessagesRead(ctx context.Context, conversationID, readerID uuid.UUID) ([]uuid.UUID, error)
 	DeleteConversation(ctx context.Context, arg sqlcdb.DeleteConversationParams) (uuid.UUID, error)
+	RestoreConversationForCustomer(ctx context.Context, conversationID, customerID uuid.UUID) error
+	RestoreConversation(ctx context.Context, conversationID uuid.UUID) error
 }
 
 // ChatService handles conversation and message use cases.
@@ -73,6 +75,10 @@ func (s *ChatService) StartConversation(ctx context.Context, customerID, itemID 
 		RenterID: customerID,
 	})
 	if err != nil {
+		return nil, err
+	}
+
+	if err := s.q.RestoreConversationForCustomer(ctx, conversationID, customerID); err != nil {
 		return nil, err
 	}
 
@@ -212,6 +218,9 @@ func (s *ChatService) SendMessage(ctx context.Context, customerID, conversationI
 	if err := s.q.TouchConversation(ctx, conversationID); err != nil {
 		return nil, err
 	}
+	if err := s.q.RestoreConversation(ctx, conversationID); err != nil {
+		return nil, err
+	}
 
 	res, err := s.toMessageResponse(row, customerID)
 	if err != nil {
@@ -241,6 +250,7 @@ func (s *ChatService) toConversationResponse(row sqlcdb.ConversationRow) (model.
 		LastMessage:    lastMessage,
 		LastMessageAt:  timestamptzPtr(row.LastMessageAt),
 		UpdatedAt:      row.UpdatedAt.Time,
+		UnreadCount:    int(row.UnreadCount),
 	}, nil
 }
 
