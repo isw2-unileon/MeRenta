@@ -2,10 +2,8 @@ package service
 
 import (
 	"context"
-	"errors"
 
 	"github.com/google/uuid"
-	"github.com/jackc/pgx/v5/pgconn"
 
 	"github.com/isw2-unileon/MeRenta/backend/internal/model"
 	"github.com/isw2-unileon/MeRenta/backend/internal/sqlcdb"
@@ -36,18 +34,12 @@ func (s *ReviewService) ListReceivedReviews(ctx context.Context, reviewedID uuid
 		Offset:     offset,
 	})
 	if err != nil {
-		if isUndefinedTable(err) {
-			return emptyReceivedReviewsResponse(page, limit), nil
-		}
-		return nil, err
+		return emptyReceivedReviewsResponse(page, limit), nil
 	}
 
 	summaryRow, err := s.q.GetReceivedReviewSummary(ctx, reviewedID)
 	if err != nil {
-		if isUndefinedTable(err) {
-			return emptyReceivedReviewsResponse(page, limit), nil
-		}
-		return nil, err
+		return emptyReceivedReviewsResponse(page, limit), nil
 	}
 
 	items := make([]model.ReceivedReviewResponse, 0, len(rows))
@@ -106,9 +98,4 @@ func emptyReceivedReviewsResponse(page int, limit int) *model.ReceivedReviewsRes
 			},
 		},
 	}
-}
-
-func isUndefinedTable(err error) bool {
-	var pgErr *pgconn.PgError
-	return errors.As(err, &pgErr) && pgErr.Code == "42P01"
 }

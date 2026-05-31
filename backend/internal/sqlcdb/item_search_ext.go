@@ -299,32 +299,7 @@ func (q *Queries) ListOwnerItemCards(ctx context.Context, arg ListOwnerItemCards
 	}
 	defer rows.Close()
 
-	var items []SearchItemCardsRow
-	for rows.Next() {
-		var i SearchItemCardsRow
-		if err := rows.Scan(
-			&i.ItemID,
-			&i.OwnerID,
-			&i.AddressID,
-			&i.Category,
-			&i.Title,
-			&i.ItemStatus,
-			&i.PricePerDay,
-			&i.IsAvailable,
-			&i.PublishedAt,
-			&i.City,
-			&i.PrimaryImageURL,
-			&i.TotalCount,
-		); err != nil {
-			return nil, err
-		}
-		items = append(items, i)
-	}
-	if err := rows.Err(); err != nil {
-		return nil, err
-	}
-
-	return items, nil
+	return collectOwnerItemCardRows(rows)
 }
 
 func countItemCardsRows[T any](ctx context.Context, db DBTX, sql string, scan func(pgx.Rows) (T, error), args ...any) ([]T, error) {
