@@ -131,7 +131,12 @@ function refreshConversations(
     }
   }
 
-  return { ...state, conversations: sortConversations(items), unreadCountsByConversationID, loadingConversations: false };
+  return {
+    ...state,
+    conversations: sortConversations(items),
+    unreadCountsByConversationID,
+    loadingConversations: false,
+  };
 }
 
 function applyIncomingMessage(state: ChatState, message: MessageResponse, activeConversationID?: string): ChatState {
@@ -147,9 +152,7 @@ function applyIncomingMessage(state: ChatState, message: MessageResponse, active
           last_message_at: message.created_at,
           updated_at: message.created_at,
           unread_count:
-            message.conversation_id === activeConversationID || message.is_mine
-              ? 0
-              : conversation.unread_count + 1,
+            message.conversation_id === activeConversationID || message.is_mine ? 0 : conversation.unread_count + 1,
         }
       : conversation
   );
