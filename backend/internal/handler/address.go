@@ -121,7 +121,7 @@ func (h *AddressHandler) Delete(c *gin.Context) {
 	case errors.Is(err, service.ErrForbidden):
 		response.Error(c, http.StatusForbidden, err.Error())
 	default:
-		response.Error(c, http.StatusConflict, "no se puede quitar una direccion usada por productos")
+		response.Error(c, http.StatusConflict, "An address used by a product cannot be deleted")
 	}
 }
 

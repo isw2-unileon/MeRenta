@@ -146,7 +146,7 @@ async function fetchAddresses(signal: AbortSignal): Promise<AddressResponse[]> {
   });
   const json = (await res.json()) as ApiResponse<AddressResponse[]>;
   if (!res.ok || !json.success || !json.data) {
-    throw new Error(json.message ?? json.error ?? "Error al cargar tus direcciones");
+    throw new Error(json.message ?? json.error ?? "Error al cargar tus direcciónes");
   }
   return json.data;
 }
@@ -162,7 +162,7 @@ async function createAddress(payload: CreateAddressRequest): Promise<AddressResp
   });
   const json = (await res.json()) as ApiResponse<AddressResponse>;
   if (!res.ok || !json.success || !json.data) {
-    throw new Error(json.message ?? json.error ?? "Error al guardar la direccion");
+    throw new Error(json.message ?? json.error ?? "Error al guardar la dirección");
   }
   return json.data;
 }
@@ -178,7 +178,7 @@ async function updateAddress(addressId: string, payload: CreateAddressRequest): 
   });
   const json = (await res.json()) as ApiResponse<AddressResponse>;
   if (!res.ok || !json.success || !json.data) {
-    throw new Error(json.message ?? json.error ?? "Error al actualizar la direccion");
+    throw new Error(json.message ?? json.error ?? "Error al actualizar la dirección");
   }
   return json.data;
 }
@@ -190,7 +190,7 @@ async function deleteAddress(addressId: string): Promise<void> {
   });
   const json = (await res.json()) as ApiResponse<{ message: string }>;
   if (!res.ok || !json.success) {
-    throw new Error(json.message ?? json.error ?? "Error al quitar la direccion");
+    throw new Error(json.message ?? json.error ?? "Error al quitar la dirección");
   }
 }
 
@@ -273,7 +273,7 @@ async function updatePassword(payload: {
   });
   const json = (await res.json()) as ApiResponse<{ message: string }>;
   if (!res.ok || !json.success) {
-    throw new Error(json.message ?? json.error ?? "Error al cambiar la contrasena");
+    throw new Error(json.message ?? json.error ?? "Error al cambiar la contraseña");
   }
 }
 
@@ -413,7 +413,7 @@ function ProfileEdit() {
       })
       .catch((err: unknown) => {
         if (err instanceof DOMException && err.name === "AbortError") return;
-        setAddressesError(err instanceof Error ? err.message : "Error al cargar tus direcciones");
+        setAddressesError(err instanceof Error ? err.message : "Error al cargar tus direcciónes");
       })
       .finally(() => {
         if (!controller.signal.aborted) setAddressesLoading(false);
@@ -455,17 +455,17 @@ function ProfileEdit() {
     const emailChanged = nextEmail.toLowerCase() !== (user?.email ?? "").toLowerCase();
 
     if (emailChanged && nextEmail.toLowerCase() !== nextConfirmEmail.toLowerCase()) {
-      setSaveError("El email y su confirmacion no coinciden.");
+      setSaveError("El email y su confirmación no coinciden.");
       return;
     }
 
     if (newPassword || confirmPassword || currentPassword) {
       if (!currentPassword || !newPassword || !confirmPassword) {
-        setSaveError("Completa todos los campos de contrasena para cambiarla.");
+        setSaveError("Completa todos los campos de contraseña para cambiarla.");
         return;
       }
       if (newPassword !== confirmPassword) {
-        setSaveError("La nueva contrasena y su confirmacion no coinciden.");
+        setSaveError("La nueva contraseña y su confirmación no coinciden.");
         return;
       }
     }
@@ -573,8 +573,8 @@ function ProfileEdit() {
     try {
       const payload = {
         ...addressDraft,
-        floor: addressDraft.floor?.trim() || "",
-        country: addressDraft.country || "Spain",
+        floor: addressDraft.floor?.trim() ?? "",
+        country: addressDraft.country ?? "Spain",
       };
 
       if (editingAddressId) {
@@ -590,9 +590,9 @@ function ProfileEdit() {
       setAddressDraft(EMPTY_ADDRESS);
       setEditingAddressId(null);
       setShowAddressEditor(false);
-      setSaveMessage(editingAddressId ? "Direccion actualizada correctamente." : "Direccion guardada correctamente.");
+      setSaveMessage(editingAddressId ? "dirección actualizada correctamente." : "dirección guardada correctamente.");
     } catch (err: unknown) {
-      setAddressesError(err instanceof Error ? err.message : "Error al guardar la direccion");
+      setAddressesError(err instanceof Error ? err.message : "Error al guardar la dirección");
     } finally {
       setSavingAddress(false);
     }
@@ -609,9 +609,9 @@ function ProfileEdit() {
         setShowAddressEditor(false);
         setAddressDraft(EMPTY_ADDRESS);
       }
-      setSaveMessage("Direccion quitada correctamente.");
+      setSaveMessage("dirección quitada correctamente.");
     } catch (err: unknown) {
-      setAddressesError(err instanceof Error ? err.message : "Error al quitar la direccion");
+      setAddressesError(err instanceof Error ? err.message : "Error al quitar la dirección");
     } finally {
       setDeletingAddressId(null);
     }
@@ -680,7 +680,7 @@ function ProfileEdit() {
                   key={stat.label}
                   className="border-border-main flex h-10 items-center gap-3 rounded-lg border bg-white px-4"
                 >
-                  <p className="profile-stat-value text-[18px]">{stat.value}</p>
+                  <p className="profile-stat-value text-logo-footer">{stat.value}</p>
                   <p className="profile-stat-label">{stat.label}</p>
                 </div>
               ))}
@@ -726,7 +726,7 @@ function ProfileEdit() {
               <input
                 type="email"
                 className="mt-1"
-                value={email}
+                placeholder={email}
                 onChange={(event) => setEmail(event.target.value)}
                 autoComplete="email"
               />
@@ -737,18 +737,18 @@ function ProfileEdit() {
               <input
                 type="email"
                 className="mt-1"
-                value={confirmEmail}
+                placeholder={confirmEmail}
                 onChange={(event) => setConfirmEmail(event.target.value)}
                 autoComplete="email"
               />
             </label>
 
             <label className="mt-5 mb-0">
-              Telefono
+              Teléfono
               <input
                 type="tel"
                 className="mt-1"
-                value={phone}
+                placeholder={phone}
                 onChange={(event) => setPhone(event.target.value)}
                 autoComplete="tel"
               />
@@ -760,8 +760,8 @@ function ProfileEdit() {
           <section>
             <div className="flex items-center justify-between gap-4">
               <div>
-                <h2 className="heading-panel--sm">Direcciones</h2>
-                <p className="text-subtle mt-1 text-[13px]">Gestiona tus direcciones de recogida.</p>
+                <h2 className="heading-panel--sm">direcciónes</h2>
+                <p className="text-subtle mt-1 text-[13px]">Gestiona tus direcciónes de recogida.</p>
               </div>
               <button
                 type="button"
@@ -769,7 +769,7 @@ function ProfileEdit() {
                 onClick={openNewAddressEditor}
               >
                 <Plus size={16} />
-                Nueva direccion
+                Nueva dirección
               </button>
             </div>
 
@@ -779,10 +779,10 @@ function ProfileEdit() {
 
             <div className="mt-5 space-y-3">
               {addressesLoading ? (
-                <p className="text-subtle">Cargando direcciones...</p>
+                <p className="text-subtle">Cargando direcciónes...</p>
               ) : addresses.length === 0 ? (
                 <p className="border-border-main text-subtle rounded-lg border bg-white p-4">
-                  Todavia no tienes direcciones guardadas.
+                  Todavia no tienes direcciónes guardadas.
                 </p>
               ) : (
                 addresses.map((address) => (
@@ -829,12 +829,12 @@ function ProfileEdit() {
               <div className="border-border-main mt-5 rounded-xl border bg-white p-4">
                 <div className="mb-3 flex items-center justify-between">
                   <h3 className="text-ink font-semibold">
-                    {editingAddressId ? "Editar direccion" : "Anadir direccion"}
+                    {editingAddressId ? "Editar dirección" : "Añadir dirección"}
                   </h3>
                   <button
                     type="button"
                     className="text-subtle hover:text-ink p-0"
-                    aria-label="Cerrar editor de direccion"
+                    aria-label="Cerrar editor de dirección"
                     onClick={() => {
                       setShowAddressEditor(false);
                       setAddressErrors({});
@@ -936,7 +936,7 @@ function ProfileEdit() {
                     onClick={handleSaveAddress}
                     disabled={savingAddress}
                   >
-                    {savingAddress ? "Guardando..." : "Guardar direccion"}
+                    {savingAddress ? "Guardando..." : "Guardar dirección"}
                   </button>
                 </div>
               </div>
@@ -946,9 +946,9 @@ function ProfileEdit() {
           <hr className="divider-subtle" />
 
           <section>
-            <h2 className="heading-panel--sm">Cambiar contrasena</h2>
+            <h2 className="heading-panel--sm">Cambiar contraseña</h2>
             <label className="mt-4 mb-0">
-              Contrasena actual
+              contraseña actual
               <input
                 className="mt-1 [-webkit-text-security:disc]"
                 type="text"
@@ -961,7 +961,7 @@ function ProfileEdit() {
               />
             </label>
             <label className="mt-4 mb-0">
-              Nueva contrasena
+              Nueva contraseña
               <input
                 className="mt-1 [-webkit-text-security:disc]"
                 type="text"
@@ -974,7 +974,7 @@ function ProfileEdit() {
               />
             </label>
             <label className="mt-4 mb-0">
-              Confirmar nueva contrasena
+              Confirmar nueva contraseña
               <input
                 className="mt-1 [-webkit-text-security:disc]"
                 type="text"
@@ -995,7 +995,9 @@ function ProfileEdit() {
             <div className="border-report bg-error-danger mt-4 flex flex-col gap-4 rounded-xl border p-5 sm:flex-row sm:items-center sm:justify-between">
               <div>
                 <p className="text-report font-medium">Eliminar cuenta</p>
-                <p className="text-subtle mt-2 text-[13px]">Esta accion es irreversible. Se eliminaran tus datos y publicaciones.</p>
+                <p className="text-subtle mt-2 text-[13px]">
+                  Esta accion es irreversible. Se eliminaran tus datos y publicaciones.
+                </p>
               </div>
               <button
                 type="button"
@@ -1009,7 +1011,9 @@ function ProfileEdit() {
           </section>
 
           {saveError && <p className="border-report bg-error-danger text-report rounded-lg border p-3">{saveError}</p>}
-          {saveMessage && <p className="border-primary-border bg-primary-light text-primary rounded-lg border p-3">{saveMessage}</p>}
+          {saveMessage && (
+            <p className="border-primary-border bg-primary-light text-primary rounded-lg border p-3">{saveMessage}</p>
+          )}
 
           <button
             type="submit"
@@ -1034,7 +1038,7 @@ function ProfileEdit() {
               <button
                 type="button"
                 className="text-subtle hover:text-ink p-0"
-                aria-label="Cerrar confirmacion"
+                aria-label="Cerrar confirmación"
                 onClick={() => setShowDeleteConfirm(false)}
                 disabled={deletingAccount}
               >
@@ -1058,7 +1062,7 @@ function ProfileEdit() {
                 disabled={deletingAccount}
               >
                 <Trash2 size={14} />
-                {deletingAccount ? "Eliminando..." : "Confirmar eliminacion"}
+                {deletingAccount ? "Eliminando..." : "Confirmar eliminación"}
               </button>
             </div>
           </div>

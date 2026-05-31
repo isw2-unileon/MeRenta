@@ -86,13 +86,30 @@ func (h *AuthHandler) Me(c *gin.Context) {
 	respondWithCurrentCustomer(c, h.svc)
 }
 
-// ProfileByID handles GET /api/customers/:id/profile — returns the public
+// ProfileByID handles GET /api/customers/:id/profile and returns the public
 // profile of any customer. Sensitive fields (email, phone, stripe ID) are
 // omitted from the response.
 //
 // Response 200: model.CustomerProfileResponse
 // Response 400: invalid UUID in path
 // Response 404: customer not found
+func (h *AuthHandler) ProfileByID(c *gin.Context) {
+	id, ok := parseUUIDParam(c)
+	if !ok {
+		return
+	}
+
+	res, err := h.svc.GetPublicProfile(c.Request.Context(), id)
+	switch {
+	case err == nil:
+		response.OK(c, http.StatusOK, res)
+	case errors.Is(err, service.ErrCustomerNotFound):
+		response.Error(c, http.StatusNotFound, err.Error())
+	default:
+		response.Error(c, http.StatusInternalServerError, "internal server error")
+	}
+}
+
 // UpdateMe updates editable fields on the authenticated customer's profile.
 func (h *AuthHandler) UpdateMe(c *gin.Context) {
 	customerID, ok := getCustomerID(c)
@@ -225,23 +242,6 @@ func (h *AuthHandler) DeleteMe(c *gin.Context) {
 	case err == nil:
 		clearAuthCookie(c)
 		response.OK(c, http.StatusOK, gin.H{"message": "account deleted successfully"})
-	case errors.Is(err, service.ErrCustomerNotFound):
-		response.Error(c, http.StatusNotFound, err.Error())
-	default:
-		response.Error(c, http.StatusInternalServerError, "internal server error")
-	}
-}
-
-func (h *AuthHandler) ProfileByID(c *gin.Context) {
-	id, ok := parseUUIDParam(c)
-	if !ok {
-		return
-	}
-
-	res, err := h.svc.GetPublicProfile(c.Request.Context(), id)
-	switch {
-	case err == nil:
-		response.OK(c, http.StatusOK, res)
 	case errors.Is(err, service.ErrCustomerNotFound):
 		response.Error(c, http.StatusNotFound, err.Error())
 	default:
