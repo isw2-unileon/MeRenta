@@ -6,6 +6,7 @@ import (
 	"errors"
 	"fmt"
 	"strconv"
+	"strings"
 
 	"github.com/google/uuid"
 	"github.com/jackc/pgx/v5"
@@ -34,6 +35,7 @@ type itemQuerier interface {
 	CreateItem(ctx context.Context, arg sqlcdb.CreateItemParams) (sqlcdb.CreateItemRow, error)
 	GetItemByID(ctx context.Context, itemID uuid.UUID) (sqlcdb.GetItemByIDRow, error)
 	ListOwnerItemCards(ctx context.Context, arg sqlcdb.ListOwnerItemCardsParams) ([]sqlcdb.SearchItemCardsRow, error)
+	ListOwnerItemCardsWithoutImages(ctx context.Context, arg sqlcdb.ListOwnerItemCardsParams) ([]sqlcdb.SearchItemCardsRow, error)
 	CountItemsByOwner(ctx context.Context, ownerID uuid.UUID) (int64, error)
 	SearchItemCards(ctx context.Context, arg sqlcdb.SearchItemCardsParams) ([]sqlcdb.SearchItemCardsRow, error)
 	CountItemCardsByCategory(ctx context.Context, arg sqlcdb.CountItemCardsByCategoryParams) ([]sqlcdb.CountItemCardsByCategoryRow, error)
@@ -133,11 +135,16 @@ func (s *ItemService) GetItem(ctx context.Context, itemID uuid.UUID) (*model.Ite
 func (s *ItemService) ListOwnerItems(ctx context.Context, ownerID uuid.UUID, page int, limit int) (*model.SearchItemsResponse, error) {
 	offset := (page - 1) * limit
 
-	rows, err := s.q.ListOwnerItemCards(ctx, sqlcdb.ListOwnerItemCardsParams{
+	params := sqlcdb.ListOwnerItemCardsParams{
 		OwnerID: ownerID,
 		Limit:   limit,
 		Offset:  offset,
-	})
+	}
+
+	rows, err := s.q.ListOwnerItemCards(ctx, params)
+	if err != nil && isUndefinedTableNamed(err, "item_image") {
+		rows, err = s.q.ListOwnerItemCardsWithoutImages(ctx, params)
+	}
 	if err != nil {
 		return nil, err
 	}
@@ -404,4 +411,9 @@ func isForeignKeyViolation(err error) bool {
 func isInvalidTextRepresentation(err error) bool {
 	var pgErr *pgconn.PgError
 	return errors.As(err, &pgErr) && pgErr.Code == "22P02"
+}
+
+func isUndefinedTableNamed(err error, tableName string) bool {
+	var pgErr *pgconn.PgError
+	return errors.As(err, &pgErr) && pgErr.Code == "42P01" && strings.Contains(pgErr.Message, tableName)
 }

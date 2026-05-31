@@ -1,0 +1,74 @@
+package sqlcdb
+
+import (
+	"context"
+
+	"github.com/jackc/pgx/v5"
+)
+
+const listOwnerItemCardsWithoutImages = `
+SELECT
+    i.item_id,
+    i.owner_id,
+    i.address_id,
+    i.category,
+    i.title,
+    i.item_status,
+    i.price_per_day,
+    i.is_available,
+    i.published_at,
+    a.city,
+    '' AS primary_image_url,
+    COUNT(*) OVER() AS total_count
+FROM item i
+JOIN address a ON a.address_id = i.address_id
+WHERE i.owner_id = $1
+ORDER BY i.published_at DESC
+LIMIT $2 OFFSET $3
+`
+
+// ListOwnerItemCardsWithoutImages returns owner item cards when item images are unavailable.
+func (q *Queries) ListOwnerItemCardsWithoutImages(ctx context.Context, arg ListOwnerItemCardsParams) ([]SearchItemCardsRow, error) {
+	rows, err := q.db.Query(
+		ctx,
+		listOwnerItemCardsWithoutImages,
+		arg.OwnerID,
+		arg.Limit,
+		arg.Offset,
+	)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+
+	return collectOwnerItemCardRows(rows)
+}
+
+func collectOwnerItemCardRows(rows pgx.Rows) ([]SearchItemCardsRow, error) {
+	var items []SearchItemCardsRow
+	for rows.Next() {
+		var i SearchItemCardsRow
+		if err := rows.Scan(
+			&i.ItemID,
+			&i.OwnerID,
+			&i.AddressID,
+			&i.Category,
+			&i.Title,
+			&i.ItemStatus,
+			&i.PricePerDay,
+			&i.IsAvailable,
+			&i.PublishedAt,
+			&i.City,
+			&i.PrimaryImageURL,
+			&i.TotalCount,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+
+	return items, nil
+}
