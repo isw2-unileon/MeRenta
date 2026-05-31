@@ -140,7 +140,12 @@ function refreshConversations(
     unreadCountsByConversationID.delete(activeConversationID);
   }
 
-  return { ...state, conversations: sortConversations(items), unreadCountsByConversationID, loadingConversations: false };
+  return {
+    ...state,
+    conversations: sortConversations(items),
+    unreadCountsByConversationID,
+    loadingConversations: false,
+  };
 }
 
 function applyIncomingMessage(state: ChatState, message: MessageResponse, activeConversationID?: string): ChatState {

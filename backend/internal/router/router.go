@@ -28,7 +28,21 @@ func Setup(
 	r := gin.Default()
 	r.Use(middleware.CORS(corsAllowOrigin))
 
-	// core
+	addCoreRoutes(r, readiness)
+
+	api := r.Group("/api")
+	registerPublicRoutes(api, authH)
+
+	protected := api.Group("/")
+	protected.Use(middleware.JWTAuth(jwtMgr))
+	registerProtectedRoutes(protected, authH, itemH, itemImgH, addrH, favH, chatH)
+
+	registerAdminRoutes(api, jwtMgr)
+
+	return r
+}
+
+func addCoreRoutes(r *gin.Engine, readiness func(context.Context) error) {
 	r.GET("/health", func(c *gin.Context) {
 		c.JSON(http.StatusOK, gin.H{"status": "ok"})
 	})
@@ -41,35 +55,34 @@ func Setup(
 		}
 		c.JSON(http.StatusOK, gin.H{"status": "ready"})
 	})
+}
 
-	api := r.Group("/api")
-
-	// public
+func registerPublicRoutes(api *gin.RouterGroup, authH *handler.AuthHandler) {
 	auth := api.Group("/auth")
 	auth.POST("/register", authH.Register)
 	auth.POST("/login", authH.Login)
 	auth.POST("/logout", authH.Logout)
+}
 
-	// protected
-	protected := api.Group("/")
-	protected.Use(middleware.JWTAuth(jwtMgr))
-
-	// auto log in with cookie
+func registerProtectedRoutes(
+	protected *gin.RouterGroup,
+	authH *handler.AuthHandler,
+	itemH *handler.ItemHandler,
+	itemImgH *handler.ItemImageHandler,
+	addrH *handler.AddressHandler,
+	favH *handler.FavoriteHandler,
+	chatH *handler.ChatHandler,
+) {
 	protected.GET("/session", authH.Session)
-
-	// authenticated user profile
 	protected.GET("/me", authH.Me)
 
-	// addresses
 	addresses := protected.Group("/addresses")
 	addresses.GET("", addrH.List)
 	addresses.POST("", addrH.Create)
 
-	// customers (public profiles only — sensitive data excluded)
 	customers := protected.Group("/customers")
 	customers.GET("/:id/profile", authH.ProfileByID)
 
-	// items
 	items := protected.Group("/items")
 	items.GET("", itemH.List)
 	items.POST("", itemH.Create)
@@ -78,14 +91,12 @@ func Setup(
 	items.POST("/:id/images", itemImgH.AddImages)
 	items.GET("/:id/images/:imageId/content", itemImgH.ProxyImage)
 
-	// favorites
 	favs := protected.Group("/favorites")
 	favs.GET("", favH.List)
 	favs.POST("/:id", favH.Add)
 	favs.DELETE("/:id", favH.Remove)
 	favs.GET("/:id/check", favH.Check)
 
-	// conversations
 	conversations := protected.Group("/conversations")
 	conversations.GET("", chatH.ListConversations)
 	conversations.POST("", chatH.StartConversation)
@@ -94,10 +105,9 @@ func Setup(
 	conversations.GET("/:id/messages", chatH.ListMessages)
 	conversations.POST("/:id/messages", chatH.SendMessage)
 	conversations.GET("/:id/ws", chatH.WebSocket)
+}
 
-	// admin
+func registerAdminRoutes(api *gin.RouterGroup, jwtMgr *jwt.Manager) {
 	admin := api.Group("/admin")
 	admin.Use(middleware.JWTAuth(jwtMgr), middleware.RequireRole(sqlcdb.UserRoleAdmin))
-
-	return r
 }
