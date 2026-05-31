@@ -76,8 +76,33 @@ func (h *ChatHandler) StartConversation(c *gin.Context) {
 	response.OK(c, http.StatusCreated, res)
 }
 
-// ListMessages handles GET /api/conversations/:id/messages.
-func (h *ChatHandler) ListMessages(c *gin.Context) {
+// DeleteConversation handles DELETE /api/conversations/:id.
+func (h *ChatHandler) DeleteConversation(c *gin.Context) {
+	customerID, ok := getCustomerID(c)
+	if !ok {
+		return
+	}
+
+	conversationID, ok := parseUUIDParam(c)
+	if !ok {
+		return
+	}
+
+	if err := h.svc.DeleteConversation(c.Request.Context(), customerID, conversationID); err != nil {
+		if errors.Is(err, service.ErrConversationNotFound) {
+			response.Error(c, http.StatusNotFound, err.Error())
+			return
+		}
+		slog.Error("delete conversation failed", "error", err)
+		response.Error(c, http.StatusInternalServerError, "internal server error")
+		return
+	}
+
+	response.OK(c, http.StatusOK, gin.H{"deleted": true})
+}
+
+// MarkMessagesRead handles POST /api/conversations/:id/read.
+func (h *ChatHandler) MarkMessagesRead(c *gin.Context) {
 	customerID, ok := getCustomerID(c)
 	if !ok {
 		return
@@ -100,6 +125,21 @@ func (h *ChatHandler) ListMessages(c *gin.Context) {
 	}
 	if len(readReceipt.MessageIDs) > 0 {
 		h.hub.Broadcast(conversationID, model.ChatWebSocketOut{Type: "read", Read: readReceipt})
+	}
+
+	response.OK(c, http.StatusOK, readReceipt)
+}
+
+// ListMessages handles GET /api/conversations/:id/messages.
+func (h *ChatHandler) ListMessages(c *gin.Context) {
+	customerID, ok := getCustomerID(c)
+	if !ok {
+		return
+	}
+
+	conversationID, ok := parseUUIDParam(c)
+	if !ok {
+		return
 	}
 
 	res, err := h.svc.GetMessages(c.Request.Context(), customerID, conversationID)

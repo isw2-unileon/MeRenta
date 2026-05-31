@@ -4,8 +4,18 @@ import { useNavigate } from "react-router-dom";
 
 import { StarRating } from "@/components/product/detail/StarRating";
 import { useAuth } from "@/hooks/useAuth";
-import type { ApiResponse } from "@/types/common";
-import type { SearchItemResponse, SearchItemsResponse } from "@/types/item";
+import type { SearchItemResponse } from "@/types/item";
+import {
+  fetchMyItems,
+  fetchReceivedReviews,
+  formatMemberSince,
+  getInitials,
+  initialProductsState,
+  productsReducer,
+  uniqueProductCities,
+  type ReceivedReviewsResponseBase,
+  type ReviewsSummary,
+} from "@/pages/profile/profileShared";
 
 const PRODUCT_TONES: Record<string, string> = {
   sports: "bg-cat-deporte",
@@ -21,13 +31,6 @@ const PRODUCT_TONES: Record<string, string> = {
   other: "bg-primary-light",
 };
 
-interface ProductsState {
-  items: SearchItemResponse[];
-  total: number;
-  loading: boolean;
-  error: string;
-}
-
 interface ReceivedReview {
   review_id: string;
   reviewer_id: string;
@@ -39,19 +42,7 @@ interface ReceivedReview {
   reviewed_at: string;
 }
 
-interface ReviewsSummary {
-  average_rating: number;
-  total: number;
-  distribution: Record<string, number>;
-}
-
-interface ReceivedReviewsResponse {
-  items: ReceivedReview[];
-  total: number;
-  page: number;
-  limit: number;
-  summary: ReviewsSummary;
-}
+type ReceivedReviewsResponse = ReceivedReviewsResponseBase<ReceivedReview>;
 
 interface ReviewsState {
   items: ReceivedReview[];
@@ -61,22 +52,10 @@ interface ReviewsState {
   error: string;
 }
 
-type ProductsAction =
-  | { type: "fetch_start" }
-  | { type: "fetch_success"; payload: SearchItemsResponse }
-  | { type: "fetch_error"; error: string };
-
 type ReviewsAction =
   | { type: "fetch_start" }
   | { type: "fetch_success"; payload: ReceivedReviewsResponse }
   | { type: "fetch_error"; error: string };
-
-const initialProductsState: ProductsState = {
-  items: [],
-  total: 0,
-  loading: true,
-  error: "",
-};
 
 const emptyReviewsSummary: ReviewsSummary = {
   average_rating: 0,
@@ -99,29 +78,6 @@ const PRODUCTS_SKELETON_IDS = [
   "profile-product-skel-5",
   "profile-product-skel-6",
 ];
-
-function productsReducer(state: ProductsState, action: ProductsAction): ProductsState {
-  switch (action.type) {
-    case "fetch_start":
-      return { ...state, loading: true, error: "" };
-    case "fetch_success":
-      return {
-        items: action.payload.items,
-        total: action.payload.total,
-        loading: false,
-        error: "",
-      };
-    case "fetch_error":
-      return {
-        items: [],
-        total: 0,
-        loading: false,
-        error: action.error,
-      };
-    default:
-      return state;
-  }
-}
 
 function reviewsReducer(state: ReviewsState, action: ReviewsAction): ReviewsState {
   switch (action.type) {
@@ -148,67 +104,11 @@ function reviewsReducer(state: ReviewsState, action: ReviewsAction): ReviewsStat
   }
 }
 
-async function fetchMyItems(signal: AbortSignal): Promise<SearchItemsResponse> {
-  const res = await fetch("/api/items/mine?limit=48", {
-    credentials: "include",
-    signal,
-  });
-  const json = (await res.json()) as ApiResponse<SearchItemsResponse>;
-  if (!res.ok || !json.success || !json.data) {
-    throw new Error(json.message ?? json.error ?? "Error al cargar tus productos");
-  }
-  return json.data;
-}
-
-async function fetchReceivedReviews(signal: AbortSignal): Promise<ReceivedReviewsResponse> {
-  const res = await fetch("/api/reviews/received?limit=4", {
-    credentials: "include",
-    signal,
-  });
-  const json = (await res.json()) as ApiResponse<ReceivedReviewsResponse>;
-  if (!res.ok || !json.success || !json.data) {
-    throw new Error(json.message ?? json.error ?? "Error al cargar tus valoraciones");
-  }
-  return json.data;
-}
-
-function getInitials(firstName: string, lastName: string) {
-  return `${firstName[0] ?? ""}${lastName[0] ?? ""}`.toUpperCase();
-}
-
-function formatMemberSince(date?: string) {
-  if (!date) return "";
-
-  const parsed = new Date(date);
-  if (Number.isNaN(parsed.getTime())) return "";
-
-  const months = [
-    "enero",
-    "febrero",
-    "marzo",
-    "abril",
-    "mayo",
-    "junio",
-    "julio",
-    "agosto",
-    "septiembre",
-    "octubre",
-    "noviembre",
-    "diciembre",
-  ];
-
-  return `${months[parsed.getMonth()]} ${parsed.getFullYear()}`;
-}
-
 function getStatusLabel(product: SearchItemResponse) {
   if (product.item_status === "rented") return "Reservado";
   if (product.item_status === "retired") return "Retirado";
   if (product.is_available) return "Disponible";
   return "No disponible";
-}
-
-function uniqueProductCities(products: SearchItemResponse[]) {
-  return Array.from(new Set(products.flatMap((product) => (product.city ? [product.city] : []))));
 }
 
 function reviewerInitials(review: ReceivedReview) {
@@ -227,7 +127,7 @@ function formatRelativeDate(value: string) {
   const diffDays = Math.floor((Date.now() - created.getTime()) / 86_400_000);
   if (diffDays <= 0) return "Hoy";
   if (diffDays === 1) return "Hace 1 dia";
-  if (diffDays < 7) return `Hace ${diffDays} dias`;
+  if (diffDays < 7) return `Hace ${diffDays} días`;
 
   const weeks = Math.floor(diffDays / 7);
   if (weeks === 1) return "Hace 1 semana";
@@ -241,6 +141,18 @@ function formatRelativeDate(value: string) {
 function distributionPercent(count: number, total: number) {
   if (total === 0) return 0;
   return Math.round((count / total) * 100);
+}
+
+function handleAbortable<T>(
+  promise: Promise<T>,
+  onSuccess: (data: T) => void,
+  onError: (message: string) => void,
+  fallbackMessage: string
+) {
+  promise.then(onSuccess).catch((err: unknown) => {
+    if (err instanceof DOMException && err.name === "AbortError") return;
+    onError(err instanceof Error ? err.message : fallbackMessage);
+  });
 }
 
 interface ProductCardProps {
@@ -287,10 +199,10 @@ function ProfileProductCard({ product }: ProductCardProps) {
         </button>
 
         <div className="mt-3 flex items-center justify-between gap-3">
-          <p className="location truncate">{product.city || "Sin ubicacion"}</p>
+          <p className="location truncate">{product.city || "Sin ubicación"}</p>
           <button
             type="button"
-            className="text-primary h-auto p-0 text-[12px]"
+            className="text-primary text-card-loc h-auto p-0"
             onClick={() => navigate(`/product/${product.item_id}/edit`)}
           >
             Editar
@@ -374,7 +286,7 @@ function ReviewsSection({ state }: ReviewsSectionProps) {
             <div>
               <p className="rating-big-number leading-none">{average.toFixed(1)}</p>
               <p className="rating-count-label mt-2">
-                de 5 - {total} {total === 1 ? "valoracion" : "valoraciones"}
+                de 5 - {total} {total === 1 ? "valoración" : "valoraciones"}
               </p>
               <StarRating
                 rating={average}
@@ -466,7 +378,7 @@ function MyProfile() {
       { value: activeProducts, label: "Productos activos" },
       {
         value: reviewsState.summary.average_rating > 0 ? reviewsState.summary.average_rating.toFixed(1) : "0",
-        label: "Valoracion media",
+        label: "Valoración media",
       },
       { value: reviewsState.total, label: "Valoraciones recibidas" },
       { value: productsState.total, label: "Productos publicados" },
@@ -481,32 +393,26 @@ function MyProfile() {
 
   const verifications = [
     { label: "Email vinculado", done: Boolean(user?.email) },
-    { label: "Telefono vinculado", done: Boolean(user?.phone) },
+    { label: "Teléfono vinculado", done: Boolean(user?.phone) },
   ];
 
   useEffect(() => {
     const controller = new AbortController();
 
     dispatchProducts({ type: "fetch_start" });
-    fetchMyItems(controller.signal)
-      .then((data) => dispatchProducts({ type: "fetch_success", payload: data }))
-      .catch((err: unknown) => {
-        if (err instanceof DOMException && err.name === "AbortError") return;
-        dispatchProducts({
-          type: "fetch_error",
-          error: err instanceof Error ? err.message : "Error al cargar tus productos",
-        });
-      });
+    handleAbortable(
+      fetchMyItems(controller.signal),
+      (data) => dispatchProducts({ type: "fetch_success", payload: data }),
+      (message) => dispatchProducts({ type: "fetch_error", error: message }),
+      "Error al cargar tus productos"
+    );
 
-    fetchReceivedReviews(controller.signal)
-      .then((data) => dispatchReviews({ type: "fetch_success", payload: data }))
-      .catch((err: unknown) => {
-        if (err instanceof DOMException && err.name === "AbortError") return;
-        dispatchReviews({
-          type: "fetch_error",
-          error: err instanceof Error ? err.message : "Error al cargar tus valoraciones",
-        });
-      });
+    handleAbortable(
+      fetchReceivedReviews<ReceivedReview>(controller.signal),
+      (data) => dispatchReviews({ type: "fetch_success", payload: data }),
+      (message) => dispatchReviews({ type: "fetch_error", error: message }),
+      "Error al cargar tus valoraciones"
+    );
 
     return () => controller.abort();
   }, []);
@@ -554,8 +460,8 @@ function MyProfile() {
               key={stat.label}
               className={`text-center ${index > 0 ? "border-border-input border-l" : ""}`}
             >
-              <p className={stat.label === "Valoracion media" ? "profile-stat-value--rating" : "profile-stat-value"}>
-                {stat.label === "Valoracion media" && !reviewsState.loading ? (
+              <p className={stat.label === "Valoración media" ? "profile-stat-value--rating" : "profile-stat-value"}>
+                {stat.label === "Valoración media" && !reviewsState.loading ? (
                   <Star
                     className="mr-1 inline"
                     size={17}

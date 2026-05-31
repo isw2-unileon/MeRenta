@@ -17,15 +17,11 @@ const authCookieName = "access_token"
 // JWTAuth validates bearer tokens or auth cookies and injects auth claims into the context.
 func JWTAuth(jwtMgr *jwt.Manager) gin.HandlerFunc {
 	return func(c *gin.Context) {
-		tokenStr, err := c.Cookie(authCookieName)
-		if err != nil || tokenStr == "" {
-			header := c.GetHeader("Authorization")
-			if header == "" || !strings.HasPrefix(header, "Bearer ") {
-				response.Error(c, http.StatusUnauthorized, "missing or invalid authorization header")
-				c.Abort()
-				return
-			}
-			tokenStr = strings.TrimPrefix(header, "Bearer ")
+		tokenStr := authTokenFromRequest(c)
+		if tokenStr == "" {
+			response.Error(c, http.StatusUnauthorized, "missing or invalid authorization header")
+			c.Abort()
+			return
 		}
 		claims, err := jwtMgr.Verify(tokenStr)
 		if err != nil {
@@ -44,6 +40,19 @@ func JWTAuth(jwtMgr *jwt.Manager) gin.HandlerFunc {
 		c.Set("role", role)
 		c.Next()
 	}
+}
+
+func authTokenFromRequest(c *gin.Context) string {
+	if tokenStr, err := c.Cookie(authCookieName); err == nil && tokenStr != "" {
+		return tokenStr
+	}
+
+	header := c.GetHeader("Authorization")
+	if strings.HasPrefix(header, "Bearer ") {
+		return strings.TrimPrefix(header, "Bearer ")
+	}
+
+	return strings.TrimSpace(c.Query("access_token"))
 }
 
 // RequireRole restricts access to requests with the allowed roles.

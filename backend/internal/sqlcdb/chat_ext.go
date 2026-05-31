@@ -25,6 +25,12 @@ type SendMessageParams struct {
 	Body           string    `json:"body"`
 }
 
+// DeleteConversationParams holds parameters for DeleteConversation.
+type DeleteConversationParams struct {
+	ConversationID uuid.UUID `json:"conversation_id"`
+	CustomerID     uuid.UUID `json:"customer_id"`
+}
+
 // ItemChatInfoRow contains the item fields needed to start a conversation.
 type ItemChatInfoRow struct {
 	ItemID      uuid.UUID      `json:"item_id"`
@@ -276,4 +282,19 @@ func (q *Queries) MarkMessagesRead(ctx context.Context, conversationID, readerID
 	}
 
 	return messageIDs, rows.Err()
+}
+
+const deleteConversation = `
+DELETE FROM conversation
+WHERE conversation_id = $1
+  AND (customer_1_id = $2 OR customer_2_id = $2)
+RETURNING conversation_id
+`
+
+// DeleteConversation deletes a conversation visible to the current user.
+func (q *Queries) DeleteConversation(ctx context.Context, arg DeleteConversationParams) (uuid.UUID, error) {
+	row := q.db.QueryRow(ctx, deleteConversation, arg.ConversationID, arg.CustomerID)
+	var id uuid.UUID
+	err := row.Scan(&id)
+	return id, err
 }

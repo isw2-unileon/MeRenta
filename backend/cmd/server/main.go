@@ -54,13 +54,14 @@ func main() {
 		cfg.JWTLeeway,
 	)
 
-	authSvc := service.NewAuthService(q, jwtMgr)
+	storageCli := storage.NewSupabaseClient(cfg.SupabaseURL, cfg.SupabaseServiceRoleKey)
+
+	authSvc := service.NewAuthService(q, jwtMgr, storageCli, "avatar")
 	authH := handler.NewAuthHandler(authSvc)
 
 	itemSvc := service.NewItemService(q)
 	itemH := handler.NewItemHandler(itemSvc)
 
-	storageCli := storage.NewSupabaseClient(cfg.SupabaseURL, cfg.SupabaseServiceRoleKey)
 	itemImgSvc := service.NewItemImageService(q, storageCli, "item")
 	itemImgH := handler.NewItemImageHandler(itemImgSvc)
 

@@ -2,7 +2,6 @@
 package handler
 
 import (
-	"context"
 	"errors"
 	"log/slog"
 	"net/http"
@@ -63,22 +62,9 @@ func (h *ChatHandler) handleWebSocketConnection(ws *websocket.Conn, customerID, 
 	out := h.hub.Subscribe(conversationID)
 	defer h.hub.Unsubscribe(conversationID, out)
 
-	h.broadcastReadReceipt(ws.Request().Context(), customerID, conversationID)
-
 	go h.forwardWebSocketEvents(ws, out)
 
 	h.receiveWebSocketEvents(ws, customerID, conversationID, out)
-}
-
-func (h *ChatHandler) broadcastReadReceipt(ctx context.Context, customerID, conversationID uuid.UUID) {
-	readReceipt, err := h.svc.MarkMessagesRead(ctx, customerID, conversationID)
-	if err != nil {
-		slog.Error("websocket mark messages read failed", "error", err)
-		return
-	}
-	if len(readReceipt.MessageIDs) > 0 {
-		h.hub.Broadcast(conversationID, model.ChatWebSocketOut{Type: "read", Read: readReceipt})
-	}
 }
 
 func (h *ChatHandler) forwardWebSocketEvents(ws *websocket.Conn, out <-chan model.ChatWebSocketOut) {
