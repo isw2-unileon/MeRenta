@@ -35,6 +35,7 @@ type chatQuerier interface {
 	ListMessages(ctx context.Context, conversationID uuid.UUID) ([]sqlcdb.MessageRow, error)
 	TouchConversation(ctx context.Context, conversationID uuid.UUID) error
 	MarkMessagesRead(ctx context.Context, conversationID, readerID uuid.UUID) ([]uuid.UUID, error)
+	DeleteConversation(ctx context.Context, arg sqlcdb.DeleteConversationParams) (uuid.UUID, error)
 }
 
 // ChatService handles conversation and message use cases.
@@ -150,6 +151,22 @@ func (s *ChatService) MarkMessagesRead(ctx context.Context, customerID, conversa
 		ReaderID:       customerID.String(),
 		MessageIDs:     ids,
 	}, nil
+}
+
+// DeleteConversation removes a conversation visible to the caller.
+func (s *ChatService) DeleteConversation(ctx context.Context, customerID, conversationID uuid.UUID) error {
+	_, err := s.q.DeleteConversation(ctx, sqlcdb.DeleteConversationParams{
+		ConversationID: conversationID,
+		CustomerID:     customerID,
+	})
+	if err != nil {
+		if errors.Is(err, pgx.ErrNoRows) {
+			return ErrConversationNotFound
+		}
+		return err
+	}
+
+	return nil
 }
 
 // EnsureParticipant verifies that the customer belongs to the conversation.
