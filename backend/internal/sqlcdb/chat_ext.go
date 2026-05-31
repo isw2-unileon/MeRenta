@@ -51,6 +51,7 @@ type ConversationRow struct {
 	LastMessage    string             `json:"last_message"`
 	LastMessageAt  pgtype.Timestamptz `json:"last_message_at"`
 	UpdatedAt      pgtype.Timestamptz `json:"updated_at"`
+	UnreadCount    int64              `json:"unread_count"`
 }
 
 // MessageRow contains a message and its timestamps.
@@ -106,7 +107,8 @@ SELECT
     COALESCE(other_user.avatar_url, '') AS other_avatar_url,
     COALESCE(last_msg.content, '') AS last_message,
     last_msg.sent_at AS last_message_at,
-    c.created_at
+    c.created_at,
+    COALESCE(unread.unread_count, 0) AS unread_count
 FROM conversation c
 JOIN item i ON i.item_id = c.item_id
 JOIN customer other_user ON other_user.customer_id = CASE
@@ -120,7 +122,20 @@ LEFT JOIN LATERAL (
     ORDER BY sent_at DESC, message_id DESC
     LIMIT 1
 ) last_msg ON true
-WHERE c.customer_1_id = $1 OR c.customer_2_id = $1
+LEFT JOIN LATERAL (
+    SELECT COUNT(*) AS unread_count
+    FROM message
+    WHERE conversation_id = c.conversation_id
+      AND sender_id <> $1
+      AND is_read = false
+) unread ON true
+WHERE (c.customer_1_id = $1 OR c.customer_2_id = $1)
+  AND NOT EXISTS (
+      SELECT 1
+      FROM conversation_deleted cd
+      WHERE cd.conversation_id = c.conversation_id
+        AND cd.customer_id = $1
+  )
 ORDER BY COALESCE(last_msg.sent_at, c.created_at) DESC
 `
 
@@ -146,6 +161,7 @@ func (q *Queries) ListConversations(ctx context.Context, customerID uuid.UUID) (
 			&row.LastMessage,
 			&row.LastMessageAt,
 			&row.UpdatedAt,
+			&row.UnreadCount,
 		); err != nil {
 			return nil, err
 		}
@@ -166,7 +182,8 @@ SELECT
     COALESCE(other_user.avatar_url, '') AS other_avatar_url,
     COALESCE(last_msg.content, '') AS last_message,
     last_msg.sent_at AS last_message_at,
-    c.created_at
+    c.created_at,
+    COALESCE(unread.unread_count, 0) AS unread_count
 FROM conversation c
 JOIN item i ON i.item_id = c.item_id
 JOIN customer other_user ON other_user.customer_id = CASE
@@ -180,8 +197,21 @@ LEFT JOIN LATERAL (
     ORDER BY sent_at DESC, message_id DESC
     LIMIT 1
 ) last_msg ON true
+LEFT JOIN LATERAL (
+    SELECT COUNT(*) AS unread_count
+    FROM message
+    WHERE conversation_id = c.conversation_id
+      AND sender_id <> $2
+      AND is_read = false
+) unread ON true
 WHERE c.conversation_id = $1
   AND (c.customer_1_id = $2 OR c.customer_2_id = $2)
+  AND NOT EXISTS (
+      SELECT 1
+      FROM conversation_deleted cd
+      WHERE cd.conversation_id = c.conversation_id
+        AND cd.customer_id = $2
+  )
 LIMIT 1
 `
 
@@ -200,6 +230,7 @@ func (q *Queries) GetConversation(ctx context.Context, conversationID, customerI
 		&c.LastMessage,
 		&c.LastMessageAt,
 		&c.UpdatedAt,
+		&c.UnreadCount,
 	)
 	return c, err
 }
@@ -285,16 +316,43 @@ func (q *Queries) MarkMessagesRead(ctx context.Context, conversationID, readerID
 }
 
 const deleteConversation = `
-DELETE FROM conversation
+INSERT INTO conversation_deleted (conversation_id, customer_id)
+SELECT conversation_id, $2
+FROM conversation
 WHERE conversation_id = $1
   AND (customer_1_id = $2 OR customer_2_id = $2)
+ON CONFLICT (conversation_id, customer_id)
+DO UPDATE SET deleted_at = now()
 RETURNING conversation_id
 `
 
-// DeleteConversation deletes a conversation visible to the current user.
+// DeleteConversation hides a conversation for the current user.
 func (q *Queries) DeleteConversation(ctx context.Context, arg DeleteConversationParams) (uuid.UUID, error) {
 	row := q.db.QueryRow(ctx, deleteConversation, arg.ConversationID, arg.CustomerID)
 	var id uuid.UUID
 	err := row.Scan(&id)
 	return id, err
+}
+
+const restoreConversationForCustomer = `
+DELETE FROM conversation_deleted
+WHERE conversation_id = $1
+  AND customer_id = $2
+`
+
+// RestoreConversationForCustomer makes a previously hidden conversation visible again for a customer.
+func (q *Queries) RestoreConversationForCustomer(ctx context.Context, conversationID, customerID uuid.UUID) error {
+	_, err := q.db.Exec(ctx, restoreConversationForCustomer, conversationID, customerID)
+	return err
+}
+
+const restoreConversation = `
+DELETE FROM conversation_deleted
+WHERE conversation_id = $1
+`
+
+// RestoreConversation makes a conversation visible again for all participants.
+func (q *Queries) RestoreConversation(ctx context.Context, conversationID uuid.UUID) error {
+	_, err := q.db.Exec(ctx, restoreConversation, conversationID)
+	return err
 }

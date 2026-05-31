@@ -17,6 +17,7 @@ interface ConversationResponse {
   last_message?: string;
   last_message_at?: string;
   updated_at: string;
+  unread_count: number;
 }
 
 interface ConversationsResponse {
@@ -118,26 +119,16 @@ function refreshConversations(
   items: ConversationResponse[],
   activeConversationID?: string
 ): ChatState {
-  const previousByID = new Map(state.conversations.map((conversation) => [conversation.conversation_id, conversation]));
   const unreadCountsByConversationID = new Map(state.unreadCountsByConversationID);
 
   for (const conversation of items) {
-    const previous = previousByID.get(conversation.conversation_id);
-    const changed =
-      previous &&
-      (previous.last_message_at !== conversation.last_message_at ||
-        previous.last_message !== conversation.last_message);
-
-    if (changed && conversation.conversation_id !== activeConversationID) {
-      unreadCountsByConversationID.set(
-        conversation.conversation_id,
-        (unreadCountsByConversationID.get(conversation.conversation_id) ?? 0) + 1
-      );
+    if (conversation.conversation_id === activeConversationID) {
+      unreadCountsByConversationID.delete(conversation.conversation_id);
+    } else if (conversation.unread_count > 0) {
+      unreadCountsByConversationID.set(conversation.conversation_id, conversation.unread_count);
+    } else {
+      unreadCountsByConversationID.delete(conversation.conversation_id);
     }
-  }
-
-  if (activeConversationID) {
-    unreadCountsByConversationID.delete(activeConversationID);
   }
 
   return {
@@ -160,6 +151,8 @@ function applyIncomingMessage(state: ChatState, message: MessageResponse, active
           last_message: message.body,
           last_message_at: message.created_at,
           updated_at: message.created_at,
+          unread_count:
+            message.conversation_id === activeConversationID || message.is_mine ? 0 : conversation.unread_count + 1,
         }
       : conversation
   );
@@ -212,7 +205,7 @@ function mergeMessages(
 function chatReducer(state: ChatState, action: ChatAction): ChatState {
   switch (action.type) {
     case "conversations:success":
-      return { ...state, conversations: sortConversations(action.items), loadingConversations: false };
+      return refreshConversations(state, action.items);
     case "conversations:refresh":
       return refreshConversations(state, action.items, action.activeConversationID);
     case "conversations:error":
@@ -220,7 +213,13 @@ function chatReducer(state: ChatState, action: ChatAction): ChatState {
     case "conversation:open": {
       const unreadCountsByConversationID = new Map(state.unreadCountsByConversationID);
       unreadCountsByConversationID.delete(action.conversationID);
-      return { ...state, unreadCountsByConversationID };
+      return {
+        ...state,
+        conversations: state.conversations.map((conversation) =>
+          conversation.conversation_id === action.conversationID ? { ...conversation, unread_count: 0 } : conversation
+        ),
+        unreadCountsByConversationID,
+      };
     }
     case "conversation:delete": {
       const unreadCountsByConversationID = new Map(state.unreadCountsByConversationID);
@@ -339,21 +338,21 @@ async function apiGet<T>(url: string, signal?: AbortSignal): Promise<T> {
 
 async function apiGetWithRetry<T>(url: string, signal?: AbortSignal): Promise<T> {
   const delays = [700, 1400, 2500];
+  let lastError: unknown;
 
-  const attempt = async (index: number): Promise<T> => {
+  for (let attempt = 0; attempt <= delays.length; attempt += 1) {
     try {
       return await apiGet<T>(url, signal);
     } catch (err) {
       if (err instanceof Error && err.name === "AbortError") throw err;
-      if (index >= delays.length) {
-        throw err instanceof Error ? err : new Error("Error al cargar los datos");
+      lastError = err;
+      if (attempt < delays.length) {
+        await wait(delays[attempt] ?? 0, signal);
       }
-      await wait(delays[index] ?? 0, signal);
-      return attempt(index + 1);
     }
-  };
+  }
 
-  return attempt(0);
+  throw lastError instanceof Error ? lastError : new Error("Error al cargar los datos");
 }
 
 async function sendMessage(conversationID: string, body: string): Promise<MessageResponse> {
@@ -377,7 +376,7 @@ async function deleteConversation(conversationID: string): Promise<void> {
   });
   const json = (await res.json()) as ApiResponse<{ deleted: boolean }>;
   if (!res.ok || !json.success) {
-    throw new Error(json.message ?? json.error ?? "Error al eliminar la conversación");
+    throw new Error(json.message ?? json.error ?? "Error al eliminar la conversacion");
   }
 }
 
@@ -450,7 +449,7 @@ function ConversationRow({
         <input
           type="checkbox"
           className="size-4 accent-[#dc2626]"
-          aria-label={`Seleccionar conversación con ${conversation.other_user_name}`}
+          aria-label={`Seleccionar conversacion con ${conversation.other_user_name}`}
           checked={selected}
           onChange={onSelect}
         />
@@ -468,7 +467,7 @@ function ConversationRow({
           <span className="text-ink block truncate text-[15px] font-bold">{conversation.other_user_name}</span>
           <span className="text-primary block truncate text-[11px] font-medium">{conversation.item_title}</span>
           <span className={`${unread ? "text-ink font-medium" : "text-subtle"} text-card-loc block truncate`}>
-            {conversation.last_message ?? "Sin mensajes todavía"}
+            {conversation.last_message ?? "Sin mensajes todavia"}
           </span>
         </span>
       </button>
@@ -624,7 +623,7 @@ function ConversationList({
           ))
         ) : (
           <p className="text-subtle p-5 text-[13px]">
-            {searchQuery.trim() ? "No hay conversaciones que coincidan." : "Todavía no tienes conversaciones."}
+            {searchQuery.trim() ? "No hay conversaciones que coincidan." : "Todavia no tienes conversaciones."}
           </p>
         )}
       </div>
@@ -766,15 +765,15 @@ function DeleteConversationDialog({
   onConfirm: () => void;
 }) {
   if (count === 0) return null;
-  const label = count === 1 ? "la conversación seleccionada" : `las ${count} conversaciones seleccionadas`;
+  const label = count === 1 ? "la conversacion seleccionada" : `las ${count} conversaciones seleccionadas`;
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 px-4">
       <div className="bg-page border-border-main w-full max-w-100 rounded-lg border p-5 shadow-xl">
         <div className="flex items-start justify-between gap-4">
           <div>
-            <h2 className="text-ink text-logo-footer font-bold">Eliminar conversaciones</h2>
-            <p className="text-subtle mt-2 text-[14px]">Desea eliminar {label}?</p>
+            <h2 className="text-ink text-[18px] font-bold">Eliminar conversaciones</h2>
+            <p className="text-subtle mt-2 text-[14px]">Desea eliminar {label} de tu bandeja?</p>
           </div>
           <button
             type="button"
@@ -794,7 +793,7 @@ function DeleteConversationDialog({
             onClick={onCancel}
             disabled={deleting}
           >
-            Cancelar
+            No
           </button>
           <button
             type="button"
