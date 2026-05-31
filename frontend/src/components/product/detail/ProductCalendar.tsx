@@ -79,7 +79,8 @@ function getDaysInMonth(year: number, month: number): number {
 function getFirstDayOffset(year: number, month: number): number {
   const m = month < 2 ? month + 12 : month;
   const y = month < 2 ? year - 1 : year;
-  const dayOfWeek = (1 + Math.floor((13 * (m + 1)) / 5) + y + Math.floor(y / 4) - Math.floor(y / 100) + Math.floor(y / 400)) % 7;
+  const dayOfWeek =
+    (1 + Math.floor((13 * (m + 1)) / 5) + y + Math.floor(y / 4) - Math.floor(y / 100) + Math.floor(y / 400)) % 7;
   return (dayOfWeek + 5) % 7;
 }
 
@@ -198,7 +199,10 @@ function ProductCalendar({
             const isEnd = isSameCalendarDay(year, month, day, selectedEnd);
             const isSelected = isStart || isEnd;
             const inRange =
-              selectedStart !== null && selectedEnd !== null && isoDate > toISODate(selectedStart) && isoDate < toISODate(selectedEnd);
+              selectedStart !== null &&
+              selectedEnd !== null &&
+              isoDate > toISODate(selectedStart) &&
+              isoDate < toISODate(selectedEnd);
 
             let cellClass = "calendar-day-cell p-0";
             let textClass = "calendar-day";

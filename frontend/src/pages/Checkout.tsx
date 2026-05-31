@@ -206,7 +206,10 @@ function Checkout() {
         }
       } catch (err) {
         if (!guard.cancelled) {
-          dispatch({ type: "load:error", message: err instanceof Error ? err.message : "Error al cargar el checkout." });
+          dispatch({
+            type: "load:error",
+            message: err instanceof Error ? err.message : "Error al cargar el checkout.",
+          });
         }
       }
     };

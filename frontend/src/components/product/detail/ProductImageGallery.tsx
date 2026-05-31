@@ -4,7 +4,13 @@ import { ChevronLeft, ChevronRight, Heart, X } from "lucide-react";
 import type { ItemImageResponse } from "@/types/item";
 import * as React from "react";
 
-const PLACEHOLDER_THUMB_IDS = ["thumb-placeholder-1", "thumb-placeholder-2", "thumb-placeholder-3", "thumb-placeholder-4", "thumb-placeholder-5"];
+const PLACEHOLDER_THUMB_IDS = [
+  "thumb-placeholder-1",
+  "thumb-placeholder-2",
+  "thumb-placeholder-3",
+  "thumb-placeholder-4",
+  "thumb-placeholder-5",
+];
 
 interface ProductImageGalleryProps {
   /** Ordered list of images returned by the API. */
