@@ -339,21 +339,21 @@ async function apiGet<T>(url: string, signal?: AbortSignal): Promise<T> {
 
 async function apiGetWithRetry<T>(url: string, signal?: AbortSignal): Promise<T> {
   const delays = [700, 1400, 2500];
-  let lastError: unknown;
 
-  for (let attempt = 0; attempt <= delays.length; attempt += 1) {
+  const attempt = async (index: number): Promise<T> => {
     try {
       return await apiGet<T>(url, signal);
     } catch (err) {
       if (err instanceof Error && err.name === "AbortError") throw err;
-      lastError = err;
-      if (attempt < delays.length) {
-        await wait(delays[attempt] ?? 0, signal);
+      if (index >= delays.length) {
+        throw err instanceof Error ? err : new Error("Error al cargar los datos");
       }
+      await wait(delays[index] ?? 0, signal);
+      return attempt(index + 1);
     }
-  }
+  };
 
-  throw lastError instanceof Error ? lastError : new Error("Error al cargar los datos");
+  return attempt(0);
 }
 
 async function sendMessage(conversationID: string, body: string): Promise<MessageResponse> {
@@ -377,7 +377,7 @@ async function deleteConversation(conversationID: string): Promise<void> {
   });
   const json = (await res.json()) as ApiResponse<{ deleted: boolean }>;
   if (!res.ok || !json.success) {
-    throw new Error(json.message ?? json.error ?? "Error al eliminar la conversacion");
+    throw new Error(json.message ?? json.error ?? "Error al eliminar la conversación");
   }
 }
 
@@ -450,7 +450,7 @@ function ConversationRow({
         <input
           type="checkbox"
           className="size-4 accent-[#dc2626]"
-          aria-label={`Seleccionar conversacion con ${conversation.other_user_name}`}
+          aria-label={`Seleccionar conversación con ${conversation.other_user_name}`}
           checked={selected}
           onChange={onSelect}
         />
@@ -468,7 +468,7 @@ function ConversationRow({
           <span className="text-ink block truncate text-[15px] font-bold">{conversation.other_user_name}</span>
           <span className="text-primary block truncate text-[11px] font-medium">{conversation.item_title}</span>
           <span className={`${unread ? "text-ink font-medium" : "text-subtle"} text-card-loc block truncate`}>
-            {conversation.last_message ?? "Sin mensajes todavia"}
+            {conversation.last_message ?? "Sin mensajes todavía"}
           </span>
         </span>
       </button>
@@ -624,7 +624,7 @@ function ConversationList({
           ))
         ) : (
           <p className="text-subtle p-5 text-[13px]">
-            {searchQuery.trim() ? "No hay conversaciones que coincidan." : "Todavia no tienes conversaciones."}
+            {searchQuery.trim() ? "No hay conversaciones que coincidan." : "Todavía no tienes conversaciones."}
           </p>
         )}
       </div>
@@ -766,14 +766,14 @@ function DeleteConversationDialog({
   onConfirm: () => void;
 }) {
   if (count === 0) return null;
-  const label = count === 1 ? "la conversacion seleccionada" : `las ${count} conversaciones seleccionadas`;
+  const label = count === 1 ? "la conversación seleccionada" : `las ${count} conversaciones seleccionadas`;
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 px-4">
       <div className="bg-page border-border-main w-full max-w-100 rounded-lg border p-5 shadow-xl">
         <div className="flex items-start justify-between gap-4">
           <div>
-            <h2 className="text-ink text-[18px] font-bold">Eliminar conversaciones</h2>
+            <h2 className="text-ink text-logo-footer font-bold">Eliminar conversaciones</h2>
             <p className="text-subtle mt-2 text-[14px]">Desea eliminar {label}?</p>
           </div>
           <button
@@ -794,7 +794,7 @@ function DeleteConversationDialog({
             onClick={onCancel}
             disabled={deleting}
           >
-            No
+            Cancelar
           </button>
           <button
             type="button"
