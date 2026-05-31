@@ -29,8 +29,8 @@
   --text-body: 14px;
   --text-auth-h2: 24px;
   --text-error-title: 19px;
-  --text-error-pay-ttl: 28px;
-  --text-error-pay-dsc: 15px;
+  --text-error-pay-ttl: 22px;
+  --text-error-pay-dsc: 14px;
   --text-card-sm: 13px;
   --text-card-loc: 12px;
   --text-eyebrow: 11px;
@@ -203,7 +203,7 @@
   --spacing-btn-booking: 52px;
   --spacing-btn-lg: 48px;
   --spacing-btn-error: 46px;
-  --spacing-btn-error-pay: 52px;
+  --spacing-btn-error-pay: 44px;
   --spacing-btn-md: 40px;
   --spacing-btn-sm: 32px;
   --spacing-btn-profile: 36px;
@@ -214,9 +214,9 @@
   --spacing-panel-payment: 660px;
   --spacing-panel-summary: 576px;
   --spacing-error-card: 418px;
-  --spacing-error-icon: 120px;
-  --spacing-error-ring: 144px;
-  --spacing-modal-error-pay: 600px;
+  --spacing-error-icon: 72px;
+  --spacing-error-ring: 88px;
+  --spacing-modal-error-pay: 480px;
   --spacing-main-img: 480px;
   --spacing-thumb-w: 154px;
   --spacing-thumb-h: 96px;
@@ -1681,13 +1681,18 @@
 
   /* ---- Stepper ---- */
   nav.stepper {
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    height: var(--spacing-stepper);
     background-color: white;
     border-bottom: 1px solid var(--color-border-main);
     border-top: 1px solid var(--color-border-main);
+    overflow: hidden;
+  }
+  .stepper-inner {
+    display: flex;
+    align-items: center;
+    height: var(--spacing-stepper);
+    max-width: 1300px;
+    margin: 0 auto;
+    padding: 0 var(--spacing-layout-margin);
   }
   .stepper-step {
     display: flex;
@@ -1733,9 +1738,9 @@
     color: var(--color-footer-text);
   }
   .stepper-line {
-    width: var(--spacing-stepper-line);
+    flex: 1;
+    min-width: 24px;
     height: 2px;
-    flex-shrink: 0;
   }
   .stepper-line--done {
     background-color: var(--color-step-line-done);
@@ -1940,12 +1945,12 @@
     border: 1px solid var(--color-border-error-pay);
     border-radius: 24px;
     width: var(--spacing-modal-error-pay);
-    overflow: hidden;
-    position: relative;
+    max-height: 90vh;
+    overflow-y: auto;
     display: flex;
     flex-direction: column;
     align-items: center;
-    padding: 39px 27px 27px;
+    padding: 28px 28px 24px;
   }
   .error-pay-icon-ring {
     width: var(--spacing-error-ring);

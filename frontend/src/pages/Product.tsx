@@ -99,6 +99,13 @@ const INITIAL_STATE: ProductState = {
   error: "",
   dateRange: { start: null, end: null },
 };
+const PRODUCT_SKELETON_THUMB_IDS = [
+  "product-skel-thumb-1",
+  "product-skel-thumb-2",
+  "product-skel-thumb-3",
+  "product-skel-thumb-4",
+  "product-skel-thumb-5",
+];
 
 function productReducer(state: ProductState, action: ProductAction): ProductState {
   switch (action.type) {
@@ -129,9 +136,9 @@ function ProductSkeleton() {
         <div className="flex flex-col gap-6">
           <div className="bg-primary-light h-main-img rounded-lg" />
           <div className="flex gap-2">
-            {Array.from({ length: 5 }, (_, i) => (
+            {PRODUCT_SKELETON_THUMB_IDS.map((id) => (
               <div
-                key={i}
+                key={id}
                 className="bg-primary-light w-thumb-w h-24 shrink-0 rounded-lg"
               />
             ))}
@@ -308,7 +315,7 @@ function Product() {
 
               {/* Title, badges and rating */}
               <div>
-                <h2 className="text-ink mb-2 text-[22px] leading-tight font-bold">{item.title}</h2>
+                <h2 className="text-ink mb-2 text-[22px] leading-tight font-semibold">{item.title}</h2>
 
                 <div className="mb-2 flex flex-wrap items-center gap-2">
                   {categoryLabel && <span className="product-estado-badge">{categoryLabel}</span>}

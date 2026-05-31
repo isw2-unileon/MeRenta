@@ -56,6 +56,20 @@ const SORT_OPTIONS = [
   { value: "price_desc", label: "Precio: mayor a menor" },
   { value: "oldest", label: "Mas antiguos" },
 ];
+const SEARCH_SKELETON_IDS = [
+  "search-skel-1",
+  "search-skel-2",
+  "search-skel-3",
+  "search-skel-4",
+  "search-skel-5",
+  "search-skel-6",
+  "search-skel-7",
+  "search-skel-8",
+  "search-skel-9",
+  "search-skel-10",
+  "search-skel-11",
+  "search-skel-12",
+];
 
 interface SearchState {
   items: SearchItemResponse[];
@@ -159,7 +173,7 @@ interface FilterSectionProps {
 function FilterSection({ title, children }: FilterSectionProps) {
   return (
     <section className="border-border-main border-b p-5">
-      <h3 className="mb-3 text-[15px] font-bold">{title}</h3>
+      <h3 className="mb-3 text-[15px] font-semibold">{title}</h3>
       {children}
     </section>
   );
@@ -276,9 +290,9 @@ function ProductCard({ item, isFavorite, onToggleFavorite, to }: ProductCardProp
 function SearchSkeleton() {
   return (
     <>
-      {Array.from({ length: 12 }, (_, index) => (
+      {SEARCH_SKELETON_IDS.map((id) => (
         <div
-          key={index}
+          key={id}
           className="border-border-main bg-page animate-pulse overflow-hidden rounded-xl border"
         >
           <div className="bg-primary-light h-42" />
@@ -763,7 +777,7 @@ function Search() {
 
           {!state.loading && state.items.length === 0 && !state.error && (
             <div className="flex min-h-90 flex-col items-center justify-center text-center">
-              <h2 className="text-section-hd font-bold">No hay productos con estos filtros</h2>
+              <h2 className="text-section-hd font-semibold">No hay productos con estos filtros</h2>
               <p className="text-body-color mt-2">Prueba con otra busqueda o limpia los filtros activos.</p>
             </div>
           )}
@@ -789,7 +803,7 @@ function Search() {
                     if (prevPage === undefined || pageNumber - prevPage <= 1) return null;
                     return (
                       <span className="border-border-input text-subtle flex h-10 min-w-10 items-center justify-center rounded-lg border bg-white px-3">
-                        ...
+                        …
                       </span>
                     );
                   })()}
