@@ -61,6 +61,7 @@ const dayLabelFormatter = new Intl.DateTimeFormat("es-ES", {
   day: "numeric",
   month: "long",
 });
+const CHAT_SKELETON_IDS = ["chat-skel-1", "chat-skel-2", "chat-skel-3", "chat-skel-4", "chat-skel-5"];
 
 interface ChatState {
   conversations: ConversationResponse[];
@@ -278,13 +279,14 @@ function chatReducer(state: ChatState, action: ChatAction): ChatState {
 }
 
 function initialsFromName(name: string): string {
-  return name
-    .split(" ")
-    .filter(Boolean)
-    .map((part) => part[0])
-    .join("")
-    .toUpperCase()
-    .slice(0, 2);
+  let result = "";
+  for (const part of name.split(" ")) {
+    const trimmed = part.trim();
+    if (!trimmed) continue;
+    result += trimmed[0] ?? "";
+    if (result.length >= 2) break;
+  }
+  return result.toUpperCase().slice(0, 2);
 }
 
 function formatChatTime(iso?: string): string {
@@ -338,21 +340,21 @@ async function apiGet<T>(url: string, signal?: AbortSignal): Promise<T> {
 
 async function apiGetWithRetry<T>(url: string, signal?: AbortSignal): Promise<T> {
   const delays = [700, 1400, 2500];
-  let lastError: unknown;
 
-  for (let attempt = 0; attempt <= delays.length; attempt += 1) {
+  const attemptFetch = async (attempt: number): Promise<T> => {
     try {
       return await apiGet<T>(url, signal);
     } catch (err) {
       if (err instanceof Error && err.name === "AbortError") throw err;
-      lastError = err;
       if (attempt < delays.length) {
         await wait(delays[attempt] ?? 0, signal);
+        return attemptFetch(attempt + 1);
       }
+      throw err instanceof Error ? err : new Error("Error al cargar los datos");
     }
-  }
+  };
 
-  throw lastError instanceof Error ? lastError : new Error("Error al cargar los datos");
+  return attemptFetch(0);
 }
 
 async function sendMessage(conversationID: string, body: string): Promise<MessageResponse> {
@@ -376,7 +378,7 @@ async function deleteConversation(conversationID: string): Promise<void> {
   });
   const json = (await res.json()) as ApiResponse<{ deleted: boolean }>;
   if (!res.ok || !json.success) {
-    throw new Error(json.message ?? json.error ?? "Error al eliminar la conversacion");
+    throw new Error(json.message ?? json.error ?? "Error al eliminar la conversación");
   }
 }
 
@@ -449,7 +451,7 @@ function ConversationRow({
         <input
           type="checkbox"
           className="size-4 accent-[#dc2626]"
-          aria-label={`Seleccionar conversacion con ${conversation.other_user_name}`}
+          aria-label={`Seleccionar conversación con ${conversation.other_user_name}`}
           checked={selected}
           onChange={onSelect}
         />
@@ -467,7 +469,7 @@ function ConversationRow({
           <span className="text-ink block truncate text-[15px] font-bold">{conversation.other_user_name}</span>
           <span className="text-primary block truncate text-[11px] font-medium">{conversation.item_title}</span>
           <span className={`${unread ? "text-ink font-medium" : "text-subtle"} text-card-loc block truncate`}>
-            {conversation.last_message ?? "Sin mensajes todavia"}
+            {conversation.last_message ?? "Sin mensajes todavía"}
           </span>
         </span>
       </button>
@@ -552,7 +554,7 @@ function ConversationList({
   return (
     <aside className="border-border-main bg-page flex w-[320px] shrink-0 flex-col border-r">
       <div className="border-border-main border-b p-4">
-        <h1 className="text-error-title font-bold">Mensajes</h1>
+        <h1 className="text-error-title font-semibold">Mensajes</h1>
         <label className="relative mt-5 mb-0 block">
           <Search
             size={16}
@@ -595,9 +597,9 @@ function ConversationList({
       <div className="min-h-0 flex-1 overflow-y-auto p-6">
         {loading ? (
           <div className="space-y-4">
-            {Array.from({ length: 5 }, (_, index) => (
+            {CHAT_SKELETON_IDS.map((id) => (
               <div
-                key={index}
+                key={id}
                 className="flex animate-pulse items-center gap-3"
               >
                 <div className="bg-primary-light size-11 rounded-full" />
@@ -623,7 +625,7 @@ function ConversationList({
           ))
         ) : (
           <p className="text-subtle p-5 text-[13px]">
-            {searchQuery.trim() ? "No hay conversaciones que coincidan." : "Todavia no tienes conversaciones."}
+            {searchQuery.trim() ? "No hay conversaciones que coincidan." : "Todavía no tienes conversaciones."}
           </p>
         )}
       </div>
@@ -639,14 +641,14 @@ function ChatHeader({
   onViewProduct: () => void;
 }) {
   return (
-    <header className="border-border-main bg-page flex h-18 shrink-0 items-center justify-between border-b px-6">
+    <header className="border-border-main bg-page h-error-icon flex shrink-0 items-center justify-between border-b px-6">
       <div className="flex items-center gap-3">
         <ChatAvatar
           name={conversation.other_user_name}
           image={conversation.other_avatar_url}
         />
         <div>
-          <h2 className="text-[17px] font-bold">{conversation.other_user_name}</h2>
+          <h2 className="text-[17px] font-semibold">{conversation.other_user_name}</h2>
           <p className="bg-primary-light text-primary inline-flex max-w-90 truncate rounded-full px-2.5 py-0.5 text-[10px] font-medium">
             {conversation.item_title} · {Math.round(conversation.item_price)} EUR/dia
           </p>
@@ -730,7 +732,7 @@ function ChatComposer({
 }) {
   return (
     <form
-      className="border-border-main bg-page flex h-18 shrink-0 items-center gap-3 border-t px-4"
+      className="border-border-main bg-page h-error-icon flex shrink-0 items-center gap-3 border-t px-4"
       onSubmit={onSubmit}
     >
       <input
@@ -765,14 +767,14 @@ function DeleteConversationDialog({
   onConfirm: () => void;
 }) {
   if (count === 0) return null;
-  const label = count === 1 ? "la conversacion seleccionada" : `las ${count} conversaciones seleccionadas`;
+  const label = count === 1 ? "la conversación seleccionada" : `las ${count} conversaciones seleccionadas`;
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 px-4">
       <div className="bg-page border-border-main w-full max-w-100 rounded-lg border p-5 shadow-xl">
         <div className="flex items-start justify-between gap-4">
           <div>
-            <h2 className="text-ink text-[18px] font-bold">Eliminar conversaciones</h2>
+            <h2 className="text-ink text-logo-footer font-semibold">Eliminar conversaciones</h2>
             <p className="text-subtle mt-2 text-[14px]">Desea eliminar {label} de tu bandeja?</p>
           </div>
           <button
@@ -793,7 +795,7 @@ function DeleteConversationDialog({
             onClick={onCancel}
             disabled={deleting}
           >
-            No
+            Cancelar
           </button>
           <button
             type="button"
@@ -900,7 +902,6 @@ function Chat() {
     }
 
     const controller = new AbortController();
-    let active = true;
 
     const loadMessages = async (showLoading: boolean) => {
       if (showLoading) dispatch({ type: "messages:loading" });
@@ -910,7 +911,6 @@ function Chat() {
           `/api/conversations/${activeConversationID}/messages`,
           controller.signal
         );
-        if (!active) return;
         const items = data.items.map(normalizeMessage);
         void markConversationRead(activeConversationID);
         if (showLoading) {
@@ -929,7 +929,6 @@ function Chat() {
     const intervalID = window.setInterval(() => void loadMessages(false), 2500);
 
     return () => {
-      active = false;
       window.clearInterval(intervalID);
       controller.abort();
     };

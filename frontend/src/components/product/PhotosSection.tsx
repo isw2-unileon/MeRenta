@@ -2,11 +2,20 @@ import { useCallback, useRef, useEffect, useMemo, type ChangeEvent, type DragEve
 import { Plus, X } from "lucide-react";
 
 import type { ProductFormData } from "@/types/item";
+import * as React from "react";
 
 const MAX_PHOTOS = 10;
 const MAX_SIZE_MB = 5;
 const ALLOWED_TYPES = ["image/jpeg", "image/png", "image/webp"];
 const MIN_VISIBLE_SLOTS = 5;
+
+function openFilePicker(ref: React.RefObject<HTMLInputElement | null>): void {
+  ref.current?.click();
+}
+
+function handleDragOver(e: DragEvent<HTMLButtonElement>): void {
+  e.preventDefault();
+}
 
 interface PhotosSectionProps {
   photos: ProductFormData["photos"];
@@ -93,10 +102,6 @@ function PhotosSection({ photos, error, onAddPhotos, onRemovePhoto }: PhotosSect
     processFiles(e.dataTransfer.files);
   };
 
-  const handleDragOver = (e: DragEvent<HTMLButtonElement>) => {
-    e.preventDefault();
-  };
-
   const handleFileChange = (e: ChangeEvent<HTMLInputElement>) => {
     if (e.target.files) {
       processFiles(e.target.files);
@@ -104,9 +109,7 @@ function PhotosSection({ photos, error, onAddPhotos, onRemovePhoto }: PhotosSect
     e.target.value = "";
   };
 
-  const openFilePicker = () => {
-    fileInputRef.current?.click();
-  };
+  const handleOpenFilePicker = useCallback(() => openFilePicker(fileInputRef), [fileInputRef]);
 
   const isFull = photos.length >= MAX_PHOTOS;
   const visibleSlots = Math.min(MAX_PHOTOS, Math.max(MIN_VISIBLE_SLOTS, photos.length + 2));
@@ -119,7 +122,7 @@ function PhotosSection({ photos, error, onAddPhotos, onRemovePhoto }: PhotosSect
       <button
         type="button"
         aria-label="Área de carga de fotos"
-        onClick={!isFull ? openFilePicker : undefined}
+        onClick={!isFull ? handleOpenFilePicker : undefined}
         onDrop={!isFull ? handleDrop : undefined}
         onDragOver={!isFull ? handleDragOver : undefined}
         disabled={isFull}
@@ -169,7 +172,7 @@ function PhotosSection({ photos, error, onAddPhotos, onRemovePhoto }: PhotosSect
             <button
               key={`empty-${idx}`}
               type="button"
-              onClick={openFilePicker}
+              onClick={handleOpenFilePicker}
               aria-label="Añadir foto"
               className="border-border-input hover:border-primary hover:bg-primary-bg flex h-24 w-28 items-center justify-center rounded-lg border-2 border-dashed transition-colors"
             >

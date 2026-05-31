@@ -479,7 +479,7 @@ function ProfileHeader({
         </div>
 
         <div className="min-w-0 flex-1">
-          <h1 className="text-profile-name font-bold">{fullName || "Mi perfil"}</h1>
+          <h1 className="text-profile-name font-semibold">{fullName || "Mi perfil"}</h1>
           {profileMeta && <p className="profile-meta mt-1">{profileMeta}</p>}
           {!reviewsState.loading && reviewsState.total > 0 && (
             <p className="text-rating mt-1 flex items-center gap-1 text-[13px]">

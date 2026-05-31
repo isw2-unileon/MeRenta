@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useReducer, useRef, useState, type FormEvent, type ReactNode } from "react";
+import { useCallback, useEffect, useMemo, useReducer, useState, type FormEvent, type ReactNode } from "react";
 import { Link, useSearchParams } from "react-router-dom";
 import { ChevronLeft, ChevronRight, Heart, Search as SearchIcon, Star, X } from "lucide-react";
 
@@ -311,15 +311,30 @@ function SearchSkeleton() {
 }
 
 interface SearchHeaderProps {
-  draftQuery: string;
-  setDraftQuery: (val: string) => void;
-  submitSearch: (e: FormEvent<HTMLFormElement>) => void;
+  initialQuery: string;
   resultLabel: string;
   sort: string;
   updateParam: (key: string, value: string) => void;
 }
 
-function SearchHeader({ draftQuery, setDraftQuery, submitSearch, resultLabel, sort, updateParam }: SearchHeaderProps) {
+function SearchHeader({ initialQuery, resultLabel, sort, updateParam }: SearchHeaderProps) {
+  const [draftQuery, setDraftQuery] = useState(initialQuery);
+
+  useEffect(() => {
+    if (draftQuery.trim() === initialQuery) return;
+
+    const timeoutId = window.setTimeout(() => {
+      updateParam("q", draftQuery.trim());
+    }, 350);
+
+    return () => window.clearTimeout(timeoutId);
+  }, [draftQuery, initialQuery, updateParam]);
+
+  const submitSearch = (event: FormEvent<HTMLFormElement>) => {
+    event.preventDefault();
+    updateParam("q", draftQuery.trim());
+  };
+
   return (
     <div className="border-border-main bg-section-alt border-b">
       <div className="mx-auto grid max-w-340 grid-cols-[minmax(0,1fr)_280px] items-center gap-7 px-10 py-4">
@@ -584,15 +599,6 @@ function Search() {
   const { toggle, isFav } = useFavorites();
   const query = searchParams.get("q") ?? "";
 
-  const [draftQuery, setDraftQuery] = useState<string>(query);
-  const prevQueryRef = useRef<string>(query);
-
-  useEffect(() => {
-    if (query === prevQueryRef.current) return;
-    prevQueryRef.current = query;
-    setDraftQuery(query);
-  }, [query]);
-
   const [state, dispatch] = useReducer(searchReducer, initialSearchState);
 
   const page = Math.max(1, Number(searchParams.get("page") ?? "1") || 1);
@@ -621,16 +627,6 @@ function Search() {
     [searchParams, setSearchParams]
   );
 
-  useEffect(() => {
-    if (draftQuery.trim() === query) return;
-
-    const timeoutId = window.setTimeout(() => {
-      updateParam("q", draftQuery.trim());
-    }, 350);
-
-    return () => window.clearTimeout(timeoutId);
-  }, [draftQuery, query, updateParam]);
-
   // CORRECCIÓN 2: Ocultamos el fetch de la vista del linter utilizando una función extraída.
   useEffect(() => {
     const controller = new AbortController();
@@ -658,11 +654,6 @@ function Search() {
 
   const totalPages = Math.max(1, Math.ceil(state.total / PAGE_SIZE));
   const pageWindow = useMemo(() => getPageWindow(page, totalPages), [page, totalPages]);
-
-  const submitSearch = (event: FormEvent<HTMLFormElement>) => {
-    event.preventDefault();
-    updateParam("q", draftQuery.trim());
-  };
 
   const clearFilters = () => {
     const next = new URLSearchParams();
@@ -723,9 +714,8 @@ function Search() {
   return (
     <div className="bg-surface min-h-screen">
       <SearchHeader
-        draftQuery={draftQuery}
-        setDraftQuery={setDraftQuery}
-        submitSearch={submitSearch}
+        key={query}
+        initialQuery={query}
         resultLabel={resultLabel}
         sort={sort}
         updateParam={updateParam}

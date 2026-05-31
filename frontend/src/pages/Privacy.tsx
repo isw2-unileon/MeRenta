@@ -1,6 +1,21 @@
 import { Link } from "react-router-dom";
 import * as React from "react";
 
+const PRIVACY_TOC_LINKS = [
+  { href: "#responsable", text: "1. Responsable del tratamiento" },
+  { href: "#datos", text: "2. Datos que recopilamos" },
+  { href: "#finalidades", text: "3. Finalidades y base legal" },
+  { href: "#compartir", text: "4. Con quién compartimos datos" },
+  { href: "#retencion", text: "5. Conservación de datos" },
+  { href: "#seguridad", text: "6. Seguridad de la información" },
+  { href: "#derechos", text: "7. Tus derechos" },
+  { href: "#cookies", text: "8. Cookies y tecnologías similares" },
+  { href: "#menores", text: "9. Menores de edad" },
+  { href: "#transferencias", text: "10. Transferencias internacionales" },
+  { href: "#cambios", text: "11. Cambios en la política" },
+  { href: "#contacto", text: "12. Contacto" },
+];
+
 // 1. Componente para la cabecera
 const PrivacyHeader = () => (
   <header className="mb-12">
@@ -45,21 +60,6 @@ const PrivacySummary = () => (
 
 // 3. Componente para la tabla de contenidos
 const PrivacyTOC = () => {
-  const links = [
-    { href: "#responsable", text: "1. Responsable del tratamiento" },
-    { href: "#datos", text: "2. Datos que recopilamos" },
-    { href: "#finalidades", text: "3. Finalidades y base legal" },
-    { href: "#compartir", text: "4. Con quién compartimos datos" },
-    { href: "#retencion", text: "5. Conservación de datos" },
-    { href: "#seguridad", text: "6. Seguridad de la información" },
-    { href: "#derechos", text: "7. Tus derechos" },
-    { href: "#cookies", text: "8. Cookies y tecnologías similares" },
-    { href: "#menores", text: "9. Menores de edad" },
-    { href: "#transferencias", text: "10. Transferencias internacionales" },
-    { href: "#cambios", text: "11. Cambios en la política" },
-    { href: "#contacto", text: "12. Contacto" },
-  ];
-
   return (
     <nav
       className="border-border-main rounded-panel border bg-white p-6"
@@ -67,7 +67,7 @@ const PrivacyTOC = () => {
     >
       <h2 className="text-body-lg text-ink font-semibold">Contenido</h2>
       <ul className="text-body-color mt-4 grid gap-2 md:grid-cols-2">
-        {links.map((link) => (
+        {PRIVACY_TOC_LINKS.map((link) => (
           <li key={link.href}>
             <a
               className="link-section"
