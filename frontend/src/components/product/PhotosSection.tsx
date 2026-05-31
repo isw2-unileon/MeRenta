@@ -1,4 +1,4 @@
-import { useCallback, useRef, useEffect, useState, type ChangeEvent, type DragEvent } from "react";
+import { useCallback, useRef, useEffect, useMemo, type ChangeEvent, type DragEvent } from "react";
 import { Plus, X } from "lucide-react";
 
 import type { ProductFormData } from "@/types/item";
@@ -20,16 +20,13 @@ interface PhotosSectionProps {
  * y evitar fugas de memoria al crear URL de objetos.
  */
 function Thumbnail({ file, index, onRemove }: { file: File; index: number; onRemove: () => void }) {
-  const [previewUrl, setPreviewUrl] = useState<string>("");
+  const previewUrl = useMemo(() => URL.createObjectURL(file), [file]);
 
   useEffect(() => {
-    const url = URL.createObjectURL(file);
-    setPreviewUrl(url);
-
     return () => {
-      URL.revokeObjectURL(url);
+      URL.revokeObjectURL(previewUrl);
     };
-  }, [file]);
+  }, [previewUrl]);
 
   if (!previewUrl) return <div className="h-24 w-28 animate-pulse rounded-lg bg-gray-100" />;
 

@@ -584,14 +584,14 @@ function Search() {
   const { toggle, isFav } = useFavorites();
   const query = searchParams.get("q") ?? "";
 
-  // CORRECCIÓN 1: Usamos useRef en lugar de useState para mutaciones que no requieren renderizado
   const [draftQuery, setDraftQuery] = useState<string>(query);
   const prevQueryRef = useRef<string>(query);
 
-  if (query !== prevQueryRef.current) {
+  useEffect(() => {
+    if (query === prevQueryRef.current) return;
     prevQueryRef.current = query;
     setDraftQuery(query);
-  }
+  }, [query]);
 
   const [state, dispatch] = useReducer(searchReducer, initialSearchState);
 
