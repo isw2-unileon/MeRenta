@@ -1,6 +1,8 @@
 import { useEffect, useReducer } from "react";
 import { useNavigate, useParams } from "react-router-dom";
 
+import { useFavorites } from "@/hooks/useFavorites";
+
 import { BookingCard } from "@/components/product/detail/BookingCard";
 import { InsuranceCard } from "@/components/product/detail/InsuranceCard";
 import { OwnerCard } from "@/components/product/detail/OwnerCard";
@@ -25,6 +27,7 @@ const CATEGORY_LABELS: Record<string, string> = {
   clothing: "Ropa",
   vehicles: "Vehículos",
   gardening: "Jardinería",
+  leisure: "Ocio",
   other: "Otros",
 };
 
@@ -77,7 +80,6 @@ interface ProductState {
   owner: CustomerProfile | null;
   loading: boolean;
   error: string;
-  isFavorite: boolean;
   dateRange: DateRange;
 }
 
@@ -87,7 +89,6 @@ type ProductAction =
   | { type: "set-item"; value: ItemResponse | null }
   | { type: "set-images"; value: ItemImageResponse[] }
   | { type: "set-owner"; value: CustomerProfile | null }
-  | { type: "toggle-favorite" }
   | { type: "set-date-range"; value: DateRange };
 
 const INITIAL_STATE: ProductState = {
@@ -96,7 +97,6 @@ const INITIAL_STATE: ProductState = {
   owner: null,
   loading: true,
   error: "",
-  isFavorite: false,
   dateRange: { start: null, end: null },
 };
 
@@ -112,8 +112,6 @@ function productReducer(state: ProductState, action: ProductAction): ProductStat
       return { ...state, images: action.value };
     case "set-owner":
       return { ...state, owner: action.value };
-    case "toggle-favorite":
-      return { ...state, isFavorite: !state.isFavorite };
     case "set-date-range":
       return { ...state, dateRange: action.value };
     default:
@@ -201,9 +199,10 @@ function ProductError({ message, onBack }: ProductErrorProps) {
 function Product() {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
-  const { user } = useAuth();
+  useAuth();
 
   const [state, dispatch] = useReducer(productReducer, INITIAL_STATE);
+  const { isFav, toggle } = useFavorites();
 
   // Placeholder — a real implementation would fetch from /api/items/:id/bookings
   const occupiedDates = new Set<string>();
@@ -238,7 +237,7 @@ function Product() {
   }, [id]);
 
   /**
-   * Date selection state machine:
+   * Date selection state machine (calendar clicks):
    * - No start → first click sets start.
    * - Start set, no end → click after start sets end; click before/on start resets.
    * - Both set → any click resets to a new start.
@@ -258,6 +257,14 @@ function Product() {
     });
   };
 
+  /**
+   * Date change handler for the booking card inputs.
+   * Directly sets start and end without the click-cycle logic.
+   */
+  const handleDateChange = (start: Date | null, end: Date | null) => {
+    dispatch({ type: "set-date-range", value: { start, end } });
+  };
+
   const rentalDays =
     state.dateRange.start && state.dateRange.end
       ? Math.round((state.dateRange.end.getTime() - state.dateRange.start.getTime()) / (1000 * 60 * 60 * 24))
@@ -270,7 +277,7 @@ function Product() {
   const condition = state.item?.condition
     ? (CONDITION_LABELS[state.item.condition] ?? state.item.condition)
     : undefined;
-  const isOwner = user?.customer_id === state.item?.owner_id;
+  const item = state.item;
 
   // ── Render ─────────────────────────────────────────────────────────────────
 
@@ -286,22 +293,22 @@ function Product() {
           />
         )}
 
-        {!state.loading && state.item && (
+        {!state.loading && item && (
           <div className="grid grid-cols-[1fr_392px] items-start gap-8">
             {/* ════════════════════════════════════ Left column */}
             <div className="flex min-w-0 flex-col gap-6">
               {/* Image gallery */}
               <ProductImageGallery
                 images={state.images}
-                title={state.item.title}
-                isAvailable={state.item.is_available}
-                isFavorite={state.isFavorite}
-                onToggleFavorite={() => dispatch({ type: "toggle-favorite" })}
+                title={item.title}
+                isAvailable={item.is_available}
+                isFavorite={isFav(item.item_id)}
+                onToggleFavorite={() => toggle(item.item_id, isFav(item.item_id))}
               />
 
               {/* Title, badges and rating */}
               <div>
-                <h2 className="text-ink mb-2 text-[22px] leading-tight font-bold">{state.item.title}</h2>
+                <h2 className="text-ink mb-2 text-[22px] leading-tight font-bold">{item.title}</h2>
 
                 <div className="mb-2 flex flex-wrap items-center gap-2">
                   {categoryLabel && <span className="product-estado-badge">{categoryLabel}</span>}
@@ -322,22 +329,22 @@ function Product() {
               <hr className="divider-product" />
 
               {/* Description */}
-              {state.item.description && (
+              {item.description && (
                 <>
                   <div>
                     <h3 className="heading-section mb-3">Descripcion</h3>
-                    <p className="product-desc">{state.item.description}</p>
+                    <p className="product-desc">{item.description}</p>
                   </div>
                   <hr className="divider-product" />
                 </>
               )}
 
               {/* Usage rules */}
-              {state.item.usage_rules && (
+              {item.usage_rules && (
                 <>
                   <div>
                     <h3 className="heading-section mb-3">Normas de uso</h3>
-                    <p className="product-desc">{state.item.usage_rules}</p>
+                    <p className="product-desc">{item.usage_rules}</p>
                   </div>
                   <hr className="divider-product" />
                 </>
@@ -347,10 +354,16 @@ function Product() {
               <div>
                 <h3 className="heading-section mb-1">Disponibilidad</h3>
                 <ProductCalendar
+                  key={
+                    state.dateRange.start
+                      ? `${state.dateRange.start.getFullYear()}-${state.dateRange.start.getMonth()}`
+                      : "none"
+                  }
                   occupiedDates={occupiedDates}
                   selectedStart={state.dateRange.start}
                   selectedEnd={state.dateRange.end}
                   onDateSelect={handleDateSelect}
+                  navigateTo={state.dateRange.start}
                 />
               </div>
             </div>
@@ -358,15 +371,15 @@ function Product() {
             {/* ════════════════════════════════════ Right column */}
             <div className="top-8 flex flex-col gap-5">
               <BookingCard
-                itemId={state.item.item_id}
-                pricePerDay={state.item.price_per_day}
+                itemId={item.item_id}
+                pricePerDay={item.price_per_day}
                 rating={4.9}
                 reviewCount={48}
                 selectedStart={state.dateRange.start}
                 selectedEnd={state.dateRange.end}
-                minDays={state.item.min_days}
-                maxDay={state.item.max_days}
-                isOwner={isOwner}
+                minDays={item.min_days}
+                maxDay={item.max_days}
+                onDateChange={handleDateChange}
               />
 
               <InsuranceCard days={rentalDays} />

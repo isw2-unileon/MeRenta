@@ -54,13 +54,14 @@ func main() {
 		cfg.JWTLeeway,
 	)
 
-	authSvc := service.NewAuthService(q, jwtMgr)
+	storageCli := storage.NewSupabaseClient(cfg.SupabaseURL, cfg.SupabaseServiceRoleKey)
+
+	authSvc := service.NewAuthService(q, jwtMgr, storageCli, "avatar")
 	authH := handler.NewAuthHandler(authSvc)
 
 	itemSvc := service.NewItemService(q)
 	itemH := handler.NewItemHandler(itemSvc)
 
-	storageCli := storage.NewSupabaseClient(cfg.SupabaseURL, cfg.SupabaseServiceRoleKey)
 	itemImgSvc := service.NewItemImageService(q, storageCli, "item")
 	itemImgH := handler.NewItemImageHandler(itemImgSvc)
 
@@ -78,7 +79,10 @@ func main() {
 	chatHub := handler.NewChatHub()
 	chatH := handler.NewChatHandler(chatSvc, chatHub)
 
-	r := router.Setup(authH, itemH, itemImgH, addrH, favH, chatH, jwtMgr, cfg.CORSAllowOrigin, pool.Ping)
+	reviewSvc := service.NewReviewService(q)
+	reviewH := handler.NewReviewHandler(reviewSvc)
+
+	r := router.Setup(authH, itemH, itemImgH, addrH, favH, chatH, reviewH, jwtMgr, cfg.CORSAllowOrigin, pool.Ping)
 	portNum, err := strconv.Atoi(cfg.Port)
 	if err != nil || portNum < 1 || portNum > 65535 {
 		slog.Error("invalid port", "port", cfg.Port)

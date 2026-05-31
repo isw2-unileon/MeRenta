@@ -3,9 +3,11 @@ package service
 
 import (
 	"context"
+	"errors"
 	"fmt"
 
 	"github.com/google/uuid"
+	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgtype"
 
 	"github.com/isw2-unileon/MeRenta/backend/internal/model"
@@ -15,7 +17,10 @@ import (
 // addressQuerier is the minimal DB interface needed by AddressService.
 type addressQuerier interface {
 	CreateAddress(ctx context.Context, arg sqlcdb.CreateAddressParams) (sqlcdb.Address, error)
+	DeleteAddress(ctx context.Context, addressID uuid.UUID) error
+	GetAddressByID(ctx context.Context, addressID uuid.UUID) (sqlcdb.Address, error)
 	GetAddressesByCustomer(ctx context.Context, customerID uuid.UUID) ([]sqlcdb.Address, error)
+	UpdateAddress(ctx context.Context, arg sqlcdb.UpdateAddressParams) (sqlcdb.Address, error)
 }
 
 // AddressService handles customer address use cases.
@@ -85,6 +90,83 @@ func (s *AddressService) CreateAddress(
 
 	resp := toAddressResponse(row)
 	return &resp, nil
+}
+
+// UpdateAddress updates an existing address owned by the authenticated customer.
+func (s *AddressService) UpdateAddress(
+	ctx context.Context,
+	customerID uuid.UUID,
+	addressID uuid.UUID,
+	req model.CreateAddressRequest,
+) (*model.AddressResponse, error) {
+	current, err := s.q.GetAddressByID(ctx, addressID)
+	if err != nil {
+		if errors.Is(err, pgx.ErrNoRows) {
+			return nil, ErrAddressNotFound
+		}
+		return nil, err
+	}
+
+	if current.CustomerID != customerID {
+		return nil, ErrForbidden
+	}
+
+	country := req.Country
+	if country == "" {
+		country = current.Country
+	}
+	if country == "" {
+		country = "Spain"
+	}
+
+	lat, err := optionalFloat64ToNumeric(req.Latitude)
+	if err != nil {
+		return nil, fmt.Errorf("invalid latitude: %w", err)
+	}
+
+	lon, err := optionalFloat64ToNumeric(req.Longitude)
+	if err != nil {
+		return nil, fmt.Errorf("invalid longitude: %w", err)
+	}
+
+	row, err := s.q.UpdateAddress(ctx, sqlcdb.UpdateAddressParams{
+		AddressID:  addressID,
+		Street:     req.Street,
+		Number:     req.Number,
+		Floor:      pgtype.Text{String: req.Floor, Valid: req.Floor != ""},
+		City:       req.City,
+		Province:   req.Province,
+		PostalCode: req.PostalCode,
+		Country:    country,
+		Latitude:   lat,
+		Longitude:  lon,
+	})
+	if err != nil {
+		if errors.Is(err, pgx.ErrNoRows) {
+			return nil, ErrAddressNotFound
+		}
+		return nil, err
+	}
+
+	resp := toAddressResponse(row)
+	return &resp, nil
+}
+
+// DeleteAddress removes an address owned by the authenticated customer.
+func (s *AddressService) DeleteAddress(ctx context.Context, customerID uuid.UUID, addressID uuid.UUID) error {
+	current, err := s.q.GetAddressByID(ctx, addressID)
+	if err != nil {
+		if errors.Is(err, pgx.ErrNoRows) {
+			return ErrAddressNotFound
+		}
+		return err
+	}
+
+	if current.CustomerID != customerID {
+		return ErrForbidden
+	}
+
+	return s.q.DeleteAddress(ctx, addressID)
 }
 
 // toAddressResponse maps a sqlcdb.Address to the API response model.

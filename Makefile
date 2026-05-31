@@ -146,6 +146,9 @@ lint-backend:
 lint-frontend:
 	cd frontend && npm run lint
 
+doctor:
+	cd frontend && echo "y" | npm run doctor
+
 ## Lint everything
 lint: lint-backend lint-frontend
 
