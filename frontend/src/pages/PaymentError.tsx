@@ -1,3 +1,4 @@
+import { useEffect, useRef } from "react";
 import { useLocation, useNavigate } from "react-router-dom";
 
 /** State passed by the Checkout page on a failed payment. */
@@ -17,6 +18,7 @@ interface ErrorState {
 function PaymentError() {
   const location = useLocation();
   const navigate = useNavigate();
+  const dialogRef = useRef<HTMLDialogElement>(null);
   const state = (location.state ?? {}) as Partial<ErrorState>;
 
   const {
@@ -25,22 +27,32 @@ function PaymentError() {
     returnPath = "/home",
   } = state;
 
+  useEffect(() => {
+    const dialog = dialogRef.current;
+    if (!dialog || dialog.open) return;
+    dialog.showModal();
+  }, []);
+
   const handleRetry = () => {
+    dialogRef.current?.close();
     void navigate(returnPath);
   };
   const handleCancel = () => {
+    dialogRef.current?.close();
     void navigate("/home");
   };
 
   return (
-    /* Full-screen overlay */
-    <div className="modal-overlay">
-      <div
-        className="modal-error-pay"
-        role="alertdialog"
-        aria-modal="true"
-        aria-labelledby="error-pay-title"
-      >
+    <dialog
+      ref={dialogRef}
+      className="modal-overlay"
+      aria-labelledby="error-pay-title"
+      onCancel={(event) => {
+        event.preventDefault();
+        handleCancel();
+      }}
+    >
+      <div className="modal-error-pay">
         {/* ── Icon ── */}
         <div className="error-pay-icon-ring mb-3">
           <div className="error-pay-icon-circle">
@@ -90,29 +102,27 @@ function PaymentError() {
         </div>
 
         {/* ── Cancel link ── */}
-        <p
+        <button
+          type="button"
           className="error-pay-cancel mb-4"
           onClick={handleCancel}
-          role="button"
-          tabIndex={0}
-          onKeyDown={(e) => e.key === "Enter" && handleCancel()}
         >
           Cancelar y volver al alquiler
-        </p>
+        </button>
 
         {/* ── Support ── */}
         <p className="error-pay-support text-center">
           ¿Sigues teniendo problemas? Contacta en{" "}
           <a
             href="mailto:soporte@merenta.es"
-            className="text-[var(--color-primary)] underline"
+            className="text-primary underline"
           >
             contact@merenta.es
           </a>{" "}
           o desde el chat.
         </p>
       </div>
-    </div>
+    </dialog>
   );
 }
 

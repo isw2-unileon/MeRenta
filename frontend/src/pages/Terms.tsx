@@ -1,6 +1,23 @@
 import { Link } from "react-router-dom";
 import * as React from "react";
 
+const TERMS_TOC_LINKS = [
+  { href: "#aceptacion", text: "1. Aceptación de los términos" },
+  { href: "#definiciones", text: "2. Definiciones" },
+  { href: "#cuentas", text: "3. Cuentas y elegibilidad" },
+  { href: "#publicaciones", text: "4. Publicaciones y disponibilidad" },
+  { href: "#reservas", text: "5. Reservas, pagos y comisiones" },
+  { href: "#cancelaciones", text: "6. Cancelaciones y reembolsos" },
+  { href: "#entregas", text: "7. Entrega, uso y devoluciones" },
+  { href: "#seguros", text: "8. Protección, seguros y daños" },
+  { href: "#conducta", text: "9. Conducta prohibida" },
+  { href: "#contenido", text: "10. Contenido, reseñas y propiedad intelectual" },
+  { href: "#responsabilidad", text: "11. Limitación de responsabilidad" },
+  { href: "#disputas", text: "12. Disputas y resolución" },
+  { href: "#modificaciones", text: "13. Modificaciones de los términos" },
+  { href: "#contacto", text: "14. Contacto" },
+];
+
 // 1. Componente para la cabecera
 const TermsHeader = () => (
   <header className="mb-12">
@@ -48,23 +65,6 @@ const TermsSummary = () => (
 
 // 3. Componente para la tabla de contenidos
 const TermsTOC = () => {
-  const links = [
-    { href: "#aceptacion", text: "1. Aceptación de los términos" },
-    { href: "#definiciones", text: "2. Definiciones" },
-    { href: "#cuentas", text: "3. Cuentas y elegibilidad" },
-    { href: "#publicaciones", text: "4. Publicaciones y disponibilidad" },
-    { href: "#reservas", text: "5. Reservas, pagos y comisiones" },
-    { href: "#cancelaciones", text: "6. Cancelaciones y reembolsos" },
-    { href: "#entregas", text: "7. Entrega, uso y devoluciones" },
-    { href: "#seguros", text: "8. Protección, seguros y daños" },
-    { href: "#conducta", text: "9. Conducta prohibida" },
-    { href: "#contenido", text: "10. Contenido, reseñas y propiedad intelectual" },
-    { href: "#responsabilidad", text: "11. Limitación de responsabilidad" },
-    { href: "#disputas", text: "12. Disputas y resolución" },
-    { href: "#modificaciones", text: "13. Modificaciones de los términos" },
-    { href: "#contacto", text: "14. Contacto" },
-  ];
-
   return (
     <nav
       className="border-border-main rounded-panel border bg-white p-6"
@@ -72,7 +72,7 @@ const TermsTOC = () => {
     >
       <h2 className="text-body-lg text-ink font-semibold">Contenido</h2>
       <ul className="text-body-color mt-4 grid gap-2 md:grid-cols-2">
-        {links.map((link) => (
+        {TERMS_TOC_LINKS.map((link) => (
           <li key={link.href}>
             <a
               className="link-section"

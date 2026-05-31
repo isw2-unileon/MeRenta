@@ -3,6 +3,7 @@ import { useNavigate } from "react-router-dom";
 
 import { StarRating } from "@/components/product/detail/StarRating";
 import type { ApiResponse } from "@/types/common";
+import * as React from "react";
 
 /** Fixed service fee applied to every rental (EUR). */
 const SERVICE_FEE = 5;
@@ -56,7 +57,7 @@ function parseISODateStr(value: string): Date {
   return date;
 }
 
-/** Formats a Date as localised Spanish short date, e.g. "28 may 2026". */
+/** Formats a Date as localized Spanish short date, e.g. "28 May 2026". */
 function formatDateEs(date: Date): string {
   return date.toLocaleDateString("es-ES", {
     day: "numeric",
@@ -70,6 +71,21 @@ function fmtPrice(value: number): string {
   return value.toFixed(2).replace(".", ",");
 }
 
+/** Opens the native date picker for the given input ref. */
+function openPicker(ref: React.RefObject<HTMLInputElement | null>): void {
+  const input = ref.current;
+  if (!input || input.disabled) return;
+  if (typeof input.showPicker === "function") {
+    try {
+      input.showPicker();
+    } catch {
+      input.focus();
+    }
+  } else {
+    input.focus();
+  }
+}
+
 async function startConversation(itemId: string): Promise<ConversationResponse> {
   const res = await fetch("/api/conversations", {
     method: "POST",
@@ -79,7 +95,7 @@ async function startConversation(itemId: string): Promise<ConversationResponse> 
   });
   const json = (await res.json()) as ApiResponse<ConversationResponse>;
   if (!res.ok || !json.success || !json.data) {
-    throw new Error(json.error ?? "Error al iniciar la conversacion");
+    throw new Error(json.error ?? "Error al iniciar la conversación");
   }
   return json.data;
 }
@@ -98,6 +114,8 @@ async function startConversation(itemId: string): Promise<ConversationResponse> 
  * @param selectedEnd Rental end date or null.
  * @param minDays Minimum rental days configured for the listing.
  * @param maxDay Maximum rental days configured for the listing. Null means unlimited.
+ * @param isOwner Whether the authenticated user owns this listing. If true, the "Enviar mensaje" button is hidden.
+ * @param onDateChange Callback fired when the user changes a date from the booking card inputs. Receives the new start and end dates (either may be null).
  * @returns Booking card JSX.
  */
 function BookingCard({
@@ -118,21 +136,6 @@ function BookingCard({
 
   const startInputRef = useRef<HTMLInputElement>(null);
   const endInputRef = useRef<HTMLInputElement>(null);
-
-  /** Opens the native date picker for the given input ref. */
-  const openPicker = (ref: React.RefObject<HTMLInputElement | null>) => {
-    const input = ref.current;
-    if (!input || input.disabled) return;
-    if (typeof input.showPicker === "function") {
-      try {
-        input.showPicker();
-      } catch {
-        input.focus();
-      }
-    } else {
-      input.focus();
-    }
-  };
 
   /** Today as "YYYY-MM-DD" — used as the minimum selectable date. */
   const todayStr = toISODateStr(new Date());
@@ -192,7 +195,7 @@ function BookingCard({
       const conversation = await startConversation(itemId);
       void navigate(`/chat/${conversation.conversation_id}`);
     } catch (err) {
-      setMessageError(err instanceof Error ? err.message : "Error al iniciar la conversacion");
+      setMessageError(err instanceof Error ? err.message : "Error al iniciar la conversación");
     } finally {
       setMessageLoading(false);
     }
