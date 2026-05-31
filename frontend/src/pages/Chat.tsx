@@ -1,8 +1,9 @@
-import { useEffect, useMemo, useReducer, useRef, type FormEvent } from "react";
+import { useCallback, useEffect, useMemo, useReducer, useRef, type FormEvent } from "react";
 import { useNavigate, useParams } from "react-router-dom";
 import { ArrowRight, CheckCheck, Search, SendHorizontal } from "lucide-react";
 
 import type { ApiResponse } from "@/types/common";
+import { useAuth } from "@/hooks/useAuth";
 import * as React from "react";
 
 interface ConversationResponse {
@@ -62,7 +63,7 @@ const dayLabelFormatter = new Intl.DateTimeFormat("es-ES", {
 
 interface ChatState {
   conversations: ConversationResponse[];
-  unreadConversationIDs: Set<string>;
+  unreadCountsByConversationID: Map<string, number>;
   messages: MessageResponse[];
   draft: string;
   searchQuery: string;
@@ -93,7 +94,7 @@ type ChatAction =
 
 const initialState: ChatState = {
   conversations: [],
-  unreadConversationIDs: new Set<string>(),
+  unreadCountsByConversationID: new Map<string, number>(),
   messages: [],
   draft: "",
   searchQuery: "",
@@ -117,7 +118,7 @@ function refreshConversations(
   activeConversationID?: string
 ): ChatState {
   const previousByID = new Map(state.conversations.map((conversation) => [conversation.conversation_id, conversation]));
-  const unreadConversationIDs = new Set(state.unreadConversationIDs);
+  const unreadCountsByConversationID = new Map(state.unreadCountsByConversationID);
 
   for (const conversation of items) {
     const previous = previousByID.get(conversation.conversation_id);
@@ -127,15 +128,18 @@ function refreshConversations(
         previous.last_message !== conversation.last_message);
 
     if (changed && conversation.conversation_id !== activeConversationID) {
-      unreadConversationIDs.add(conversation.conversation_id);
+      unreadCountsByConversationID.set(
+        conversation.conversation_id,
+        (unreadCountsByConversationID.get(conversation.conversation_id) ?? 0) + 1
+      );
     }
   }
 
   if (activeConversationID) {
-    unreadConversationIDs.delete(activeConversationID);
+    unreadCountsByConversationID.delete(activeConversationID);
   }
 
-  return { ...state, conversations: sortConversations(items), unreadConversationIDs, loadingConversations: false };
+  return { ...state, conversations: sortConversations(items), unreadCountsByConversationID, loadingConversations: false };
 }
 
 function applyIncomingMessage(state: ChatState, message: MessageResponse, activeConversationID?: string): ChatState {
@@ -153,15 +157,18 @@ function applyIncomingMessage(state: ChatState, message: MessageResponse, active
         }
       : conversation
   );
-  const unreadConversationIDs = new Set(state.unreadConversationIDs);
+  const unreadCountsByConversationID = new Map(state.unreadCountsByConversationID);
 
   if (message.conversation_id === activeConversationID || message.is_mine) {
-    unreadConversationIDs.delete(message.conversation_id);
+    unreadCountsByConversationID.delete(message.conversation_id);
   } else {
-    unreadConversationIDs.add(message.conversation_id);
+    unreadCountsByConversationID.set(
+      message.conversation_id,
+      (unreadCountsByConversationID.get(message.conversation_id) ?? 0) + 1
+    );
   }
 
-  return { ...state, messages, conversations: sortConversations(updatedConversations), unreadConversationIDs };
+  return { ...state, messages, conversations: sortConversations(updatedConversations), unreadCountsByConversationID };
 }
 
 function mergeMessages(
@@ -205,9 +212,9 @@ function chatReducer(state: ChatState, action: ChatAction): ChatState {
     case "conversations:error":
       return { ...state, error: action.message, loadingConversations: false };
     case "conversation:open": {
-      const unreadConversationIDs = new Set(state.unreadConversationIDs);
-      unreadConversationIDs.delete(action.conversationID);
-      return { ...state, unreadConversationIDs };
+      const unreadCountsByConversationID = new Map(state.unreadCountsByConversationID);
+      unreadCountsByConversationID.delete(action.conversationID);
+      return { ...state, unreadCountsByConversationID };
     }
     case "messages:loading":
       return { ...state, loadingMessages: true, error: "" };
@@ -311,9 +318,20 @@ async function sendMessage(conversationID: string, body: string): Promise<Messag
   return json.data;
 }
 
-function buildWebSocketURL(conversationID: string): string {
+async function markConversationRead(conversationID: string): Promise<void> {
+  await fetch(`/api/conversations/${conversationID}/read`, {
+    method: "POST",
+    credentials: "include",
+  });
+}
+
+function buildWebSocketURL(conversationID: string, accessToken: string | null): string {
   const protocol = window.location.protocol === "https:" ? "wss:" : "ws:";
-  return `${protocol}//${window.location.host}/api/conversations/${conversationID}/ws`;
+  const url = new URL(`${protocol}//${window.location.host}/api/conversations/${conversationID}/ws`);
+  if (accessToken) {
+    url.searchParams.set("access_token", accessToken);
+  }
+  return url.toString();
 }
 
 function ChatAvatar({ name, image, small = false }: { name: string; image?: string; small?: boolean }) {
@@ -340,14 +358,17 @@ function ChatAvatar({ name, image, small = false }: { name: string; image?: stri
 function ConversationRow({
   conversation,
   active,
-  unread,
+  unreadCount,
   onOpen,
 }: {
   conversation: ConversationResponse;
   active: boolean;
-  unread: boolean;
+  unreadCount: number;
   onOpen: () => void;
 }) {
+  const unread = unreadCount > 0;
+  const unreadLabel = unreadCount > 99 ? "99+" : String(unreadCount);
+
   return (
     <button
       type="button"
@@ -368,8 +389,15 @@ function ConversationRow({
           {conversation.last_message ?? "Sin mensajes todavía"}
         </span>
       </span>
-      <span className={`${unread ? "text-primary font-bold" : "text-footer-text"} self-start pt-1 text-[11px]`}>
-        {formatConversationTime(conversation.last_message_at ?? conversation.updated_at)}
+      <span className="flex flex-col items-end gap-2 self-start pt-1">
+        <span className={`${unread ? "text-primary font-bold" : "text-footer-text"} text-[11px]`}>
+          {formatConversationTime(conversation.last_message_at ?? conversation.updated_at)}
+        </span>
+        {unread ? (
+          <span className="bg-primary flex min-w-5 items-center justify-center rounded-full px-1.5 text-[11px] leading-5 font-bold text-white">
+            {unreadLabel}
+          </span>
+        ) : null}
       </span>
     </button>
   );
@@ -415,7 +443,7 @@ function ConversationList({
   loading,
   searchQuery,
   activeConversationID,
-  unreadConversationIDs,
+  unreadCountsByConversationID,
   onSearchChange,
   onOpen,
 }: {
@@ -423,7 +451,7 @@ function ConversationList({
   loading: boolean;
   searchQuery: string;
   activeConversationID?: string;
-  unreadConversationIDs: Set<string>;
+  unreadCountsByConversationID: Map<string, number>;
   onSearchChange: (value: string) => void;
   onOpen: (conversationID: string) => void;
 }) {
@@ -468,7 +496,7 @@ function ConversationList({
               key={conversation.conversation_id}
               conversation={conversation}
               active={conversation.conversation_id === activeConversationID}
-              unread={unreadConversationIDs.has(conversation.conversation_id)}
+              unreadCount={unreadCountsByConversationID.get(conversation.conversation_id) ?? 0}
               onOpen={() => onOpen(conversation.conversation_id)}
             />
           ))
@@ -610,10 +638,11 @@ function ChatComposer({
 function Chat() {
   const navigate = useNavigate();
   const { conversationId } = useParams();
+  const { user, accessToken } = useAuth();
   const [state, dispatch] = useReducer(chatReducer, initialState);
   const {
     conversations,
-    unreadConversationIDs,
+    unreadCountsByConversationID,
     messages,
     draft,
     searchQuery,
@@ -624,6 +653,12 @@ function Chat() {
   } = state;
   const socketRef = useRef<WebSocket | null>(null);
   const messagesEndRef = useRef<HTMLDivElement | null>(null);
+  const currentUserID = user?.customer_id;
+  const normalizeMessage = useCallback(
+    (message: MessageResponse): MessageResponse =>
+      currentUserID ? { ...message, is_mine: message.sender_id === currentUserID } : message,
+    [currentUserID]
+  );
 
   useEffect(() => {
     const controller = new AbortController();
@@ -639,8 +674,8 @@ function Chat() {
   }, []);
 
   const activeConversation = useMemo(() => {
-    if (conversations.length === 0) return undefined;
-    return conversations.find((conversation) => conversation.conversation_id === conversationId) ?? conversations[0];
+    if (!conversationId) return undefined;
+    return conversations.find((conversation) => conversation.conversation_id === conversationId);
   }, [conversationId, conversations]);
   const activeConversationID = activeConversation?.conversation_id;
 
@@ -695,10 +730,12 @@ function Chat() {
           controller.signal
         );
         if (!active) return;
+        const items = data.items.map(normalizeMessage);
+        void markConversationRead(activeConversationID);
         if (showLoading) {
-          dispatch({ type: "messages:success", items: data.items });
+          dispatch({ type: "messages:success", items });
         } else {
-          dispatch({ type: "messages:merge", items: data.items, activeConversationID });
+          dispatch({ type: "messages:merge", items, activeConversationID });
         }
       } catch (err) {
         if (err instanceof Error && err.name !== "AbortError") {
@@ -715,7 +752,7 @@ function Chat() {
       window.clearInterval(intervalID);
       controller.abort();
     };
-  }, [activeConversationID]);
+  }, [activeConversationID, normalizeMessage]);
 
   useEffect(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: loadingMessages ? "auto" : "smooth", block: "end" });
@@ -724,7 +761,7 @@ function Chat() {
   useEffect(() => {
     if (!activeConversationID) return undefined;
 
-    const socket = new WebSocket(buildWebSocketURL(activeConversationID));
+    const socket = new WebSocket(buildWebSocketURL(activeConversationID, accessToken));
     socketRef.current = socket;
 
     socket.onmessage = (event) => {
@@ -739,12 +776,14 @@ function Chat() {
       }
       if (!payload.data) return;
 
-      dispatch({ type: "message:receive", message: payload.data, activeConversationID });
+      const message = normalizeMessage(payload.data);
+      dispatch({ type: "message:receive", message, activeConversationID });
+      if (!message.is_mine && message.conversation_id === activeConversationID) {
+        void markConversationRead(activeConversationID);
+      }
     };
 
-    socket.onerror = () => {
-      dispatch({ type: "error:set", message: "No se ha podido conectar el chat en tiempo real." });
-    };
+    socket.onerror = () => undefined;
 
     socket.onclose = () => {
       if (socketRef.current === socket) {
@@ -758,7 +797,7 @@ function Chat() {
         socketRef.current = null;
       }
     };
-  }, [activeConversationID]);
+  }, [accessToken, activeConversationID, normalizeMessage]);
 
   async function handleSubmit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
@@ -774,7 +813,7 @@ function Chat() {
       }
 
       const message = await sendMessage(activeConversation.conversation_id, draft);
-      dispatch({ type: "message:receive", message, activeConversationID });
+      dispatch({ type: "message:receive", message: normalizeMessage(message), activeConversationID });
       dispatch({ type: "draft:set", value: "" });
     } catch (err) {
       dispatch({
@@ -793,7 +832,7 @@ function Chat() {
         loading={loadingConversations}
         searchQuery={searchQuery}
         activeConversationID={activeConversation?.conversation_id}
-        unreadConversationIDs={unreadConversationIDs}
+        unreadCountsByConversationID={unreadCountsByConversationID}
         onSearchChange={(value) => dispatch({ type: "search:set", value })}
         onOpen={(id) => {
           dispatch({ type: "conversation:open", conversationID: id });

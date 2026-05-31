@@ -89,6 +89,7 @@ func Setup(
 	conversations := protected.Group("/conversations")
 	conversations.GET("", chatH.ListConversations)
 	conversations.POST("", chatH.StartConversation)
+	conversations.POST("/:id/read", chatH.MarkMessagesRead)
 	conversations.GET("/:id/messages", chatH.ListMessages)
 	conversations.POST("/:id/messages", chatH.SendMessage)
 	conversations.GET("/:id/ws", chatH.WebSocket)

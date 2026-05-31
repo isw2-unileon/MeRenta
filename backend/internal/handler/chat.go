@@ -76,8 +76,8 @@ func (h *ChatHandler) StartConversation(c *gin.Context) {
 	response.OK(c, http.StatusCreated, res)
 }
 
-// ListMessages handles GET /api/conversations/:id/messages.
-func (h *ChatHandler) ListMessages(c *gin.Context) {
+// MarkMessagesRead handles POST /api/conversations/:id/read.
+func (h *ChatHandler) MarkMessagesRead(c *gin.Context) {
 	customerID, ok := getCustomerID(c)
 	if !ok {
 		return
@@ -100,6 +100,21 @@ func (h *ChatHandler) ListMessages(c *gin.Context) {
 	}
 	if len(readReceipt.MessageIDs) > 0 {
 		h.hub.Broadcast(conversationID, model.ChatWebSocketOut{Type: "read", Read: readReceipt})
+	}
+
+	response.OK(c, http.StatusOK, readReceipt)
+}
+
+// ListMessages handles GET /api/conversations/:id/messages.
+func (h *ChatHandler) ListMessages(c *gin.Context) {
+	customerID, ok := getCustomerID(c)
+	if !ok {
+		return
+	}
+
+	conversationID, ok := parseUUIDParam(c)
+	if !ok {
+		return
 	}
 
 	res, err := h.svc.GetMessages(c.Request.Context(), customerID, conversationID)
