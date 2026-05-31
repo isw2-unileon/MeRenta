@@ -141,7 +141,7 @@ func (h *AuthHandler) UpdateEmail(c *gin.Context) {
 	case errors.Is(err, service.ErrCustomerNotFound):
 		response.Error(c, http.StatusNotFound, err.Error())
 	default:
-		response.Error(c, http.StatusInternalServerError, "internal server error")
+		response.Error(c, http.StatusInternalServerError, formatBindError(err))
 	}
 }
 
@@ -206,6 +206,25 @@ func (h *AuthHandler) UploadAvatar(c *gin.Context) {
 	switch {
 	case err == nil:
 		response.OK(c, http.StatusOK, res)
+	case errors.Is(err, service.ErrCustomerNotFound):
+		response.Error(c, http.StatusNotFound, err.Error())
+	default:
+		response.Error(c, http.StatusInternalServerError, "internal server error")
+	}
+}
+
+// DeleteMe removes the authenticated customer account and clears the session.
+func (h *AuthHandler) DeleteMe(c *gin.Context) {
+	customerID, ok := getCustomerID(c)
+	if !ok {
+		return
+	}
+
+	err := h.svc.DeleteAccount(c.Request.Context(), customerID)
+	switch {
+	case err == nil:
+		clearAuthCookie(c)
+		response.OK(c, http.StatusOK, gin.H{"message": "account deleted successfully"})
 	case errors.Is(err, service.ErrCustomerNotFound):
 		response.Error(c, http.StatusNotFound, err.Error())
 	default:

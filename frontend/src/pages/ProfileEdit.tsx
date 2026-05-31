@@ -1,7 +1,8 @@
 import { useEffect, useMemo, useReducer, useRef, useState, type ChangeEvent, type FormEvent } from "react";
-import { Camera, Star, Trash2 } from "lucide-react";
+import { Camera, MapPin, Pencil, Plus, Star, Trash2, X } from "lucide-react";
 
 import { useAuth } from "@/hooks/useAuth";
+import type { AddressResponse, CreateAddressRequest } from "@/types/address";
 import type { ApiResponse } from "@/types/common";
 import type { CustomerPublic } from "@/types/customer";
 import type { SearchItemResponse, SearchItemsResponse } from "@/types/item";
@@ -56,6 +57,16 @@ const initialReviewsState: ReviewsState = {
   average: 0,
   loading: true,
   error: "",
+};
+
+const EMPTY_ADDRESS: CreateAddressRequest = {
+  street: "",
+  number: "",
+  floor: "",
+  city: "",
+  province: "",
+  postal_code: "",
+  country: "Spain",
 };
 
 function productsReducer(state: ProductsState, action: ProductsAction): ProductsState {
@@ -126,6 +137,72 @@ async function fetchReceivedReviews(signal: AbortSignal): Promise<ReceivedReview
     throw new Error(json.message ?? json.error ?? "Error al cargar tus valoraciones");
   }
   return json.data;
+}
+
+async function fetchAddresses(signal: AbortSignal): Promise<AddressResponse[]> {
+  const res = await fetch("/api/addresses", {
+    credentials: "include",
+    signal,
+  });
+  const json = (await res.json()) as ApiResponse<AddressResponse[]>;
+  if (!res.ok || !json.success || !json.data) {
+    throw new Error(json.message ?? json.error ?? "Error al cargar tus direcciones");
+  }
+  return json.data;
+}
+
+async function createAddress(payload: CreateAddressRequest): Promise<AddressResponse> {
+  const res = await fetch("/api/addresses", {
+    method: "POST",
+    credentials: "include",
+    headers: {
+      "Content-Type": "application/json",
+    },
+    body: JSON.stringify(payload),
+  });
+  const json = (await res.json()) as ApiResponse<AddressResponse>;
+  if (!res.ok || !json.success || !json.data) {
+    throw new Error(json.message ?? json.error ?? "Error al guardar la direccion");
+  }
+  return json.data;
+}
+
+async function updateAddress(addressId: string, payload: CreateAddressRequest): Promise<AddressResponse> {
+  const res = await fetch(`/api/addresses/${addressId}`, {
+    method: "PATCH",
+    credentials: "include",
+    headers: {
+      "Content-Type": "application/json",
+    },
+    body: JSON.stringify(payload),
+  });
+  const json = (await res.json()) as ApiResponse<AddressResponse>;
+  if (!res.ok || !json.success || !json.data) {
+    throw new Error(json.message ?? json.error ?? "Error al actualizar la direccion");
+  }
+  return json.data;
+}
+
+async function deleteAddress(addressId: string): Promise<void> {
+  const res = await fetch(`/api/addresses/${addressId}`, {
+    method: "DELETE",
+    credentials: "include",
+  });
+  const json = (await res.json()) as ApiResponse<{ message: string }>;
+  if (!res.ok || !json.success) {
+    throw new Error(json.message ?? json.error ?? "Error al quitar la direccion");
+  }
+}
+
+async function deleteAccount(): Promise<void> {
+  const res = await fetch("/api/me", {
+    method: "DELETE",
+    credentials: "include",
+  });
+  const json = (await res.json()) as ApiResponse<{ message: string }>;
+  if (!res.ok || !json.success) {
+    throw new Error(json.message ?? json.error ?? "Error al eliminar la cuenta");
+  }
 }
 
 async function updateProfile(payload: {
@@ -232,6 +309,24 @@ function uniqueProductCities(products: SearchItemResponse[]) {
   return Array.from(new Set(products.map((product) => product.city).filter(Boolean)));
 }
 
+function addressToDraft(address: AddressResponse): CreateAddressRequest {
+  return {
+    street: address.street,
+    number: address.number,
+    floor: address.floor ?? "",
+    city: address.city,
+    province: address.province,
+    postal_code: address.postal_code,
+    country: address.country || "Spain",
+    latitude: address.latitude,
+    longitude: address.longitude,
+  };
+}
+
+function formatAddress(address: AddressResponse) {
+  return `${address.street} ${address.number}${address.floor ? `, ${address.floor}` : ""}`;
+}
+
 /**
  * Form page for updating the current user's profile.
  * @returns The profile edit page.
@@ -249,11 +344,21 @@ function ProfileEdit() {
   const [avatarUrl, setAvatarUrl] = useState(user?.avatar_url ?? "");
   const [avatarFile, setAvatarFile] = useState<File | null>(null);
   const [avatarPreviewUrl, setAvatarPreviewUrl] = useState("");
-  const [location, setLocation] = useState("");
+  const [addresses, setAddresses] = useState<AddressResponse[]>([]);
+  const [addressesLoading, setAddressesLoading] = useState(true);
+  const [addressesError, setAddressesError] = useState("");
+  const [showAddressEditor, setShowAddressEditor] = useState(false);
+  const [editingAddressId, setEditingAddressId] = useState<string | null>(null);
+  const [addressDraft, setAddressDraft] = useState<CreateAddressRequest>(EMPTY_ADDRESS);
+  const [addressErrors, setAddressErrors] = useState<Partial<CreateAddressRequest>>({});
+  const [savingAddress, setSavingAddress] = useState(false);
+  const [deletingAddressId, setDeletingAddressId] = useState<string | null>(null);
   const [currentPassword, setCurrentPassword] = useState("");
   const [newPassword, setNewPassword] = useState("");
   const [confirmPassword, setConfirmPassword] = useState("");
   const [saving, setSaving] = useState(false);
+  const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
+  const [deletingAccount, setDeletingAccount] = useState(false);
   const [saveError, setSaveError] = useState("");
   const [saveMessage, setSaveMessage] = useState("");
 
@@ -300,6 +405,20 @@ function ProfileEdit() {
         });
       });
 
+    setAddressesLoading(true);
+    fetchAddresses(controller.signal)
+      .then((data) => {
+        setAddresses(data);
+        setAddressesError("");
+      })
+      .catch((err: unknown) => {
+        if (err instanceof DOMException && err.name === "AbortError") return;
+        setAddressesError(err instanceof Error ? err.message : "Error al cargar tus direcciones");
+      })
+      .finally(() => {
+        if (!controller.signal.aborted) setAddressesLoading(false);
+      });
+
     return () => controller.abort();
   }, []);
 
@@ -316,11 +435,6 @@ function ProfileEdit() {
   const profileMeta = [cities.join(", "), memberSince ? `Miembro desde ${memberSince}` : ""]
     .filter(Boolean)
     .join(" - ");
-
-  useEffect(() => {
-    if (location || cities.length === 0) return;
-    setLocation(cities.join(", "));
-  }, [cities, location]);
 
   const stats = useMemo(
     () => [
@@ -418,6 +532,102 @@ function ProfileEdit() {
     });
     setSaveError("");
     setSaveMessage("");
+  }
+
+  function handleAddressFieldChange(event: ChangeEvent<HTMLInputElement>) {
+    const { name, value } = event.target;
+    setAddressDraft((current) => ({ ...current, [name]: value }));
+    setAddressErrors((current) => ({ ...current, [name]: undefined }));
+  }
+
+  function validateAddressDraft() {
+    const errors: Partial<CreateAddressRequest> = {};
+    if (!addressDraft.street.trim()) errors.street = "Obligatorio";
+    if (!addressDraft.number.trim()) errors.number = "Obligatorio";
+    if (!addressDraft.city.trim()) errors.city = "Obligatorio";
+    if (!addressDraft.province.trim()) errors.province = "Obligatorio";
+    if (!addressDraft.postal_code.trim()) errors.postal_code = "Obligatorio";
+    setAddressErrors(errors);
+    return Object.keys(errors).length === 0;
+  }
+
+  function openNewAddressEditor() {
+    setEditingAddressId(null);
+    setAddressDraft(EMPTY_ADDRESS);
+    setAddressErrors({});
+    setShowAddressEditor(true);
+  }
+
+  function openEditAddressEditor(address: AddressResponse) {
+    setEditingAddressId(address.address_id);
+    setAddressDraft(addressToDraft(address));
+    setAddressErrors({});
+    setShowAddressEditor(true);
+  }
+
+  async function handleSaveAddress() {
+    if (!validateAddressDraft()) return;
+
+    setSavingAddress(true);
+    setAddressesError("");
+    try {
+      const payload = {
+        ...addressDraft,
+        floor: addressDraft.floor?.trim() || "",
+        country: addressDraft.country || "Spain",
+      };
+
+      if (editingAddressId) {
+        const updated = await updateAddress(editingAddressId, payload);
+        setAddresses((current) =>
+          current.map((address) => (address.address_id === updated.address_id ? updated : address))
+        );
+      } else {
+        const created = await createAddress(payload);
+        setAddresses((current) => [...current, created]);
+      }
+
+      setAddressDraft(EMPTY_ADDRESS);
+      setEditingAddressId(null);
+      setShowAddressEditor(false);
+      setSaveMessage(editingAddressId ? "Direccion actualizada correctamente." : "Direccion guardada correctamente.");
+    } catch (err: unknown) {
+      setAddressesError(err instanceof Error ? err.message : "Error al guardar la direccion");
+    } finally {
+      setSavingAddress(false);
+    }
+  }
+
+  async function handleDeleteAddress(addressId: string) {
+    setDeletingAddressId(addressId);
+    setAddressesError("");
+    try {
+      await deleteAddress(addressId);
+      setAddresses((current) => current.filter((address) => address.address_id !== addressId));
+      if (editingAddressId === addressId) {
+        setEditingAddressId(null);
+        setShowAddressEditor(false);
+        setAddressDraft(EMPTY_ADDRESS);
+      }
+      setSaveMessage("Direccion quitada correctamente.");
+    } catch (err: unknown) {
+      setAddressesError(err instanceof Error ? err.message : "Error al quitar la direccion");
+    } finally {
+      setDeletingAddressId(null);
+    }
+  }
+
+  async function handleDeleteAccount() {
+    setDeletingAccount(true);
+    setSaveError("");
+    try {
+      await deleteAccount();
+      window.location.href = "/";
+    } catch (err: unknown) {
+      setSaveError(err instanceof Error ? err.message : "Error al eliminar la cuenta");
+      setShowDeleteConfirm(false);
+      setDeletingAccount(false);
+    }
   }
 
   return (
@@ -534,17 +744,6 @@ function ProfileEdit() {
             </label>
 
             <label className="mt-5 mb-0">
-              Ubicacion
-              <input
-                type="text"
-                className="mt-1"
-                value={location}
-                onChange={(event) => setLocation(event.target.value)}
-                placeholder="Ciudad, pais"
-              />
-            </label>
-
-            <label className="mt-5 mb-0">
               Telefono
               <input
                 type="tel"
@@ -554,6 +753,194 @@ function ProfileEdit() {
                 autoComplete="tel"
               />
             </label>
+          </section>
+
+          <hr className="divider-subtle" />
+
+          <section>
+            <div className="flex items-center justify-between gap-4">
+              <div>
+                <h2 className="heading-panel--sm">Direcciones</h2>
+                <p className="text-subtle mt-1 text-[13px]">Gestiona tus direcciones de recogida.</p>
+              </div>
+              <button
+                type="button"
+                className="text-primary flex items-center gap-1.5 px-0 font-medium"
+                onClick={openNewAddressEditor}
+              >
+                <Plus size={16} />
+                Nueva direccion
+              </button>
+            </div>
+
+            {addressesError && (
+              <p className="border-report bg-error-danger text-report mt-4 rounded-lg border p-3">{addressesError}</p>
+            )}
+
+            <div className="mt-5 space-y-3">
+              {addressesLoading ? (
+                <p className="text-subtle">Cargando direcciones...</p>
+              ) : addresses.length === 0 ? (
+                <p className="border-border-main text-subtle rounded-lg border bg-white p-4">
+                  Todavia no tienes direcciones guardadas.
+                </p>
+              ) : (
+                addresses.map((address) => (
+                  <div
+                    key={address.address_id}
+                    className="border-border-main flex flex-col gap-3 rounded-lg border bg-white p-4 sm:flex-row sm:items-center sm:justify-between"
+                  >
+                    <div className="flex min-w-0 items-start gap-3">
+                      <span className="bg-primary-light text-primary flex size-9 shrink-0 items-center justify-center rounded-full">
+                        <MapPin size={16} />
+                      </span>
+                      <div className="min-w-0">
+                        <p className="text-ink font-medium">{formatAddress(address)}</p>
+                        <p className="text-subtle text-[13px]">
+                          {address.postal_code} - {address.city}, {address.province}
+                        </p>
+                      </div>
+                    </div>
+                    <div className="flex gap-2 self-start sm:self-center">
+                      <button
+                        type="button"
+                        className="btn-secondary btn--sm"
+                        onClick={() => openEditAddressEditor(address)}
+                      >
+                        <Pencil size={14} />
+                        Editar
+                      </button>
+                      <button
+                        type="button"
+                        className="btn-danger-outline btn--sm"
+                        onClick={() => void handleDeleteAddress(address.address_id)}
+                        disabled={deletingAddressId === address.address_id}
+                      >
+                        <Trash2 size={14} />
+                        {deletingAddressId === address.address_id ? "Quitando..." : "Quitar"}
+                      </button>
+                    </div>
+                  </div>
+                ))
+              )}
+            </div>
+
+            {showAddressEditor && (
+              <div className="border-border-main mt-5 rounded-xl border bg-white p-4">
+                <div className="mb-3 flex items-center justify-between">
+                  <h3 className="text-ink font-semibold">
+                    {editingAddressId ? "Editar direccion" : "Anadir direccion"}
+                  </h3>
+                  <button
+                    type="button"
+                    className="text-subtle hover:text-ink p-0"
+                    aria-label="Cerrar editor de direccion"
+                    onClick={() => {
+                      setShowAddressEditor(false);
+                      setAddressErrors({});
+                    }}
+                  >
+                    <X size={18} />
+                  </button>
+                </div>
+
+                <div className="grid grid-cols-1 gap-4 sm:grid-cols-[1fr_100px]">
+                  <label className="mb-0">
+                    Calle / Avenida
+                    <input
+                      type="text"
+                      name="street"
+                      className={`mt-1 ${addressErrors.street ? "border-red-400" : ""}`}
+                      value={addressDraft.street}
+                      onChange={handleAddressFieldChange}
+                      placeholder="Calle Gran Via"
+                    />
+                    {addressErrors.street && <p className="mt-1 text-xs text-red-500">{addressErrors.street}</p>}
+                  </label>
+
+                  <label className="mb-0">
+                    Numero
+                    <input
+                      type="text"
+                      name="number"
+                      className={`mt-1 ${addressErrors.number ? "border-red-400" : ""}`}
+                      value={addressDraft.number}
+                      onChange={handleAddressFieldChange}
+                      placeholder="12"
+                    />
+                    {addressErrors.number && <p className="mt-1 text-xs text-red-500">{addressErrors.number}</p>}
+                  </label>
+                </div>
+
+                <div className="mt-4 grid grid-cols-1 gap-4 sm:grid-cols-[1fr_200px]">
+                  <label className="mb-0">
+                    Piso / Puerta <span className="text-subtle">(opcional)</span>
+                    <input
+                      type="text"
+                      name="floor"
+                      className="mt-1"
+                      value={addressDraft.floor ?? ""}
+                      onChange={handleAddressFieldChange}
+                      placeholder="3ºA"
+                    />
+                  </label>
+
+                  <label className="mb-0">
+                    Codigo postal
+                    <input
+                      type="text"
+                      name="postal_code"
+                      className={`mt-1 ${addressErrors.postal_code ? "border-red-400" : ""}`}
+                      value={addressDraft.postal_code}
+                      onChange={handleAddressFieldChange}
+                      placeholder="28013"
+                    />
+                    {addressErrors.postal_code && (
+                      <p className="mt-1 text-xs text-red-500">{addressErrors.postal_code}</p>
+                    )}
+                  </label>
+                </div>
+
+                <div className="mt-4 grid grid-cols-1 gap-4 sm:grid-cols-[1fr_200px]">
+                  <label className="mb-0">
+                    Ciudad
+                    <input
+                      type="text"
+                      name="city"
+                      className={`mt-1 ${addressErrors.city ? "border-red-400" : ""}`}
+                      value={addressDraft.city}
+                      onChange={handleAddressFieldChange}
+                      placeholder="Madrid"
+                    />
+                    {addressErrors.city && <p className="mt-1 text-xs text-red-500">{addressErrors.city}</p>}
+                  </label>
+
+                  <label className="mb-0">
+                    Provincia
+                    <input
+                      type="text"
+                      name="province"
+                      className={`mt-1 ${addressErrors.province ? "border-red-400" : ""}`}
+                      value={addressDraft.province}
+                      onChange={handleAddressFieldChange}
+                      placeholder="Madrid"
+                    />
+                    {addressErrors.province && <p className="mt-1 text-xs text-red-500">{addressErrors.province}</p>}
+                  </label>
+                </div>
+
+                <div className="mt-4 flex justify-end">
+                  <button
+                    type="button"
+                    className="btn-primary btn--sm"
+                    onClick={handleSaveAddress}
+                    disabled={savingAddress}
+                  >
+                    {savingAddress ? "Guardando..." : "Guardar direccion"}
+                  </button>
+                </div>
+              </div>
+            )}
           </section>
 
           <hr className="divider-subtle" />
@@ -613,6 +1000,7 @@ function ProfileEdit() {
               <button
                 type="button"
                 className="btn-danger-outline btn--sm"
+                onClick={() => setShowDeleteConfirm(true)}
               >
                 <Trash2 size={14} />
                 Eliminar cuenta
@@ -632,6 +1020,50 @@ function ProfileEdit() {
           </button>
         </form>
       </main>
+
+      {showDeleteConfirm && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 px-4">
+          <div className="border-border-main w-full max-w-md rounded-xl border bg-white p-6 shadow-xl">
+            <div className="flex items-start justify-between gap-4">
+              <div>
+                <h2 className="heading-panel--sm">Eliminar cuenta</h2>
+                <p className="text-subtle mt-2 text-[13px]">
+                  Se eliminara tu cuenta y todos los datos relacionados. Esta accion no se puede deshacer.
+                </p>
+              </div>
+              <button
+                type="button"
+                className="text-subtle hover:text-ink p-0"
+                aria-label="Cerrar confirmacion"
+                onClick={() => setShowDeleteConfirm(false)}
+                disabled={deletingAccount}
+              >
+                <X size={18} />
+              </button>
+            </div>
+
+            <div className="mt-6 flex flex-col-reverse gap-3 sm:flex-row sm:justify-end">
+              <button
+                type="button"
+                className="btn-secondary btn--sm"
+                onClick={() => setShowDeleteConfirm(false)}
+                disabled={deletingAccount}
+              >
+                Cancelar
+              </button>
+              <button
+                type="button"
+                className="btn-danger-outline btn--sm"
+                onClick={() => void handleDeleteAccount()}
+                disabled={deletingAccount}
+              >
+                <Trash2 size={14} />
+                {deletingAccount ? "Eliminando..." : "Confirmar eliminacion"}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

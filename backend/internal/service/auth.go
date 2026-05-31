@@ -315,6 +315,18 @@ func (s *AuthService) UpdatePassword(ctx context.Context, id uuid.UUID, req mode
 	})
 }
 
+// DeleteAccount removes the current customer and related account data.
+func (s *AuthService) DeleteAccount(ctx context.Context, id uuid.UUID) error {
+	if _, err := s.q.GetCustomerByID(ctx, id); err != nil {
+		if errors.Is(err, pgx.ErrNoRows) {
+			return ErrCustomerNotFound
+		}
+		return err
+	}
+
+	return s.q.DeleteCustomerAccountData(ctx, id)
+}
+
 // UploadAvatar uploads an avatar image and stores its signed URL on the customer profile.
 func (s *AuthService) UploadAvatar(ctx context.Context, id uuid.UUID, fh *multipart.FileHeader) (*model.CustomerResponse, error) {
 	if s.st == nil {
