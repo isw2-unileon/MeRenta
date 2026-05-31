@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useReducer, type FormEvent } from "react";
 import { useStripe, useElements, CardNumberElement, CardExpiryElement, CardCvcElement } from "@stripe/react-stripe-js";
 import type { StripeCardNumberElementChangeEvent } from "@stripe/stripe-js";
 
@@ -39,6 +39,46 @@ interface PaymentFormProps {
   onError: (code: string, message: string) => void;
 }
 
+interface PaymentFormState {
+  holderName: string;
+  termsAccepted: boolean;
+  loading: boolean;
+  fieldError: string;
+  cardBrand: string;
+}
+
+type PaymentFormAction =
+  | { type: "holderName:set"; value: string }
+  | { type: "terms:set"; value: boolean }
+  | { type: "loading:set"; value: boolean }
+  | { type: "fieldError:set"; value: string }
+  | { type: "cardNumber:change"; brand: string; errorMessage?: string };
+
+const initialPaymentFormState: PaymentFormState = {
+  holderName: "",
+  termsAccepted: false,
+  loading: false,
+  fieldError: "",
+  cardBrand: "unknown",
+};
+
+function paymentFormReducer(state: PaymentFormState, action: PaymentFormAction): PaymentFormState {
+  switch (action.type) {
+    case "holderName:set":
+      return { ...state, holderName: action.value };
+    case "terms:set":
+      return { ...state, termsAccepted: action.value };
+    case "loading:set":
+      return { ...state, loading: action.value };
+    case "fieldError:set":
+      return { ...state, fieldError: action.value };
+    case "cardNumber:change":
+      return { ...state, cardBrand: action.brand, fieldError: action.errorMessage ?? "" };
+    default:
+      return state;
+  }
+}
+
 /** Converts a Stripe error code to a Spanish description. */
 function stripeCodeToMessage(code: string): string {
   const messages: Record<string, string> = {
@@ -72,37 +112,32 @@ function PaymentForm({ totalEUR, clientSecret, onSuccess, onError }: PaymentForm
   const stripe = useStripe();
   const elements = useElements();
 
-  const [holderName, setHolderName] = useState("");
-  const [termsAccepted, setTermsAccepted] = useState(false);
-  const [loading, setLoading] = useState(false);
-  const [fieldError, setFieldError] = useState("");
-  const [cardBrand, setCardBrand] = useState<string>("unknown");
+  const [state, dispatch] = useReducer(paymentFormReducer, initialPaymentFormState);
+  const { holderName, termsAccepted, loading, fieldError, cardBrand } = state;
 
   const handleCardNumberChange = (e: StripeCardNumberElementChangeEvent) => {
-    setCardBrand(e.brand);
-    if (e.error) setFieldError(e.error.message);
-    else setFieldError("");
+    dispatch({ type: "cardNumber:change", brand: e.brand, errorMessage: e.error?.message });
   };
 
-  const handleSubmit = async (e: React.FormEvent) => {
+  const handleSubmit = async (e: FormEvent) => {
     e.preventDefault();
     if (!stripe || !elements) return;
 
     if (!holderName.trim()) {
-      setFieldError("Introduce el nombre del titular de la tarjeta.");
+      dispatch({ type: "fieldError:set", value: "Introduce el nombre del titular de la tarjeta." });
       return;
     }
     if (!termsAccepted) {
-      setFieldError("Debes aceptar los términos para continuar.");
+      dispatch({ type: "fieldError:set", value: "Debes aceptar los términos para continuar." });
       return;
     }
 
-    setFieldError("");
-    setLoading(true);
+    dispatch({ type: "fieldError:set", value: "" });
+    dispatch({ type: "loading:set", value: true });
 
     const cardNumber = elements.getElement(CardNumberElement);
     if (!cardNumber) {
-      setLoading(false);
+      dispatch({ type: "loading:set", value: false });
       return;
     }
 
@@ -123,7 +158,7 @@ function PaymentForm({ totalEUR, clientSecret, onSuccess, onError }: PaymentForm
     } catch {
       onError("processing_error", stripeCodeToMessage("processing_error"));
     } finally {
-      setLoading(false);
+      dispatch({ type: "loading:set", value: false });
     }
   };
 
@@ -236,7 +271,7 @@ function PaymentForm({ totalEUR, clientSecret, onSuccess, onError }: PaymentForm
         </div>
       </div>
       <p className="checkout-hint -mt-3 mb-4">
-        Campos gestionados por Stripe Elements — inyectados en tiempo de ejecucion
+        Campos gestionados por Stripe Elements, inyectados en tiempo de ejecucion
       </p>
 
       {/* ── Holder name ── */}
@@ -252,7 +287,7 @@ function PaymentForm({ totalEUR, clientSecret, onSuccess, onError }: PaymentForm
           type="text"
           className="input-checkout--editable"
           value={holderName}
-          onChange={(e) => setHolderName(e.target.value)}
+          onChange={(e) => dispatch({ type: "holderName:set", value: e.target.value })}
           placeholder="Como aparece en la tarjeta"
           autoComplete="cc-name"
           spellCheck={false}
@@ -266,7 +301,7 @@ function PaymentForm({ totalEUR, clientSecret, onSuccess, onError }: PaymentForm
           type="checkbox"
           className="checkbox-checkout mt-0.5"
           checked={termsAccepted}
-          onChange={(e) => setTermsAccepted(e.target.checked)}
+          onChange={(e) => dispatch({ type: "terms:set", value: e.target.checked })}
         />
         <label
           htmlFor="terms-checkout"
@@ -286,7 +321,7 @@ function PaymentForm({ totalEUR, clientSecret, onSuccess, onError }: PaymentForm
         disabled={!stripe || loading || !termsAccepted}
         aria-busy={loading}
       >
-        {loading ? "Procesando..." : `🔒 Pagar ${fmtTotal(totalEUR)} EUR con Stripe`}
+        {loading ? "Procesando…" : `🔒 Pagar ${fmtTotal(totalEUR)} EUR con Stripe`}
       </button>
 
       <p className="checkout-hint mt-3 text-center">

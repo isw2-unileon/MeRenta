@@ -120,10 +120,10 @@ function PaymentSuccess() {
               <img
                 src={itemImageUrl}
                 alt={itemTitle}
-                className="h-20 w-20 flex-shrink-0 rounded-[var(--radius-md)] object-cover"
+                className="size-20 flex-shrink-0 rounded-[var(--radius-md)] object-cover"
               />
             ) : (
-              <div className="h-20 w-20 flex-shrink-0 rounded-[var(--radius-md)] bg-[var(--color-primary-light)]" />
+              <div className="size-20 flex-shrink-0 rounded-[var(--radius-md)] bg-[var(--color-primary-light)]" />
             )}
 
             <div className="flex flex-col gap-1">

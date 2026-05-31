@@ -17,15 +17,17 @@ interface StarRatingProps {
  * @returns Accessible star rating row.
  */
 function StarRating({ rating, max = 5, className = "" }: StarRatingProps) {
+  const starPositions = Array.from({ length: max }, (_, index) => index + 1);
+
   return (
     <span
       className={`inline-flex items-center ${className}`}
       aria-label={`${rating} de ${max} estrellas`}
     >
-      {Array.from({ length: max }, (_, i) => (
+      {starPositions.map((position) => (
         <span
-          key={i}
-          className={i + 0.5 <= rating ? "star-filled" : "star-empty"}
+          key={`star-${position}`}
+          className={position - 0.5 <= rating ? "star-filled" : "star-empty"}
           aria-hidden="true"
         >
           ★

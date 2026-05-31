@@ -91,6 +91,14 @@ const initialReviewsState: ReviewsState = {
   loading: true,
   error: "",
 };
+const PRODUCTS_SKELETON_IDS = [
+  "profile-product-skel-1",
+  "profile-product-skel-2",
+  "profile-product-skel-3",
+  "profile-product-skel-4",
+  "profile-product-skel-5",
+  "profile-product-skel-6",
+];
 
 function productsReducer(state: ProductsState, action: ProductsAction): ProductsState {
   switch (action.type) {
@@ -415,9 +423,9 @@ function ReviewsSection({ state }: ReviewsSectionProps) {
 function ProductsSkeleton() {
   return (
     <>
-      {Array.from({ length: 6 }, (_, index) => (
+      {PRODUCTS_SKELETON_IDS.map((id) => (
         <div
-          key={index}
+          key={id}
           className="border-border-main bg-page animate-pulse overflow-hidden rounded-xl border"
         >
           <div className="bg-primary-light h-29" />

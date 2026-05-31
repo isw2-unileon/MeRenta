@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useReducer } from "react";
 import { useParams, useSearchParams, useNavigate } from "react-router-dom";
 import { loadStripe } from "@stripe/stripe-js";
 import { Elements } from "@stripe/react-stripe-js";
@@ -12,6 +12,7 @@ import type { ItemImageResponse, ItemResponse } from "@/types/item";
 // ── Constants (mirror BookingCard & backend) ──────────────────────────────────
 const SERVICE_FEE = 5;
 const INSURANCE_DAILY_RATE = 2.3;
+const CHECKOUT_FALLBACK_DATE = new Date(0);
 
 // ── Stripe setup ──────────────────────────────────────────────────────────────
 const stripeKey = import.meta.env.VITE_STRIPE_PUBLISHABLE_KEY as string | undefined;
@@ -33,6 +34,120 @@ interface PaymentIntentData {
   amount_eur: number;
 }
 
+interface CheckoutState {
+  item: ItemResponse | null;
+  itemImageUrl: string;
+  ownerName: string;
+  clientSecret: string | null;
+  paymentTotal: number;
+  loadError: string;
+}
+
+interface CheckoutLoadParams {
+  itemId: string;
+  startStr: string;
+  endStr: string;
+}
+
+interface LoadedCheckoutData {
+  item: ItemResponse;
+  itemImageUrl: string;
+  ownerName: string;
+  clientSecret: string;
+  paymentTotal: number;
+}
+
+type CheckoutAction =
+  | {
+      type: "load:success";
+      item: ItemResponse;
+      itemImageUrl: string;
+      ownerName: string;
+      clientSecret: string;
+      paymentTotal: number;
+    }
+  | { type: "load:error"; message: string };
+
+const initialCheckoutState: CheckoutState = {
+  item: null,
+  itemImageUrl: "",
+  ownerName: "",
+  clientSecret: null,
+  paymentTotal: 0,
+  loadError: "",
+};
+
+function checkoutReducer(state: CheckoutState, action: CheckoutAction): CheckoutState {
+  switch (action.type) {
+    case "load:success":
+      return {
+        ...state,
+        item: action.item,
+        itemImageUrl: action.itemImageUrl,
+        ownerName: action.ownerName,
+        clientSecret: action.clientSecret,
+        paymentTotal: action.paymentTotal,
+        loadError: "",
+      };
+    case "load:error":
+      return { ...initialCheckoutState, loadError: action.message };
+    default:
+      return state;
+  }
+}
+
+async function fetchFirstItemImage(itemId: string): Promise<string> {
+  const res = await fetch(`/api/items/${itemId}/images`, { credentials: "include" });
+  const json = (await res.json()) as ApiResponse<ItemImageResponse[]>;
+  return json.success ? (json.data?.[0]?.image_url ?? "") : "";
+}
+
+async function fetchOwnerName(ownerId: string): Promise<string> {
+  const res = await fetch(`/api/customers/${ownerId}/profile`, { credentials: "include" });
+  const json = (await res.json()) as ApiResponse<CustomerProfile>;
+  return json.success && json.data ? `${json.data.first_name} ${json.data.last_name}` : "";
+}
+
+async function loadCheckoutData({ itemId, startStr, endStr }: CheckoutLoadParams): Promise<LoadedCheckoutData> {
+  const itemRes = await fetch(`/api/items/${itemId}`, { credentials: "include" });
+  const itemJson = (await itemRes.json()) as ApiResponse<ItemResponse>;
+  if (!itemRes.ok || !itemJson.success || !itemJson.data) {
+    throw new Error(itemJson.error ?? "No se pudo cargar el articulo.");
+  }
+  const fetchedItem = itemJson.data;
+
+  const [imageResult, ownerResult] = await Promise.allSettled([
+    fetchFirstItemImage(itemId),
+    fetchOwnerName(fetchedItem.owner_id),
+  ]);
+  const itemImageUrl = imageResult.status === "fulfilled" ? imageResult.value : "";
+  const ownerName = ownerResult.status === "fulfilled" ? ownerResult.value : "";
+
+  const piRes = await fetch("/api/payment/intent", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    credentials: "include",
+    body: JSON.stringify({
+      item_id: itemId,
+      start_date: startStr,
+      end_date: endStr,
+      price_per_day: fetchedItem.price_per_day,
+    }),
+  });
+  const piJson = (await piRes.json()) as ApiResponse<PaymentIntentData>;
+  if (!piRes.ok || !piJson.success || !piJson.data) {
+    throw new Error(piJson.error ?? "No se pudo inicializar el pago.");
+  }
+
+  return {
+    item: fetchedItem,
+    itemImageUrl,
+    ownerName,
+    clientSecret: piJson.data.client_secret,
+    paymentTotal: piJson.data.amount_eur,
+  };
+}
+
 /**
  * Full checkout page.
  * Reads the item id from the URL, start/end dates from query params,
@@ -49,12 +164,8 @@ function Checkout() {
   const startStr = searchParams.get("start") ?? "";
   const endStr = searchParams.get("end") ?? "";
 
-  const [item, setItem] = useState<ItemResponse | null>(null);
-  const [itemImageUrl, setItemImageUrl] = useState("");
-  const [ownerName, setOwnerName] = useState("");
-  const [clientSecret, setClientSecret] = useState<string | null>(null);
-  const [paymentTotal, setPaymentTotal] = useState(0);
-  const [loadError, setLoadError] = useState("");
+  const [state, dispatch] = useReducer(checkoutReducer, initialCheckoutState);
+  const { item, itemImageUrl, ownerName, clientSecret, paymentTotal, loadError } = state;
 
   // Derived date objects (safe even when strings are invalid)
   const startDate = startStr ? parseDate(startStr) : null;
@@ -69,66 +180,33 @@ function Checkout() {
   // Fetch item + create PaymentIntent together
   useEffect(() => {
     if (!itemId || !startStr || !endStr) {
-      setLoadError("Faltan parámetros en la URL (item, fechas).");
+      dispatch({ type: "load:error", message: "Faltan parámetros en la URL (item, fechas)." });
       return;
     }
 
     // Using a mutable object so the async closure sees the latest value
     // after awaits — a plain `let` boolean would be narrowed to `false` by
     // the type checker since the cleanup setter lives in a separate function.
-    const guard = { cancelled: false };
+    const guard: { cancelled: boolean } = { cancelled: false };
+    const isCancelled = () => guard.cancelled;
 
     const init = async () => {
       try {
-        // 1) Fetch item details
-        const itemRes = await fetch(`/api/items/${itemId}`, { credentials: "include" });
-        const itemJson = (await itemRes.json()) as ApiResponse<ItemResponse>;
-        if (!itemRes.ok || !itemJson.success || !itemJson.data) {
-          throw new Error(itemJson.error ?? "No se pudo cargar el articulo.");
+        if (isCancelled()) return;
+        const data = await loadCheckoutData({ itemId, startStr, endStr });
+        if (!isCancelled()) {
+          dispatch({
+            type: "load:success",
+            item: data.item,
+            itemImageUrl: data.itemImageUrl,
+            ownerName: data.ownerName,
+            clientSecret: data.clientSecret,
+            paymentTotal: data.paymentTotal,
+          });
         }
-        if (guard.cancelled) return;
-        const fetchedItem = itemJson.data;
-        setItem(fetchedItem);
-
-        // 2) Fetch first image + owner profile in parallel (best-effort)
-        await Promise.allSettled([
-          fetch(`/api/items/${itemId}/images`, { credentials: "include" })
-            .then((r) => r.json() as Promise<ApiResponse<ItemImageResponse[]>>)
-            .then((json) => {
-              if (json.success && json.data?.[0]) setItemImageUrl(json.data[0].image_url);
-            }),
-          fetch(`/api/customers/${fetchedItem.owner_id}/profile`, { credentials: "include" })
-            .then((r) => r.json() as Promise<ApiResponse<CustomerProfile>>)
-            .then((json) => {
-              if (json.success && json.data) {
-                setOwnerName(`${json.data.first_name} ${json.data.last_name}`);
-              }
-            }),
-        ]);
-
-        // 3) Create PaymentIntent on the server
-        const piRes = await fetch("/api/payment/intent", {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          credentials: "include",
-          body: JSON.stringify({
-            item_id: itemId,
-            start_date: startStr,
-            end_date: endStr,
-            price_per_day: fetchedItem.price_per_day,
-          }),
-        });
-        const piJson = (await piRes.json()) as ApiResponse<PaymentIntentData>;
-        if (!piRes.ok || !piJson.success || !piJson.data) {
-          throw new Error(piJson.error ?? "No se pudo inicializar el pago.");
-        }
-        // eslint-disable-next-line @typescript-eslint/no-unnecessary-condition
-        if (guard.cancelled) return;
-        setClientSecret(piJson.data.client_secret);
-        setPaymentTotal(piJson.data.amount_eur);
       } catch (err) {
         if (!guard.cancelled) {
-          setLoadError(err instanceof Error ? err.message : "Error al cargar el checkout.");
+          dispatch({ type: "load:error", message: err instanceof Error ? err.message : "Error al cargar el checkout." });
         }
       }
     };
@@ -176,7 +254,7 @@ function Checkout() {
   if (!item || !clientSecret) {
     return (
       <div className="flex min-h-[60vh] items-center justify-center">
-        <p className="text-[var(--color-subtle)]">Cargando checkout...</p>
+        <p className="text-[var(--color-subtle)]">Cargando checkout…</p>
       </div>
     );
   }
@@ -226,8 +304,8 @@ function Checkout() {
             imageUrl={itemImageUrl || undefined}
             ownerName={ownerName || "Propietario"}
             ownerRating={4.9}
-            startDate={startDate ?? new Date()}
-            endDate={endDate ?? new Date()}
+            startDate={startDate ?? CHECKOUT_FALLBACK_DATE}
+            endDate={endDate ?? CHECKOUT_FALLBACK_DATE}
             pricePerDay={pricePerDay}
             serviceFee={SERVICE_FEE}
             insurance={insurance}

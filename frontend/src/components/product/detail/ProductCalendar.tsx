@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useSyncExternalStore } from "react";
 
 interface ProductCalendarProps {
   /** Set of ISO date strings ("YYYY-MM-DD") that are already booked. */
@@ -16,7 +16,13 @@ interface ProductCalendarProps {
   navigateTo?: Date | null;
 }
 
+interface CalendarCell {
+  key: string;
+  day: number | null;
+}
+
 const WEEKDAY_LABELS = ["L", "M", "X", "J", "V", "S", "D"] as const;
+const SERVER_TODAY_ISO = "1970-01-01";
 
 const MONTH_NAMES = [
   "Enero",
@@ -41,15 +47,44 @@ function toISODate(date: Date): string {
   return `${y}-${m}-${d}`;
 }
 
-/** Returns true when two Date objects refer to the same calendar day. */
-function isSameDay(a: Date, b: Date): boolean {
-  return a.getFullYear() === b.getFullYear() && a.getMonth() === b.getMonth() && a.getDate() === b.getDate();
+function getToday(): Date {
+  const date = new Date();
+  date.setHours(0, 0, 0, 0);
+  return date;
 }
 
-/** Returns true when date falls strictly between start and end. */
-function isInRange(date: Date, start: Date | null, end: Date | null): boolean {
-  if (!start || !end) return false;
-  return date > start && date < end;
+function getTodayISO(): string {
+  return toISODate(getToday());
+}
+
+function subscribeToTodayChange(onStoreChange: () => void): () => void {
+  const intervalId = window.setInterval(onStoreChange, 60_000);
+  return () => window.clearInterval(intervalId);
+}
+
+function parseISODateParts(value: string): { year: number; month: number; day: number } {
+  const [year = 1970, month = 1, day = 1] = value.split("-").map(Number);
+  return { year, month: month - 1, day };
+}
+
+function isLeapYear(year: number): boolean {
+  return year % 4 === 0 && (year % 100 !== 0 || year % 400 === 0);
+}
+
+function getDaysInMonth(year: number, month: number): number {
+  if (month === 1) return isLeapYear(year) ? 29 : 28;
+  return [0, 2, 4, 6, 7, 9, 11].includes(month) ? 31 : 30;
+}
+
+function getFirstDayOffset(year: number, month: number): number {
+  const m = month < 2 ? month + 12 : month;
+  const y = month < 2 ? year - 1 : year;
+  const dayOfWeek = (1 + Math.floor((13 * (m + 1)) / 5) + y + Math.floor(y / 4) - Math.floor(y / 100) + Math.floor(y / 400)) % 7;
+  return (dayOfWeek + 5) % 7;
+}
+
+function isSameCalendarDay(year: number, month: number, day: number, date: Date | null): boolean {
+  return date !== null && date.getFullYear() === year && date.getMonth() === month && date.getDate() === day;
 }
 
 /**
@@ -73,39 +108,40 @@ function ProductCalendar({
   onDateSelect,
   navigateTo,
 }: ProductCalendarProps) {
-  const today = new Date();
-  today.setHours(0, 0, 0, 0);
-
+  const todayISO = useSyncExternalStore(subscribeToTodayChange, getTodayISO, () => SERVER_TODAY_ISO);
+  const todayParts = parseISODateParts(todayISO);
   const [monthOffset, setMonthOffset] = useState(0);
 
-  const anchorMonth = navigateTo
-    ? new Date(navigateTo.getFullYear(), navigateTo.getMonth(), 1)
-    : new Date(today.getFullYear(), today.getMonth(), 1);
-  const viewMonth = new Date(anchorMonth.getFullYear(), anchorMonth.getMonth() + monthOffset, 1);
-
-  const year = viewMonth.getFullYear();
-  const month = viewMonth.getMonth();
+  const anchorYear = navigateTo?.getFullYear() ?? todayParts.year;
+  const anchorMonth = navigateTo?.getMonth() ?? todayParts.month;
+  const viewMonthIndex = anchorYear * 12 + anchorMonth + monthOffset;
+  const year = Math.floor(viewMonthIndex / 12);
+  const month = ((viewMonthIndex % 12) + 12) % 12;
 
   /** Monday-first offset: Mon=0 … Sun=6 */
-  const firstDayOffset = (new Date(year, month, 1).getDay() + 6) % 7;
-  const daysInMonth = new Date(year, month + 1, 0).getDate();
+  const firstDayOffset = getFirstDayOffset(year, month);
+  const daysInMonth = getDaysInMonth(year, month);
 
   /** Flat array of day numbers with leading nulls for empty cells. */
-  const cells: (number | null)[] = [
-    ...Array.from<null>({ length: firstDayOffset }).fill(null),
-    ...Array.from({ length: daysInMonth }, (_, i) => i + 1),
+  const cells: CalendarCell[] = [
+    ...Array.from({ length: firstDayOffset }, (_, index) => ({ key: `empty-start-${index + 1}`, day: null })),
+    ...Array.from({ length: daysInMonth }, (_, index) => {
+      const day = index + 1;
+      return { key: `day-${day}`, day };
+    }),
   ];
   // Pad to a complete 7-column grid
-  while (cells.length % 7 !== 0) cells.push(null);
+  while (cells.length % 7 !== 0) cells.push({ key: `empty-end-${cells.length}`, day: null });
 
   const handleDayClick = (day: number) => {
     const date = new Date(year, month, day);
     date.setHours(0, 0, 0, 0);
-    if (date < today || occupiedDates.has(toISODate(date))) return;
+    const isoDate = toISODate(date);
+    if (isoDate < todayISO || occupiedDates.has(isoDate)) return;
     onDateSelect(date);
   };
 
-  const canGoPrev = year > today.getFullYear() || month > today.getMonth();
+  const canGoPrev = year > todayParts.year || month > todayParts.month;
 
   return (
     <div>
@@ -150,20 +186,19 @@ function ProductCalendar({
 
         {/* Day cells */}
         <div className="grid grid-cols-7 gap-y-0.5">
-          {cells.map((day, i) => {
+          {cells.map(({ key, day }) => {
             if (!day) {
-              return <div key={`empty-${i}`} />;
+              return <div key={key} />;
             }
 
-            const date = new Date(year, month, day);
-            date.setHours(0, 0, 0, 0);
-
-            const isPast = date < today;
-            const isOccupied = occupiedDates.has(toISODate(date)) || isPast;
-            const isStart = selectedStart !== null && isSameDay(date, selectedStart);
-            const isEnd = selectedEnd !== null && isSameDay(date, selectedEnd);
+            const isoDate = `${year}-${String(month + 1).padStart(2, "0")}-${String(day).padStart(2, "0")}`;
+            const isPast = isoDate < todayISO;
+            const isOccupied = occupiedDates.has(isoDate) || isPast;
+            const isStart = isSameCalendarDay(year, month, day, selectedStart);
+            const isEnd = isSameCalendarDay(year, month, day, selectedEnd);
             const isSelected = isStart || isEnd;
-            const inRange = isInRange(date, selectedStart, selectedEnd);
+            const inRange =
+              selectedStart !== null && selectedEnd !== null && isoDate > toISODate(selectedStart) && isoDate < toISODate(selectedEnd);
 
             let cellClass = "calendar-day-cell p-0";
             let textClass = "calendar-day";
@@ -181,7 +216,7 @@ function ProductCalendar({
 
             return (
               <button
-                key={`day-${day}`}
+                key={key}
                 type="button"
                 className={cellClass}
                 onClick={() => {

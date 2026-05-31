@@ -59,6 +59,7 @@ const dayLabelFormatter = new Intl.DateTimeFormat("es-ES", {
   day: "numeric",
   month: "long",
 });
+const CHAT_SKELETON_IDS = ["chat-skel-1", "chat-skel-2", "chat-skel-3", "chat-skel-4", "chat-skel-5"];
 
 interface ChatState {
   conversations: ConversationResponse[];
@@ -256,9 +257,7 @@ function chatReducer(state: ChatState, action: ChatAction): ChatState {
 function initialsFromName(name: string): string {
   return name
     .split(" ")
-    .filter(Boolean)
-    .map((part) => part[0])
-    .join("")
+    .reduce((initials, part) => (part ? `${initials}${part[0]}` : initials), "")
     .toUpperCase()
     .slice(0, 2);
 }
@@ -430,7 +429,7 @@ function ConversationList({
   return (
     <aside className="border-border-main bg-page flex w-[320px] shrink-0 flex-col border-r">
       <div className="border-border-main border-b p-4">
-        <h1 className="text-error-title font-bold">Mensajes</h1>
+        <h1 className="text-error-title font-semibold">Mensajes</h1>
         <label className="relative mt-5 mb-0 block">
           <Search
             size={16}
@@ -449,9 +448,9 @@ function ConversationList({
       <div className="min-h-0 flex-1 overflow-y-auto p-6">
         {loading ? (
           <div className="space-y-4">
-            {Array.from({ length: 5 }, (_, index) => (
+            {CHAT_SKELETON_IDS.map((id) => (
               <div
-                key={index}
+                key={id}
                 className="flex animate-pulse items-center gap-3"
               >
                 <div className="bg-primary-light size-11 rounded-full" />
@@ -497,7 +496,7 @@ function ChatHeader({
           image={conversation.other_avatar_url}
         />
         <div>
-          <h2 className="text-[17px] font-bold">{conversation.other_user_name}</h2>
+          <h2 className="text-[17px] font-semibold">{conversation.other_user_name}</h2>
           <p className="bg-primary-light text-primary inline-flex max-w-90 truncate rounded-full px-2.5 py-0.5 text-[10px] font-medium">
             {conversation.item_title} · {Math.round(conversation.item_price)} EUR/dia
           </p>
@@ -684,17 +683,17 @@ function Chat() {
     }
 
     const controller = new AbortController();
-    let active = true;
+    const guard: { active: boolean } = { active: true };
 
     const loadMessages = async (showLoading: boolean) => {
       if (showLoading) dispatch({ type: "messages:loading" });
 
       try {
+        if (!guard.active) return;
         const data = await apiGet<MessagesResponse>(
           `/api/conversations/${activeConversationID}/messages`,
           controller.signal
         );
-        if (!active) return;
         if (showLoading) {
           dispatch({ type: "messages:success", items: data.items });
         } else {
@@ -711,7 +710,7 @@ function Chat() {
     const intervalID = window.setInterval(() => void loadMessages(false), 2500);
 
     return () => {
-      active = false;
+      guard.active = false;
       window.clearInterval(intervalID);
       controller.abort();
     };
