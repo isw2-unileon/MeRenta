@@ -5,6 +5,7 @@ import (
 	"errors"
 	"log/slog"
 	"net/http"
+	"strings"
 
 	"github.com/gin-gonic/gin"
 	"github.com/google/uuid"
@@ -17,7 +18,7 @@ import (
 
 // WebSocket handles GET /api/conversations/:id/ws.
 func (h *ChatHandler) WebSocket(c *gin.Context) {
-	customerID, ok := getCustomerID(c)
+	customerID, ok := h.authenticateWebSocket(c)
 	if !ok {
 		return
 	}
@@ -40,6 +41,30 @@ func (h *ChatHandler) WebSocket(c *gin.Context) {
 		},
 	}
 	server.ServeHTTP(c.Writer, c.Request)
+}
+
+func (h *ChatHandler) authenticateWebSocket(c *gin.Context) (uuid.UUID, bool) {
+	tokenStr := strings.TrimSpace(c.Query("access_token"))
+	if tokenStr == "" {
+		tokenStr = strings.TrimSpace(c.Query("token"))
+	}
+	if tokenStr == "" {
+		if cookie, err := c.Cookie(authCookieName); err == nil {
+			tokenStr = strings.TrimSpace(cookie)
+		}
+	}
+	if tokenStr == "" {
+		response.Error(c, http.StatusUnauthorized, "missing token")
+		return uuid.UUID{}, false
+	}
+
+	claims, err := h.jwtMgr.Verify(tokenStr)
+	if err != nil {
+		response.Error(c, http.StatusUnauthorized, "invalid token")
+		return uuid.UUID{}, false
+	}
+
+	return claims.CustomerID, true
 }
 
 func (h *ChatHandler) ensureConversationAccess(c *gin.Context, customerID, conversationID uuid.UUID) bool {

@@ -77,7 +77,7 @@ func main() {
 		return
 	}
 	chatHub := handler.NewChatHub()
-	chatH := handler.NewChatHandler(chatSvc, chatHub)
+	chatH := handler.NewChatHandler(chatSvc, chatHub, jwtMgr)
 
 	reviewSvc := service.NewReviewService(q)
 	reviewH := handler.NewReviewHandler(reviewSvc)
