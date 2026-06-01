@@ -390,8 +390,10 @@ async function markConversationRead(conversationID: string): Promise<void> {
 }
 
 function buildWebSocketURL(conversationID: string): string {
-  const apiBaseURL = import.meta.env.VITE_API_BASE_URL.trim() || window.location.origin;
-  const url = new URL(`/api/conversations/${conversationID}/ws`, apiBaseURL);
+  // Always use window.location.origin so the connection goes through Vite's dev proxy
+  // (which has ws:true for /api) in development, and hits the same origin in production.
+  // Using VITE_API_BASE_URL directly would bypass the proxy and hit :8080, which the CSP blocks.
+  const url = new URL(`/api/conversations/${conversationID}/ws`, window.location.origin);
   url.protocol = url.protocol === "https:" ? "wss:" : "ws:";
   return url.toString();
 }
@@ -810,9 +812,10 @@ function DeleteConversationDialog({
 }
 
 /**
- * Messaging hub for user conversations.
+ * Encapsulates all state, effects, and event handlers for the chat page.
+ * Returns plain values and stable callbacks ready to be spread into JSX.
  */
-function Chat() {
+function useChatLogic() {
   const navigate = useNavigate();
   const { conversationId } = useParams();
   const { user } = useAuth();
@@ -841,6 +844,7 @@ function Chat() {
     [currentUserID]
   );
 
+  // --- Initial conversations load ---
   useEffect(() => {
     const controller = new AbortController();
     dispatch({ type: "error:clear" });
@@ -854,10 +858,10 @@ function Chat() {
     return () => controller.abort();
   }, []);
 
-  const activeConversation = useMemo(() => {
-    if (!conversationId) return undefined;
-    return conversations.find((conversation) => conversation.conversation_id === conversationId);
-  }, [conversationId, conversations]);
+  const activeConversation = useMemo(
+    () => conversations.find((c) => c.conversation_id === conversationId),
+    [conversationId, conversations]
+  );
   const activeConversationID = activeConversation?.conversation_id;
 
   const filteredConversations = useMemo(() => {
@@ -871,12 +875,14 @@ function Chat() {
     });
   }, [conversations, searchQuery]);
 
+  // --- Mark conversation read when it becomes active ---
   useEffect(() => {
     if (activeConversationID) {
       dispatch({ type: "conversation:open", conversationID: activeConversationID });
     }
   }, [activeConversationID]);
 
+  // --- Conversation list background refresh (5 s) ---
   useEffect(() => {
     const intervalID = window.setInterval(() => {
       void apiGet<ConversationsResponse>("/api/conversations")
@@ -893,6 +899,7 @@ function Chat() {
     return () => window.clearInterval(intervalID);
   }, [activeConversationID]);
 
+  // --- Messages load + polling (2.5 s) ---
   useEffect(() => {
     if (!activeConversationID) {
       dispatch({ type: "messages:reset" });
@@ -932,14 +939,23 @@ function Chat() {
     };
   }, [activeConversationID, normalizeMessage]);
 
+  // --- Auto-scroll to latest message ---
   useEffect(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: loadingMessages ? "auto" : "smooth", block: "end" });
   }, [activeConversationID, loadingMessages, messages.length]);
 
+  // --- WebSocket real-time updates ---
   useEffect(() => {
     if (!activeConversationID) return undefined;
 
-    const socket = new WebSocket(buildWebSocketURL(activeConversationID));
+    let socket: WebSocket;
+    try {
+      socket = new WebSocket(buildWebSocketURL(activeConversationID));
+    } catch {
+      // Browser blocked the connection (e.g. Firefox privacy protection / uBlock Origin).
+      // Gracefully fall back to the polling interval already set up above.
+      return undefined;
+    }
     socketRef.current = socket;
 
     socket.onmessage = (event) => {
@@ -964,18 +980,16 @@ function Chat() {
     socket.onerror = () => undefined;
 
     socket.onclose = () => {
-      if (socketRef.current === socket) {
-        socketRef.current = null;
-      }
+      if (socketRef.current === socket) socketRef.current = null;
     };
 
     return () => {
       socket.close();
-      if (socketRef.current === socket) {
-        socketRef.current = null;
-      }
+      if (socketRef.current === socket) socketRef.current = null;
     };
   }, [activeConversationID, normalizeMessage]);
+
+  // --- Handlers ---
 
   async function handleSubmit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
@@ -1048,24 +1062,92 @@ function Chat() {
     }
   }
 
+  return {
+    // Conversation list
+    conversations: filteredConversations,
+    loadingConversations,
+    searchQuery,
+    unreadCountsByConversationID,
+    selectingConversations,
+    selectedConversationIDs,
+    deleteDialogOpen,
+    deletingConversation,
+    // Active conversation & messages
+    activeConversation,
+    messages,
+    loadingMessages,
+    sending,
+    draft,
+    error,
+    messagesEndRef,
+    // Event callbacks
+    onSearchChange: (value: string) => dispatch({ type: "search:set", value }),
+    onOpen: (id: string) => {
+      dispatch({ type: "conversation:open", conversationID: id });
+      void navigate(`/chat/${id}`);
+    },
+    onToggleSelecting: toggleSelectingConversations,
+    onToggleSelected: toggleSelectedConversation,
+    onDeleteSelected: () => setDeleteDialogOpen(true),
+    onDraftChange: (value: string) => dispatch({ type: "draft:set", value }),
+    onSubmit: handleSubmit,
+    onCancelDelete: () => {
+      if (!deletingConversation) setDeleteDialogOpen(false);
+    },
+    onConfirmDelete: () => void handleConfirmDeleteConversation(),
+    onViewProduct: () => {
+      if (activeConversation) void navigate(`/product/${activeConversation.item_id}`);
+    },
+  };
+}
+
+/**
+ * Messaging hub for user conversations.
+ */
+function Chat() {
+  const {
+    conversations,
+    loadingConversations,
+    searchQuery,
+    unreadCountsByConversationID,
+    activeConversation,
+    messages,
+    loadingMessages,
+    sending,
+    draft,
+    error,
+    messagesEndRef,
+    selectingConversations,
+    selectedConversationIDs,
+    deleteDialogOpen,
+    deletingConversation,
+    onSearchChange,
+    onOpen,
+    onToggleSelecting,
+    onToggleSelected,
+    onDeleteSelected,
+    onDraftChange,
+    onSubmit,
+    onCancelDelete,
+    onConfirmDelete,
+    onViewProduct,
+  } = useChatLogic();
+
   return (
     <div className="bg-surface flex h-[calc(100vh-var(--spacing-navbar))] overflow-hidden">
       <ConversationList
-        conversations={filteredConversations}
+        conversations={conversations}
         loading={loadingConversations}
         searchQuery={searchQuery}
         activeConversationID={activeConversation?.conversation_id}
         unreadCountsByConversationID={unreadCountsByConversationID}
         selecting={selectingConversations}
         selectedConversationIDs={selectedConversationIDs}
-        onSearchChange={(value) => dispatch({ type: "search:set", value })}
-        onOpen={(id) => {
-          dispatch({ type: "conversation:open", conversationID: id });
-          void navigate(`/chat/${id}`);
-        }}
-        onToggleSelecting={toggleSelectingConversations}
-        onToggleSelected={toggleSelectedConversation}
-        onDeleteSelected={() => setDeleteDialogOpen(true)}
+        onSearchChange={onSearchChange}
+        onOpen={onOpen}
+        onToggleSelecting={onToggleSelecting}
+        onToggleSelected={onToggleSelected}
+        onDeleteSelected={onDeleteSelected}
       />
 
       <section className="flex min-w-0 flex-1 flex-col">
@@ -1073,7 +1155,7 @@ function Chat() {
           <>
             <ChatHeader
               conversation={activeConversation}
-              onViewProduct={() => navigate(`/product/${activeConversation.item_id}`)}
+              onViewProduct={onViewProduct}
             />
             <MessagesPanel
               conversation={activeConversation}
@@ -1085,8 +1167,8 @@ function Chat() {
             <ChatComposer
               draft={draft}
               sending={sending}
-              onDraftChange={(value) => dispatch({ type: "draft:set", value })}
-              onSubmit={handleSubmit}
+              onDraftChange={onDraftChange}
+              onSubmit={onSubmit}
             />
           </>
         ) : (
@@ -1098,10 +1180,8 @@ function Chat() {
       <DeleteConversationDialog
         count={deleteDialogOpen ? selectedConversationIDs.size : 0}
         deleting={deletingConversation}
-        onCancel={() => {
-          if (!deletingConversation) setDeleteDialogOpen(false);
-        }}
-        onConfirm={() => void handleConfirmDeleteConversation()}
+        onCancel={onCancelDelete}
+        onConfirm={onConfirmDelete}
       />
     </div>
   );
