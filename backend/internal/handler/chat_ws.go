@@ -44,14 +44,15 @@ func (h *ChatHandler) WebSocket(c *gin.Context) {
 }
 
 func (h *ChatHandler) authenticateWebSocket(c *gin.Context) (uuid.UUID, bool) {
-	tokenStr := strings.TrimSpace(c.Query("access_token"))
-	if tokenStr == "" {
-		tokenStr = strings.TrimSpace(c.Query("token"))
+	tokenStr := ""
+	if cookie, err := c.Cookie(authCookieName); err == nil {
+		tokenStr = strings.TrimSpace(cookie)
 	}
 	if tokenStr == "" {
-		if cookie, err := c.Cookie(authCookieName); err == nil {
-			tokenStr = strings.TrimSpace(cookie)
-		}
+		tokenStr = strings.TrimSpace(c.Query("access_token"))
+	}
+	if tokenStr == "" {
+		tokenStr = strings.TrimSpace(c.Query("token"))
 	}
 	if tokenStr == "" {
 		response.Error(c, http.StatusUnauthorized, "missing token")
