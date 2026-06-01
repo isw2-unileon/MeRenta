@@ -204,6 +204,7 @@ function ProductCard({ item, reviewSummary, isFavorite, onToggleFavorite, to }: 
   const reviewsLabel = reviewSummary ? String(reviewSummary.total) : "--";
   const isReserved = item.item_status === "rented";
   const isAvailable = item.is_available && !isReserved;
+  const locationLabel = [item.city, item.postal_code].filter(Boolean).join(", ") || "Sin ubicacion";
 
   function handleToggle(event: React.MouseEvent) {
     event.preventDefault();
@@ -273,8 +274,8 @@ function ProductCard({ item, reviewSummary, isFavorite, onToggleFavorite, to }: 
             </p>
           </div>
 
-          <div className="mb-5 flex items-center justify-between">
-            <p className="text-card-loc text-subtle">{item.city || "Sin ubicación"}</p>
+          <div className="mb-5 flex items-center justify-between gap-3">
+            <p className="text-card-loc text-subtle truncate">{locationLabel}</p>
             <p className="text-card-loc text-rating flex items-center gap-1">
               <Star
                 size={13}

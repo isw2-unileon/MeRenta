@@ -317,6 +317,7 @@ function Product() {
   const item = state.item;
   const reviewSummary = state.ownerReviewSummary ?? emptyReviewSummary;
   const ratingLabel = reviewSummary.total > 0 ? reviewSummary.average_rating.toFixed(1) : "0.0";
+  const locationLabel = item ? [item.city, item.province, item.postal_code].filter(Boolean).join(", ") : "";
 
   // ── Render ─────────────────────────────────────────────────────────────────
 
@@ -361,7 +362,7 @@ function Product() {
                     <p className="product-rating ml-1 font-medium">{ratingLabel}</p>
                     <p className="product-location">({reviewSummary.total} valoraciones)</p>
                   </div>
-                  <p className="product-location">Madrid, Comunidad de Madrid</p>
+                  {locationLabel && <p className="product-location">{locationLabel}</p>}
                 </div>
               </div>
 
