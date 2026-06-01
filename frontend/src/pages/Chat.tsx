@@ -390,8 +390,10 @@ async function markConversationRead(conversationID: string): Promise<void> {
 }
 
 function buildWebSocketURL(conversationID: string): string {
-  const protocol = window.location.protocol === "https:" ? "wss:" : "ws:";
-  return `${protocol}//${window.location.host}/api/conversations/${conversationID}/ws`;
+  const apiBaseURL = import.meta.env.VITE_API_BASE_URL?.trim() || window.location.origin;
+  const url = new URL(`/api/conversations/${conversationID}/ws`, apiBaseURL);
+  url.protocol = url.protocol === "https:" ? "wss:" : "ws:";
+  return url.toString();
 }
 
 function ChatAvatar({ name, image, small = false }: { name: string; image?: string; small?: boolean }) {
