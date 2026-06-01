@@ -113,6 +113,7 @@ func registerProtectedRoutes(
 
 	reviews := protected.Group("/reviews")
 	reviews.GET("/received", reviewH.ListReceived)
+	reviews.GET("/summary/:id", reviewH.SummaryByCustomer)
 
 	payment := protected.Group("/payment")
 	payment.POST("/intent", paymentH.CreateIntent)
