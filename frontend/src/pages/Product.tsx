@@ -82,6 +82,8 @@ async function fetchOccupiedDates(id: string): Promise<Set<string>> {
     }
   }
   return dates;
+}
+
 async function fetchReviewSummary(ownerId: string): Promise<ReviewSummary> {
   const res = await fetch(`/api/reviews/summary/${ownerId}`, {
     credentials: "include",
@@ -275,6 +277,9 @@ function Product() {
           setOccupiedDates(await fetchOccupiedDates(id));
         } catch {
           // silently ignore: calendar shows all dates as available
+        }
+
+        // Load review summary for the owner (non-critical)
         try {
           const reviewSummary = await fetchReviewSummary(itemData.owner_id);
           dispatch({ type: "set-owner-review-summary", value: reviewSummary });
