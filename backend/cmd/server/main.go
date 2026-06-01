@@ -82,9 +82,10 @@ func main() {
 	reviewSvc := service.NewReviewService(q)
 	reviewH := handler.NewReviewHandler(reviewSvc)
 
-	paymentH := handler.NewPaymentHandler(service.NewPaymentService(cfg.StripeSecretKey))
+	bookingSvc, paymentH, bookingH := wirePaymentAndBooking(q, cfg.StripeSecretKey)
+	go startAutoExpireJob(ctx, bookingSvc)
 
-	r := router.Setup(authH, itemH, itemImgH, addrH, favH, chatH, reviewH, paymentH, jwtMgr, cfg.CORSAllowOrigin, pool.Ping)
+	r := router.Setup(authH, itemH, itemImgH, addrH, favH, chatH, reviewH, paymentH, bookingH, jwtMgr, cfg.CORSAllowOrigin, pool.Ping)
 	portNum, err := strconv.Atoi(cfg.Port)
 	if err != nil || portNum < 1 || portNum > 65535 {
 		slog.Error("invalid port", "port", cfg.Port)
@@ -117,10 +118,41 @@ func main() {
 		}
 	}
 
-	shutdownCtx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
-	defer cancel()
+	gracefulShutdown(srv)
+}
 
-	if err := srv.Shutdown(shutdownCtx); err != nil {
+// wirePaymentAndBooking constructs the payment and booking handlers.
+func wirePaymentAndBooking(
+	q *sqlcdb.Queries,
+	stripeKey string,
+) (*service.BookingService, *handler.PaymentHandler, *handler.BookingHandler) {
+	paymentSvc := service.NewPaymentService(stripeKey)
+	bookingSvc := service.NewBookingService(q, paymentSvc)
+	return bookingSvc, handler.NewPaymentHandler(paymentSvc), handler.NewBookingHandler(bookingSvc)
+}
+
+// startAutoExpireJob runs in a goroutine and cancels pending bookings every hour
+// once their 5-day owner-response window has elapsed, issuing a full Stripe refund.
+func startAutoExpireJob(ctx context.Context, svc *service.BookingService) {
+	ticker := time.NewTicker(1 * time.Hour)
+	defer ticker.Stop()
+	for {
+		select {
+		case <-ctx.Done():
+			return
+		case <-ticker.C:
+			if err := svc.ExpireOldBookings(context.Background()); err != nil {
+				slog.Error("auto-expire bookings failed", "error", err)
+			}
+		}
+	}
+}
+
+// gracefulShutdown attempts a clean server shutdown within a 10-second timeout.
+func gracefulShutdown(srv *http.Server) {
+	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
+	defer cancel()
+	if err := srv.Shutdown(ctx); err != nil {
 		slog.Error("graceful shutdown failed", "error", err)
 	}
 }

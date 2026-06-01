@@ -18,6 +18,7 @@ import { ProfileEdit } from "@/pages/ProfileEdit.tsx";
 import { MyProfile } from "@/pages/MyProfile.tsx";
 import { ProfileOther } from "@/pages/ProfileOther.tsx";
 import { Favs } from "@/pages/Favs.tsx";
+import { Bookings } from "@/pages/Bookings.tsx";
 import { Chat } from "@/pages/Chat.tsx";
 import { Checkout } from "@/pages/Checkout.tsx";
 import { PaymentSuccess } from "@/pages/PaymentSuccess.tsx";
@@ -81,6 +82,7 @@ const router = createBrowserRouter([
               { path: "profile/edit", element: <ProfileEdit /> },
               { path: "profile/:id", element: <ProfileOther /> },
               { path: "favs", element: <Favs /> },
+              { path: "bookings", element: <Bookings /> },
               { path: "checkout/:id", element: <Checkout /> },
               { path: "403", element: <Forbidden /> },
               { path: "500", element: <ServerError /> },

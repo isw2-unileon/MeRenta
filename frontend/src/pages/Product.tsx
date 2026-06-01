@@ -1,4 +1,4 @@
-import { useEffect, useReducer } from "react";
+import React, { useEffect, useReducer } from "react";
 import { useNavigate, useParams } from "react-router-dom";
 
 import { useFavorites } from "@/hooks/useFavorites";
@@ -65,6 +65,22 @@ async function fetchOwnerProfile(ownerId: string): Promise<CustomerProfile> {
     throw new Error("Error al cargar el perfil del propietario");
   }
   return json.data;
+}
+
+async function fetchOccupiedDates(id: string): Promise<Set<string>> {
+  const res = await fetch(`/api/items/${id}/unavailable-dates`, { credentials: "include" });
+  const json = (await res.json()) as ApiResponse<Array<{ start_date: string; end_date: string }>>;
+  if (!json.success || !json.data) return new Set<string>();
+  const dates = new Set<string>();
+  for (const range of json.data) {
+    const cur = new Date(`${range.start_date}T00:00:00`);
+    const endD = new Date(`${range.end_date}T00:00:00`);
+    while (cur <= endD) {
+      dates.add(cur.toISOString().slice(0, 10));
+      cur.setDate(cur.getDate() + 1);
+    }
+  }
+  return dates;
 }
 
 // ── Date range state type ────────────────────────────────────────────────────
@@ -206,13 +222,12 @@ function ProductError({ message, onBack }: ProductErrorProps) {
 function Product() {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
-  useAuth();
+  const { user } = useAuth();
 
   const [state, dispatch] = useReducer(productReducer, INITIAL_STATE);
   const { isFav, toggle } = useFavorites();
 
-  // Placeholder — a real implementation would fetch from /api/items/:id/bookings
-  const occupiedDates = new Set<string>();
+  const [occupiedDates, setOccupiedDates] = React.useState<Set<string>>(new Set());
 
   useEffect(() => {
     if (!id) return;
@@ -232,6 +247,13 @@ function Product() {
           dispatch({ type: "set-owner", value: ownerData });
         } catch {
           // silently omit owner card if profile endpoint is unavailable
+        }
+
+        // Load blocked date ranges (non-critical — calendar stays fully open on failure)
+        try {
+          setOccupiedDates(await fetchOccupiedDates(id));
+        } catch {
+          // silently ignore: calendar shows all dates as available
         }
       } catch (err) {
         dispatch({ type: "set-error", value: err instanceof Error ? err.message : "Error al cargar el producto" });
@@ -386,6 +408,8 @@ function Product() {
                 selectedEnd={state.dateRange.end}
                 minDays={item.min_days}
                 maxDay={item.max_days}
+                isOwner={user?.customer_id === item.owner_id}
+                occupiedDates={occupiedDates}
                 onDateChange={handleDateChange}
               />
 

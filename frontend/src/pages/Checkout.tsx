@@ -222,6 +222,21 @@ function Checkout() {
 
   // ── Callbacks ──────────────────────────────────────────────────────────────
   const handleSuccess = (paymentIntentId: string, amountEUR: number) => {
+    // Fire-and-forget: create the booking record. The payment has already succeeded,
+    // so we navigate regardless of whether the booking write succeeds.
+    void fetch("/api/bookings", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      credentials: "include",
+      body: JSON.stringify({
+        item_id: itemId,
+        start_date: startStr,
+        end_date: endStr,
+        estimated_total: amountEUR,
+        payment_intent_id: paymentIntentId,
+      }),
+    });
+
     void navigate("/payment/success", {
       state: {
         paymentIntentId,

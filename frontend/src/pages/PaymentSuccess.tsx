@@ -163,9 +163,9 @@ function PaymentSuccess() {
             type="button"
             className="btn-booking btn--md flex-1"
             style={{ width: "auto" }}
-            onClick={() => void navigate("/home")}
+            onClick={() => void navigate("/bookings")}
           >
-            Ver mi alquiler
+            Ver mis reservas
           </button>
 
           <button
