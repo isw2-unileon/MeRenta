@@ -389,12 +389,10 @@ async function markConversationRead(conversationID: string): Promise<void> {
   });
 }
 
-function buildWebSocketURL(conversationID: string, accessToken: string | null): string {
-  const protocol = window.location.protocol === "https:" ? "wss:" : "ws:";
-  const url = new URL(`${protocol}//${window.location.host}/api/conversations/${conversationID}/ws`);
-  if (accessToken) {
-    url.searchParams.set("access_token", accessToken);
-  }
+function buildWebSocketURL(conversationID: string): string {
+  const apiBaseURL = import.meta.env.VITE_API_BASE_URL.trim() || window.location.origin;
+  const url = new URL(`/api/conversations/${conversationID}/ws`, apiBaseURL);
+  url.protocol = url.protocol === "https:" ? "wss:" : "ws:";
   return url.toString();
 }
 
@@ -817,7 +815,7 @@ function DeleteConversationDialog({
 function Chat() {
   const navigate = useNavigate();
   const { conversationId } = useParams();
-  const { user, accessToken } = useAuth();
+  const { user } = useAuth();
   const [state, dispatch] = useReducer(chatReducer, initialState);
   const [selectingConversations, setSelectingConversations] = useState(false);
   const [selectedConversationIDs, setSelectedConversationIDs] = useState<Set<string>>(new Set());
@@ -941,7 +939,7 @@ function Chat() {
   useEffect(() => {
     if (!activeConversationID) return undefined;
 
-    const socket = new WebSocket(buildWebSocketURL(activeConversationID, accessToken));
+    const socket = new WebSocket(buildWebSocketURL(activeConversationID));
     socketRef.current = socket;
 
     socket.onmessage = (event) => {
@@ -977,7 +975,7 @@ function Chat() {
         socketRef.current = null;
       }
     };
-  }, [accessToken, activeConversationID, normalizeMessage]);
+  }, [activeConversationID, normalizeMessage]);
 
   async function handleSubmit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();

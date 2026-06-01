@@ -35,6 +35,7 @@ func Setup(
 
 	api := r.Group("/api")
 	registerPublicRoutes(api, authH)
+	api.GET("/conversations/:id/ws", chatH.WebSocket)
 
 	protected := api.Group("/")
 	protected.Use(middleware.JWTAuth(jwtMgr))
@@ -112,10 +113,10 @@ func registerProtectedRoutes(
 	conversations.POST("/:id/read", chatH.MarkMessagesRead)
 	conversations.GET("/:id/messages", chatH.ListMessages)
 	conversations.POST("/:id/messages", chatH.SendMessage)
-	conversations.GET("/:id/ws", chatH.WebSocket)
 
 	reviews := protected.Group("/reviews")
 	reviews.GET("/received", reviewH.ListReceived)
+	reviews.GET("/summary/:id", reviewH.SummaryByCustomer)
 
 	payment := protected.Group("/payment")
 	payment.POST("/intent", paymentH.CreateIntent)

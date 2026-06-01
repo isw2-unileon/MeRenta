@@ -77,7 +77,7 @@ func main() {
 		return
 	}
 	chatHub := handler.NewChatHub()
-	chatH := handler.NewChatHandler(chatSvc, chatHub)
+	chatH := handler.NewChatHandler(chatSvc, chatHub, jwtMgr)
 
 	reviewSvc := service.NewReviewService(q)
 	reviewH := handler.NewReviewHandler(reviewSvc)
@@ -96,8 +96,6 @@ func main() {
 		Addr:              fmt.Sprintf(":%d", portNum),
 		Handler:           r,
 		ReadHeaderTimeout: 5 * time.Second,
-		ReadTimeout:       15 * time.Second,
-		WriteTimeout:      15 * time.Second,
 		IdleTimeout:       60 * time.Second,
 	}
 

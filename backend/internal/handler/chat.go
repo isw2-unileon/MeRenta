@@ -10,18 +10,20 @@ import (
 
 	"github.com/isw2-unileon/MeRenta/backend/internal/model"
 	"github.com/isw2-unileon/MeRenta/backend/internal/service"
+	"github.com/isw2-unileon/MeRenta/backend/pkg/jwt"
 	"github.com/isw2-unileon/MeRenta/backend/pkg/response"
 )
 
 // ChatHandler wires chat endpoints to the chat service.
 type ChatHandler struct {
-	svc *service.ChatService
-	hub *ChatHub
+	svc    *service.ChatService
+	hub    *ChatHub
+	jwtMgr *jwt.Manager
 }
 
 // NewChatHandler builds a new ChatHandler.
-func NewChatHandler(svc *service.ChatService, hub *ChatHub) *ChatHandler {
-	return &ChatHandler{svc: svc, hub: hub}
+func NewChatHandler(svc *service.ChatService, hub *ChatHub, jwtMgr *jwt.Manager) *ChatHandler {
+	return &ChatHandler{svc: svc, hub: hub, jwtMgr: jwtMgr}
 }
 
 // ListConversations handles GET /api/conversations.

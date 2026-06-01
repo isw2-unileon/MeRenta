@@ -34,6 +34,9 @@ type ItemResponse struct {
 	MaxDays     *int32    `json:"max_days,omitempty"`
 	IsAvailable bool      `json:"is_available"`
 	PublishedAt time.Time `json:"published_at"`
+	City        string    `json:"city"`
+	Province    string    `json:"province"`
+	PostalCode  string    `json:"postal_code"`
 }
 
 // SearchItemResponse is the compact item shape used by the search results UI.
@@ -48,6 +51,7 @@ type SearchItemResponse struct {
 	IsAvailable     bool      `json:"is_available"`
 	PublishedAt     time.Time `json:"published_at"`
 	City            string    `json:"city"`
+	PostalCode      string    `json:"postal_code"`
 	PrimaryImageURL string    `json:"primary_image_url,omitempty"`
 	OwnerFirstName  string    `json:"owner_first_name"`
 	OwnerLastName   string    `json:"owner_last_name"`

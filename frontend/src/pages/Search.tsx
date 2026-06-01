@@ -6,6 +6,7 @@ import { useFavorites } from "@/hooks/useFavorites";
 
 import type { ApiResponse } from "@/types/common";
 import type { SearchItemResponse, SearchItemsResponse } from "@/types/item";
+import type { ReviewSummary } from "@/types/review";
 import * as React from "react";
 
 const PAGE_SIZE = 12;
@@ -135,14 +136,6 @@ function humanizeCondition(value: string): string {
   return CONDITION_LABELS[value] ?? value.replaceAll("_", " ");
 }
 
-function seededRating(id: string): { rating: string; reviews: number } {
-  const seed = Array.from(id).reduce((sum, char) => sum + char.charCodeAt(0), 0);
-  return {
-    rating: (4.5 + (seed % 6) / 10).toFixed(1),
-    reviews: 7 + (seed % 42),
-  };
-}
-
 function getPageWindow(page: number, totalPages: number): number[] {
   const pages = new Set<number>([1, page, page + 1, page + 2, totalPages].filter((p) => p >= 1 && p <= totalPages));
   return Array.from(pages).sort((a, b) => a - b);
@@ -157,6 +150,24 @@ async function fetchItemsData(url: string, signal: AbortSignal): Promise<SearchI
   const json = (await res.json()) as ApiResponse<SearchItemsResponse>;
   if (!res.ok || !json.success || !json.data) {
     throw new Error(json.message ?? json.error ?? "Error al cargar los productos");
+  }
+  return json.data;
+}
+
+const emptyReviewSummary: ReviewSummary = {
+  average_rating: 0,
+  total: 0,
+  distribution: {},
+};
+
+async function fetchReviewSummary(ownerId: string, signal: AbortSignal): Promise<ReviewSummary> {
+  const res = await fetch(`/api/reviews/summary/${ownerId}`, {
+    credentials: "include",
+    signal,
+  });
+  const json = (await res.json()) as ApiResponse<ReviewSummary>;
+  if (!res.ok || !json.success || !json.data) {
+    throw new Error(json.message ?? json.error ?? "Error al cargar las valoraciones");
   }
   return json.data;
 }
@@ -181,16 +192,19 @@ function FilterSection({ title, children }: FilterSectionProps) {
 
 interface ProductCardProps {
   item: SearchItemResponse;
+  reviewSummary?: ReviewSummary;
   isFavorite: boolean;
   onToggleFavorite: () => void;
   /** Route to navigate to when the card is clicked. */
   to: string;
 }
 
-function ProductCard({ item, isFavorite, onToggleFavorite, to }: ProductCardProps) {
-  const { rating, reviews } = seededRating(item.item_id);
+function ProductCard({ item, reviewSummary, isFavorite, onToggleFavorite, to }: ProductCardProps) {
+  const ratingLabel = reviewSummary ? reviewSummary.average_rating.toFixed(1) : "--";
+  const reviewsLabel = reviewSummary ? String(reviewSummary.total) : "--";
   const isReserved = item.item_status === "rented";
   const isAvailable = item.is_available && !isReserved;
+  const locationLabel = [item.city, item.postal_code].filter(Boolean).join(", ") || "Sin ubicacion";
 
   function handleToggle(event: React.MouseEvent) {
     event.preventDefault();
@@ -260,14 +274,14 @@ function ProductCard({ item, isFavorite, onToggleFavorite, to }: ProductCardProp
             </p>
           </div>
 
-          <div className="mb-5 flex items-center justify-between">
-            <p className="text-card-loc text-subtle">{item.city || "Sin ubicación"}</p>
+          <div className="mb-5 flex items-center justify-between gap-3">
+            <p className="text-card-loc text-subtle truncate">{locationLabel}</p>
             <p className="text-card-loc text-rating flex items-center gap-1">
               <Star
                 size={13}
                 fill="currentColor"
               />
-              {rating} ({reviews})
+              {ratingLabel} ({reviewsLabel})
             </p>
           </div>
 
@@ -600,6 +614,7 @@ function Search() {
   const query = searchParams.get("q") ?? "";
 
   const [state, dispatch] = useReducer(searchReducer, initialSearchState);
+  const [ownerReviewSummaries, setOwnerReviewSummaries] = useState<Record<string, ReviewSummary>>({});
 
   const page = Math.max(1, Number(searchParams.get("page") ?? "1") || 1);
   const category = searchParams.get("category") ?? "";
@@ -651,6 +666,42 @@ function Search() {
 
     return () => controller.abort();
   }, [page, searchParams]);
+
+  useEffect(() => {
+    if (state.items.length === 0) return;
+
+    const controller = new AbortController();
+    const ownerIds = Array.from(new Set(state.items.map((item) => item.owner_id)));
+    const missingOwnerIds = ownerIds.filter((ownerId) => !ownerReviewSummaries[ownerId]);
+
+    if (missingOwnerIds.length === 0) return () => controller.abort();
+
+    const loadSummaries = async () => {
+      if (controller.signal.aborted) return;
+
+      const results = await Promise.all(
+        missingOwnerIds.map(async (ownerId) => {
+          try {
+            const summary = await fetchReviewSummary(ownerId, controller.signal);
+            return { ownerId, summary };
+          } catch {
+            return { ownerId, summary: emptyReviewSummary };
+          }
+        })
+      );
+
+      setOwnerReviewSummaries((prev) => {
+        const next = { ...prev };
+        results.forEach(({ ownerId, summary }) => {
+          next[ownerId] ??= summary;
+        });
+        return next;
+      });
+    };
+
+    void loadSummaries();
+    return () => controller.abort();
+  }, [ownerReviewSummaries, state.items]);
 
   const totalPages = Math.max(1, Math.ceil(state.total / PAGE_SIZE));
   const pageWindow = useMemo(() => getPageWindow(page, totalPages), [page, totalPages]);
@@ -757,6 +808,7 @@ function Search() {
                 <ProductCard
                   key={item.item_id}
                   item={item}
+                  reviewSummary={ownerReviewSummaries[item.owner_id]}
                   isFavorite={isFav(item.item_id)}
                   onToggleFavorite={() => toggle(item.item_id, isFav(item.item_id))}
                   to={`/product/${item.item_id}`}

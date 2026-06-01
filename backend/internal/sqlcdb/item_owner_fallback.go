@@ -18,6 +18,7 @@ SELECT
     i.is_available,
     i.published_at,
     a.city,
+    a.postal_code,
     '' AS primary_image_url,
     COUNT(*) OVER() AS total_count
 FROM item i
@@ -59,6 +60,7 @@ func collectOwnerItemCardRows(rows pgx.Rows) ([]SearchItemCardsRow, error) {
 			&i.IsAvailable,
 			&i.PublishedAt,
 			&i.City,
+			&i.PostalCode,
 			&i.PrimaryImageURL,
 			&i.TotalCount,
 		); err != nil {
