@@ -49,6 +49,8 @@ type bookingQuerier interface {
 	GetItemByID(ctx context.Context, itemID uuid.UUID) (sqlcdb.GetItemByIDRow, error)
 	GetItemBookedRanges(ctx context.Context, itemID uuid.UUID) ([]sqlcdb.BookingDateRange, error)
 	ListExpiredPendingBookings(ctx context.Context) ([]sqlcdb.ExpiredBookingRow, error)
+	CountActiveBookingsForItem(ctx context.Context, itemID uuid.UUID) (int64, error)
+	UpdateItemAvailability(ctx context.Context, arg sqlcdb.UpdateItemAvailabilityParams) error
 }
 
 // BookingService handles business logic for bookings.
@@ -108,6 +110,11 @@ func (s *BookingService) Create(
 	})
 	if err != nil {
 		return model.BookingResponse{}, fmt.Errorf("create booking: %w", err)
+	}
+
+	// Mark item as unavailable as soon as the first booking is pending
+	if syncErr := s.syncItemAvailability(ctx, itemID); syncErr != nil {
+		slog.Warn("sync item availability failed", "item_id", itemID, "error", syncErr)
 	}
 
 	return bookingRowToResponse(row)
@@ -247,19 +254,40 @@ func (s *BookingService) updateStatus(
 		return model.BookingResponse{}, fmt.Errorf("update booking status: %w", err)
 	}
 
+	// Best-effort: keep item availability in sync (non-fatal if it fails)
+	if syncErr := s.syncItemAvailability(ctx, row.ItemID); syncErr != nil {
+		slog.Warn("sync item availability failed", "item_id", row.ItemID, "error", syncErr)
+	}
+
 	return bookingRowToResponse(row)
 }
 
-// expireOne issues a refund and cancels a single expired booking.
+// expireOne issues a refund, cancels a single expired booking, and resync availability.
 func (s *BookingService) expireOne(ctx context.Context, row sqlcdb.ExpiredBookingRow) error {
 	if err := s.issueRefundIfPaid(ctx, row.PaymentIntentID); err != nil {
 		return err
 	}
-	_, err := s.q.UpdateBookingStatus(ctx, sqlcdb.UpdateBookingStatusParams{
+	updated, err := s.q.UpdateBookingStatus(ctx, sqlcdb.UpdateBookingStatusParams{
 		BookingID: row.BookingID,
 		Status:    sqlcdb.BookingStatusCancelled,
 	})
-	return err
+	if err != nil {
+		return err
+	}
+	return s.syncItemAvailability(ctx, updated.ItemID)
+}
+
+// syncItemAvailability sets is_available on the item based on whether any
+// pending or accepted bookings still exist. Called after every status change.
+func (s *BookingService) syncItemAvailability(ctx context.Context, itemID uuid.UUID) error {
+	count, err := s.q.CountActiveBookingsForItem(ctx, itemID)
+	if err != nil {
+		return fmt.Errorf("count active bookings: %w", err)
+	}
+	return s.q.UpdateItemAvailability(ctx, sqlcdb.UpdateItemAvailabilityParams{
+		ItemID:      itemID,
+		IsAvailable: count == 0,
+	})
 }
 
 // issueRefundIfPaid calls the Stripe refund API when a payment_intent_id is present.

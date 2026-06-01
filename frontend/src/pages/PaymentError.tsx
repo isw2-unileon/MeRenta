@@ -1,4 +1,3 @@
-import { useEffect, useRef } from "react";
 import { useLocation, useNavigate } from "react-router-dom";
 
 /** State passed by the Checkout page on a failed payment. */
@@ -10,15 +9,14 @@ interface ErrorState {
 }
 
 /**
- * Full-page error modal shown when a Stripe payment is declined or fails.
+ * Full-page error card shown when a Stripe payment is declined or fails.
  * Reads error details from the router location state set by Checkout.
  *
- * @returns Payment error modal JSX.
+ * @returns Payment error page JSX.
  */
 function PaymentError() {
   const location = useLocation();
   const navigate = useNavigate();
-  const dialogRef = useRef<HTMLDialogElement>(null);
   const state = (location.state ?? {}) as Partial<ErrorState>;
 
   const {
@@ -27,85 +25,74 @@ function PaymentError() {
     returnPath = "/home",
   } = state;
 
-  useEffect(() => {
-    const dialog = dialogRef.current;
-    if (!dialog || dialog.open) return;
-    dialog.showModal();
-  }, []);
-
-  const handleRetry = () => {
-    dialogRef.current?.close();
-    void navigate(returnPath);
-  };
-  const handleCancel = () => {
-    dialogRef.current?.close();
-    void navigate("/home");
-  };
-
   return (
-    <dialog
-      ref={dialogRef}
-      className="modal-overlay"
-      aria-labelledby="error-pay-title"
-      onCancel={(event) => {
-        event.preventDefault();
-        handleCancel();
-      }}
-    >
-      <div className="modal-error-pay">
+    <div className="flex min-h-screen flex-col items-center justify-center bg-[var(--color-section-alt)] px-4 py-12">
+      <div
+        className="w-full rounded-[var(--radius-panel)] border border-[var(--color-border-main)] bg-white p-10"
+        style={{ maxWidth: 480 }}
+      >
         {/* ── Icon ── */}
-        <div className="error-pay-icon-ring mb-3">
-          <div className="error-pay-icon-circle">
-            <svg
-              width="26"
-              height="26"
-              viewBox="0 0 40 40"
-              fill="none"
-              aria-hidden="true"
+        <div className="mb-6 flex justify-center">
+          <div
+            className="flex items-center justify-center rounded-full"
+            style={{
+              width: "var(--spacing-error-ring)",
+              height: "var(--spacing-error-ring)",
+              border: "8px solid #fde8e8",
+            }}
+          >
+            <div
+              className="flex items-center justify-center rounded-full"
+              style={{
+                width: "var(--spacing-error-icon)",
+                height: "var(--spacing-error-icon)",
+                backgroundColor: "#e53935",
+              }}
             >
-              <path
-                d="M12 12l16 16M28 12L12 28"
-                stroke="white"
-                strokeWidth="4.5"
-                strokeLinecap="round"
-              />
-            </svg>
+              <svg
+                width="26"
+                height="26"
+                viewBox="0 0 40 40"
+                fill="none"
+                aria-hidden="true"
+              >
+                <path
+                  d="M12 12l16 16M28 12L12 28"
+                  stroke="white"
+                  strokeWidth="4.5"
+                  strokeLinecap="round"
+                />
+              </svg>
+            </div>
           </div>
         </div>
 
         {/* ── Title ── */}
-        <p
-          id="error-pay-title"
-          className="error-pay-title mb-1 text-center"
-        >
-          Pago rechazado
-        </p>
-        <p className="error-pay-desc mb-4 text-center">No se pudo procesar el pago. No se ha realizado ningun cargo.</p>
+        <p className="error-pay-title mb-1 text-center">Pago rechazado</p>
+        <p className="error-pay-desc mb-5 text-center">No se pudo procesar el pago. No se ha realizado ningun cargo.</p>
 
         {/* ── Stripe error box ── */}
-        <div className="error-pay-stripe-box mb-5 w-full">
-          <p className="error-pay-code">
+        <div className="mb-5 rounded-[var(--radius-md)] bg-[var(--color-error-info)] px-4 py-3">
+          <p className="text-[13px] font-medium text-[#b71c1c]">
             Error Stripe: <span>{errorCode}</span>
           </p>
-          <p className="error-pay-subdesc mt-1">{errorMessage}</p>
+          <p className="mt-1 text-[13px] text-[var(--color-subtle)]">{errorMessage}</p>
         </div>
 
-        {/* ── Action button ── */}
-        <div className="mb-3 w-full">
-          <button
-            type="button"
-            className="btn-danger btn--error-pay w-full"
-            onClick={handleRetry}
-          >
-            Intentar de nuevo
-          </button>
-        </div>
+        {/* ── Retry button ── */}
+        <button
+          type="button"
+          className="btn-danger btn--error-pay mb-3 w-full"
+          onClick={() => void navigate(returnPath)}
+        >
+          Intentar de nuevo
+        </button>
 
         {/* ── Cancel link ── */}
         <button
           type="button"
-          className="error-pay-cancel mb-4"
-          onClick={handleCancel}
+          className="error-pay-cancel mb-5 w-full"
+          onClick={() => void navigate("/home")}
         >
           Cancelar y volver al alquiler
         </button>
@@ -114,7 +101,7 @@ function PaymentError() {
         <p className="error-pay-support text-center">
           ¿Sigues teniendo problemas? Contacta en{" "}
           <a
-            href="mailto:soporte@merenta.es"
+            href="mailto:contact@merenta.es"
             className="text-primary underline"
           >
             contact@merenta.es
@@ -122,7 +109,7 @@ function PaymentError() {
           o desde el chat.
         </p>
       </div>
-    </dialog>
+    </div>
   );
 }
 

@@ -246,6 +246,28 @@ WHERE booking_status = 'pending'
   AND expires_at < NOW()
 `
 
+const countActiveBookingsForItem = `
+SELECT COUNT(*)
+FROM booking
+WHERE item_id = $1
+  AND booking_status IN ('pending', 'accepted')
+`
+
+// syncAllItemAvailabilities sets is_available on every item that has at least
+// one booking, based on whether any pending/accepted booking still exists.
+// Items that have never been booked are untouched.
+const syncAllItemAvailabilities = `
+UPDATE item
+SET is_available = NOT EXISTS (
+    SELECT 1 FROM booking b
+    WHERE b.item_id = item.item_id
+      AND b.booking_status IN ('pending', 'accepted')
+)
+WHERE EXISTS (
+    SELECT 1 FROM booking b2 WHERE b2.item_id = item.item_id
+)
+`
+
 // ─── Methods ─────────────────────────────────────────────────────────────────
 
 // CreateBooking inserts a new booking record and returns the created row.
@@ -314,6 +336,13 @@ func (q *Queries) ListExpiredPendingBookings(ctx context.Context) ([]ExpiredBook
 		var r ExpiredBookingRow
 		return r, row.Scan(&r.BookingID, &r.PaymentIntentID)
 	})
+}
+
+// CountActiveBookingsForItem returns the number of pending/accepted bookings for an item.
+func (q *Queries) CountActiveBookingsForItem(ctx context.Context, itemID uuid.UUID) (int64, error) {
+	row := q.db.QueryRow(ctx, countActiveBookingsForItem, itemID)
+	var count int64
+	return count, row.Scan(&count)
 }
 
 // ─── Private helpers ──────────────────────────────────────────────────────────
