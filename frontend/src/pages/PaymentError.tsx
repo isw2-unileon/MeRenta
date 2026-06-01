@@ -9,7 +9,7 @@ interface ErrorState {
 }
 
 /**
- * Full-page error card shown when a Stripe payment is declined or fails.
+ * Full-page error screen shown when a Stripe payment is declined or fails.
  * Reads error details from the router location state set by Checkout.
  *
  * @returns Payment error page JSX.
@@ -25,30 +25,19 @@ function PaymentError() {
     returnPath = "/home",
   } = state;
 
+  const handleRetry = () => void navigate(returnPath);
+  const handleCancel = () => void navigate("/home");
+
   return (
     <div className="flex min-h-screen flex-col items-center justify-center bg-[var(--color-section-alt)] px-4 py-12">
       <div
         className="w-full rounded-[var(--radius-panel)] border border-[var(--color-border-main)] bg-white p-10"
-        style={{ maxWidth: 480 }}
+        style={{ maxWidth: 600 }}
       >
         {/* ── Icon ── */}
         <div className="mb-6 flex justify-center">
-          <div
-            className="flex items-center justify-center rounded-full"
-            style={{
-              width: "var(--spacing-error-ring)",
-              height: "var(--spacing-error-ring)",
-              border: "8px solid #fde8e8",
-            }}
-          >
-            <div
-              className="flex items-center justify-center rounded-full"
-              style={{
-                width: "var(--spacing-error-icon)",
-                height: "var(--spacing-error-icon)",
-                backgroundColor: "#e53935",
-              }}
-            >
+          <div className="error-pay-icon-ring">
+            <div className="error-pay-icon-circle">
               <svg
                 width="26"
                 height="26"
@@ -69,11 +58,11 @@ function PaymentError() {
 
         {/* ── Title ── */}
         <p className="error-pay-title mb-1 text-center">Pago rechazado</p>
-        <p className="error-pay-desc mb-5 text-center">No se pudo procesar el pago. No se ha realizado ningun cargo.</p>
+        <p className="error-pay-desc mb-6 text-center">No se pudo procesar el pago. No se ha realizado ningun cargo.</p>
 
         {/* ── Stripe error box ── */}
-        <div className="mb-5 rounded-[var(--radius-md)] bg-[var(--color-error-info)] px-4 py-3">
-          <p className="text-[13px] font-medium text-[#b71c1c]">
+        <div className="error-pay-stripe-box mb-6 w-full">
+          <p className="error-pay-code">
             Error Stripe: <span>{errorCode}</span>
           </p>
           <p className="mt-1 text-[13px] text-[var(--color-subtle)]">{errorMessage}</p>
@@ -83,19 +72,21 @@ function PaymentError() {
         <button
           type="button"
           className="btn-danger btn--error-pay mb-3 w-full"
-          onClick={() => void navigate(returnPath)}
+          onClick={handleRetry}
         >
           Intentar de nuevo
         </button>
 
         {/* ── Cancel link ── */}
-        <button
-          type="button"
-          className="error-pay-cancel mb-5 w-full"
-          onClick={() => void navigate("/home")}
-        >
-          Cancelar y volver al alquiler
-        </button>
+        <div className="mb-4 flex justify-center">
+          <button
+            type="button"
+            className="error-pay-cancel"
+            onClick={handleCancel}
+          >
+            Cancelar y volver al alquiler
+          </button>
+        </div>
 
         {/* ── Support ── */}
         <p className="error-pay-support text-center">
