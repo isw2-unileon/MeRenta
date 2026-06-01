@@ -284,13 +284,21 @@ func formatBindError(err error) string {
 }
 
 func setAuthCookie(c *gin.Context, token string) {
-	c.SetSameSite(http.SameSiteLaxMode)
 	secure := gin.Mode() == gin.ReleaseMode
+	if secure {
+		c.SetSameSite(http.SameSiteNoneMode)
+	} else {
+		c.SetSameSite(http.SameSiteLaxMode)
+	}
 	c.SetCookie(authCookieName, token, authCookieMaxAge, authCookiePath, "", secure, true)
 }
 
 func clearAuthCookie(c *gin.Context) {
-	c.SetSameSite(http.SameSiteLaxMode)
 	secure := gin.Mode() == gin.ReleaseMode
+	if secure {
+		c.SetSameSite(http.SameSiteNoneMode)
+	} else {
+		c.SetSameSite(http.SameSiteLaxMode)
+	}
 	c.SetCookie(authCookieName, "", -1, authCookiePath, "", secure, true)
 }
