@@ -253,16 +253,31 @@ WHERE item_id = $1
   AND booking_status IN ('pending', 'accepted')
 `
 
-// syncAllItemAvailabilities sets is_available on every item that has at least
-// one booking, based on whether any pending/accepted booking still exists.
-// Items that have never been booked are untouched.
+// syncAllItemAvailabilities reconciles is_available and item_status for every
+// item that has at least one booking. Items with no bookings are untouched.
+// Only transitions to/from 'rented' are performed; 'withdrawn'/'under_review'
+// statuses are preserved when no active booking is present.
 const syncAllItemAvailabilities = `
 UPDATE item
-SET is_available = NOT EXISTS (
-    SELECT 1 FROM booking b
-    WHERE b.item_id = item.item_id
-      AND b.booking_status IN ('pending', 'accepted')
-)
+SET
+    is_available = CASE
+        WHEN EXISTS (
+            SELECT 1 FROM booking b
+            WHERE b.item_id = item.item_id
+              AND b.booking_status IN ('pending', 'accepted')
+        ) THEN false
+        WHEN item_status = 'rented' THEN true
+        ELSE is_available
+    END,
+    item_status = CASE
+        WHEN EXISTS (
+            SELECT 1 FROM booking b
+            WHERE b.item_id = item.item_id
+              AND b.booking_status IN ('pending', 'accepted')
+        ) THEN 'rented'::item_status
+        WHEN item_status = 'rented' THEN 'available'::item_status
+        ELSE item_status
+    END
 WHERE EXISTS (
     SELECT 1 FROM booking b2 WHERE b2.item_id = item.item_id
 )
@@ -343,6 +358,13 @@ func (q *Queries) CountActiveBookingsForItem(ctx context.Context, itemID uuid.UU
 	row := q.db.QueryRow(ctx, countActiveBookingsForItem, itemID)
 	var count int64
 	return count, row.Scan(&count)
+}
+
+// SyncAllItemAvailabilities reconciles is_available and item_status for all
+// items that have booking history, based on their current active bookings.
+func (q *Queries) SyncAllItemAvailabilities(ctx context.Context) error {
+	_, err := q.db.Exec(ctx, syncAllItemAvailabilities)
+	return err
 }
 
 // ─── Private helpers ──────────────────────────────────────────────────────────

@@ -51,6 +51,8 @@ type bookingQuerier interface {
 	ListExpiredPendingBookings(ctx context.Context) ([]sqlcdb.ExpiredBookingRow, error)
 	CountActiveBookingsForItem(ctx context.Context, itemID uuid.UUID) (int64, error)
 	UpdateItemAvailability(ctx context.Context, arg sqlcdb.UpdateItemAvailabilityParams) error
+	UpdateItemStatus(ctx context.Context, arg sqlcdb.UpdateItemStatusParams) (sqlcdb.UpdateItemStatusRow, error)
+	SyncAllItemAvailabilities(ctx context.Context) error
 }
 
 // BookingService handles business logic for bookings.
@@ -277,17 +279,50 @@ func (s *BookingService) expireOne(ctx context.Context, row sqlcdb.ExpiredBookin
 	return s.syncItemAvailability(ctx, updated.ItemID)
 }
 
-// syncItemAvailability sets is_available on the item based on whether any
-// pending or accepted bookings still exist. Called after every status change.
+// SyncAllAvailabilities reconciles is_available and item_status for all items
+// that have booking history. Called on startup and hourly to fix any stale data.
+func (s *BookingService) SyncAllAvailabilities(ctx context.Context) error {
+	return s.q.SyncAllItemAvailabilities(ctx)
+}
+
+// syncItemAvailability updates is_available and item_status for a single item
+// based on whether it has any pending/accepted bookings.
 func (s *BookingService) syncItemAvailability(ctx context.Context, itemID uuid.UUID) error {
 	count, err := s.q.CountActiveBookingsForItem(ctx, itemID)
 	if err != nil {
 		return fmt.Errorf("count active bookings: %w", err)
 	}
-	return s.q.UpdateItemAvailability(ctx, sqlcdb.UpdateItemAvailabilityParams{
+	if err := s.q.UpdateItemAvailability(ctx, sqlcdb.UpdateItemAvailabilityParams{
 		ItemID:      itemID,
 		IsAvailable: count == 0,
+	}); err != nil {
+		return fmt.Errorf("update item availability: %w", err)
+	}
+	return s.syncItemStatus(ctx, itemID, count > 0)
+}
+
+// syncItemStatus sets item_status to 'rented' when occupied, or restores it
+// to 'available' — but only when the current status is already 'rented'.
+func (s *BookingService) syncItemStatus(ctx context.Context, itemID uuid.UUID, occupied bool) error {
+	if occupied {
+		_, err := s.q.UpdateItemStatus(ctx, sqlcdb.UpdateItemStatusParams{
+			ItemID:     itemID,
+			ItemStatus: sqlcdb.ItemStatusRented,
+		})
+		return err
+	}
+	item, err := s.q.GetItemByID(ctx, itemID)
+	if err != nil {
+		return fmt.Errorf("get item: %w", err)
+	}
+	if item.ItemStatus != sqlcdb.ItemStatusRented {
+		return nil // withdrawn/under_review items keep their status
+	}
+	_, err = s.q.UpdateItemStatus(ctx, sqlcdb.UpdateItemStatusParams{
+		ItemID:     itemID,
+		ItemStatus: sqlcdb.ItemStatusAvailable,
 	})
+	return err
 }
 
 // issueRefundIfPaid calls the Stripe refund API when a payment_intent_id is present.

@@ -131,9 +131,13 @@ func wirePaymentAndBooking(
 	return bookingSvc, handler.NewPaymentHandler(paymentSvc), handler.NewBookingHandler(bookingSvc)
 }
 
-// startAutoExpireJob runs in a goroutine and cancels pending bookings every hour
-// once their 5-day owner-response window has elapsed, issuing a full Stripe refund.
+// startAutoExpireJob runs in a goroutine. On startup it reconciles item
+// availability for all existing bookings. Every hour it auto-cancels pending
+// bookings whose 5-day window has elapsed and resynchronises availability.
 func startAutoExpireJob(ctx context.Context, svc *service.BookingService) {
+	if err := svc.SyncAllAvailabilities(ctx); err != nil {
+		slog.Error("startup availability sync failed", "error", err)
+	}
 	ticker := time.NewTicker(1 * time.Hour)
 	defer ticker.Stop()
 	for {
@@ -141,8 +145,11 @@ func startAutoExpireJob(ctx context.Context, svc *service.BookingService) {
 		case <-ctx.Done():
 			return
 		case <-ticker.C:
-			if err := svc.ExpireOldBookings(context.Background()); err != nil {
+			if err := svc.ExpireOldBookings(ctx); err != nil {
 				slog.Error("auto-expire bookings failed", "error", err)
+			}
+			if err := svc.SyncAllAvailabilities(ctx); err != nil {
+				slog.Error("availability sync failed", "error", err)
 			}
 		}
 	}
