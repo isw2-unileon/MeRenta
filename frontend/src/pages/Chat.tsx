@@ -62,6 +62,7 @@ const dayLabelFormatter = new Intl.DateTimeFormat("es-ES", {
   month: "long",
 });
 const CHAT_SKELETON_IDS = ["chat-skel-1", "chat-skel-2", "chat-skel-3", "chat-skel-4", "chat-skel-5"];
+const CHAT_WEBSOCKET_UNAVAILABLE_KEY = "merenta:chat:websocket-unavailable";
 
 interface ChatState {
   conversations: ConversationResponse[];
@@ -396,6 +397,26 @@ function buildWebSocketURL(conversationID: string, accessToken: string | null): 
     url.searchParams.set("access_token", accessToken);
   }
   return url.toString();
+}
+
+function isChatWebSocketEnabled(): boolean {
+  if (import.meta.env.VITE_CHAT_WEBSOCKET_ENABLED === "false") {
+    return false;
+  }
+
+  try {
+    return window.sessionStorage.getItem(CHAT_WEBSOCKET_UNAVAILABLE_KEY) !== "1";
+  } catch {
+    return true;
+  }
+}
+
+function rememberChatWebSocketUnavailable(): void {
+  try {
+    window.sessionStorage.setItem(CHAT_WEBSOCKET_UNAVAILABLE_KEY, "1");
+  } catch {
+    // Ignore storage failures; the HTTP polling fallback still keeps chat usable.
+  }
 }
 
 function ChatAvatar({ name, image, small = false }: { name: string; image?: string; small?: boolean }) {
@@ -835,6 +856,7 @@ function Chat() {
     error,
   } = state;
   const socketRef = useRef<WebSocket | null>(null);
+  const webSocketUnavailableRef = useRef(!isChatWebSocketEnabled());
   const messagesEndRef = useRef<HTMLDivElement | null>(null);
   const currentUserID = user?.customer_id;
   const normalizeMessage = useCallback(
@@ -939,7 +961,7 @@ function Chat() {
   }, [activeConversationID, loadingMessages, messages.length]);
 
   useEffect(() => {
-    if (!activeConversationID) return undefined;
+    if (!activeConversationID || webSocketUnavailableRef.current) return undefined;
 
     const socket = new WebSocket(buildWebSocketURL(activeConversationID, accessToken));
     socketRef.current = socket;
@@ -963,7 +985,11 @@ function Chat() {
       }
     };
 
-    socket.onerror = () => undefined;
+    socket.onerror = () => {
+      webSocketUnavailableRef.current = true;
+      rememberChatWebSocketUnavailable();
+      socket.close();
+    };
 
     socket.onclose = () => {
       if (socketRef.current === socket) {
