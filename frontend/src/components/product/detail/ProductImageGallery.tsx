@@ -111,7 +111,9 @@ function ProductImageGallery({ images, title, isAvailable, isFavorite, onToggleF
 
           {/* Availability badge */}
           <div className="absolute top-4 left-4">
-            <span className="product-status-badge">{isAvailable ? "Disponible" : "No disponible"}</span>
+            <span className={isAvailable ? "product-status-badge" : "product-status-badge bg-[#fff0c4] text-[#9b7411]"}>
+              {isAvailable ? "Disponible" : "No disponible"}
+            </span>
           </div>
 
           {/* Favourite button */}

@@ -251,12 +251,15 @@ SELECT COUNT(*)
 FROM booking
 WHERE item_id = $1
   AND booking_status IN ('pending', 'accepted')
+  AND start_date <= NOW()
+  AND end_date >= NOW()
 `
 
 // syncAllItemAvailabilities reconciles is_available and item_status for every
 // item that has at least one booking. Items with no bookings are untouched.
 // Only transitions to/from 'rented' are performed; 'withdrawn'/'under_review'
 // statuses are preserved when no active booking is present.
+// Only bookings whose date range overlaps with NOW() are considered active.
 const syncAllItemAvailabilities = `
 UPDATE item
 SET
@@ -265,6 +268,8 @@ SET
             SELECT 1 FROM booking b
             WHERE b.item_id = item.item_id
               AND b.booking_status IN ('pending', 'accepted')
+              AND b.start_date <= NOW()
+              AND b.end_date >= NOW()
         ) THEN false
         WHEN item_status = 'rented' THEN true
         ELSE is_available
@@ -274,6 +279,8 @@ SET
             SELECT 1 FROM booking b
             WHERE b.item_id = item.item_id
               AND b.booking_status IN ('pending', 'accepted')
+              AND b.start_date <= NOW()
+              AND b.end_date >= NOW()
         ) THEN 'rented'::item_status
         WHEN item_status = 'rented' THEN 'available'::item_status
         ELSE item_status
