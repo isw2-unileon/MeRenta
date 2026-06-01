@@ -50,26 +50,52 @@ func (h *ChatHandler) WebSocket(c *gin.Context) {
 
 func (h *ChatHandler) authenticateWebSocket(c *gin.Context) (uuid.UUID, bool) {
 	tokenStr := ""
+	tokenSource := ""
 	if cookie, err := c.Cookie(authCookieName); err == nil {
 		tokenStr = strings.TrimSpace(cookie)
+		if tokenStr != "" {
+			tokenSource = "cookie"
+		}
 	}
 	if tokenStr == "" {
 		tokenStr = strings.TrimSpace(c.Query("access_token"))
+		if tokenStr != "" {
+			tokenSource = "access_token_query"
+		}
 	}
 	if tokenStr == "" {
 		tokenStr = strings.TrimSpace(c.Query("token"))
+		if tokenStr != "" {
+			tokenSource = "token_query"
+		}
 	}
 	if tokenStr == "" {
+		slog.Info(
+			"websocket auth missing token",
+			"origin", c.GetHeader("Origin"),
+			"host", c.Request.Host,
+			"path", c.Request.URL.Path,
+			"has_access_token_query", c.Query("access_token") != "",
+			"has_token_query", c.Query("token") != "",
+		)
 		response.Error(c, http.StatusUnauthorized, "missing token")
 		return uuid.UUID{}, false
 	}
 
 	claims, err := h.jwtMgr.Verify(tokenStr)
 	if err != nil {
+		slog.Info(
+			"websocket auth invalid token",
+			"source", tokenSource,
+			"origin", c.GetHeader("Origin"),
+			"host", c.Request.Host,
+			"error", err,
+		)
 		response.Error(c, http.StatusUnauthorized, "invalid token")
 		return uuid.UUID{}, false
 	}
 
+	slog.Info("websocket auth ok", "source", tokenSource, "customer_id", claims.CustomerID)
 	return claims.CustomerID, true
 }
 
