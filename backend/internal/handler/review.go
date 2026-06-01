@@ -39,3 +39,20 @@ func (h *ReviewHandler) ListReceived(c *gin.Context) {
 
 	response.OK(c, http.StatusOK, res)
 }
+
+// SummaryByCustomer handles GET /api/reviews/summary/:id -- returns review summary for a customer.
+func (h *ReviewHandler) SummaryByCustomer(c *gin.Context) {
+	reviewedID, ok := parseUUIDParam(c)
+	if !ok {
+		return
+	}
+
+	res, err := h.svc.GetReceivedReviewSummary(c.Request.Context(), reviewedID)
+	if err != nil {
+		slog.Error("get review summary failed", "customer_id", reviewedID, "error", err)
+		response.Error(c, http.StatusInternalServerError, "internal server error")
+		return
+	}
+
+	response.OK(c, http.StatusOK, res)
+}

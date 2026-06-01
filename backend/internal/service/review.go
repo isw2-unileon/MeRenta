@@ -80,22 +80,46 @@ func (s *ReviewService) ListReceivedReviews(ctx context.Context, reviewedID uuid
 	}, nil
 }
 
+// GetReceivedReviewSummary returns aggregate rating info for a customer.
+func (s *ReviewService) GetReceivedReviewSummary(ctx context.Context, reviewedID uuid.UUID) (*model.ReviewSummaryResponse, error) {
+	summaryRow, err := s.q.GetReceivedReviewSummary(ctx, reviewedID)
+	if err != nil {
+		return emptyReviewSummary(), nil
+	}
+
+	return &model.ReviewSummaryResponse{
+		AverageRating: summaryRow.AverageRating,
+		Total:         summaryRow.TotalCount,
+		Distribution: map[string]int64{
+			"5": summaryRow.FiveStarCount,
+			"4": summaryRow.FourStarCount,
+			"3": summaryRow.ThreeStarCount,
+			"2": summaryRow.TwoStarCount,
+			"1": summaryRow.OneStarCount,
+		},
+	}, nil
+}
+
 func emptyReceivedReviewsResponse(page int, limit int) *model.ReceivedReviewsResponse {
 	return &model.ReceivedReviewsResponse{
-		Items: []model.ReceivedReviewResponse{},
-		Total: 0,
-		Page:  page,
-		Limit: limit,
-		Summary: model.ReviewSummaryResponse{
-			AverageRating: 0,
-			Total:         0,
-			Distribution: map[string]int64{
-				"5": 0,
-				"4": 0,
-				"3": 0,
-				"2": 0,
-				"1": 0,
-			},
+		Items:   []model.ReceivedReviewResponse{},
+		Total:   0,
+		Page:    page,
+		Limit:   limit,
+		Summary: *emptyReviewSummary(),
+	}
+}
+
+func emptyReviewSummary() *model.ReviewSummaryResponse {
+	return &model.ReviewSummaryResponse{
+		AverageRating: 0,
+		Total:         0,
+		Distribution: map[string]int64{
+			"5": 0,
+			"4": 0,
+			"3": 0,
+			"2": 0,
+			"1": 0,
 		},
 	}
 }

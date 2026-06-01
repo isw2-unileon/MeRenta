@@ -41,23 +41,27 @@ RETURNING
 
 -- name: GetItemByID :one
 SELECT
-    item_id,
-    owner_id,
-    address_id,
-    category,
-    title,
-    description,
-    usage_rules,
-    item_condition,
-    item_status,
-    price_per_day,
-    deposit,
-    min_days,
-    max_days,
-    is_available,
-    published_at
-FROM item
-WHERE item_id = $1
+    i.item_id,
+    i.owner_id,
+    i.address_id,
+    i.category,
+    i.title,
+    i.description,
+    i.usage_rules,
+    i.item_condition,
+    i.item_status,
+    i.price_per_day,
+    i.deposit,
+    i.min_days,
+    i.max_days,
+    i.is_available,
+    i.published_at,
+    a.city,
+    a.province,
+    a.postal_code
+FROM item i
+JOIN address a ON a.address_id = i.address_id
+WHERE i.item_id = $1
 LIMIT 1;
 
 -- name: ExistsItemByID :one
@@ -163,6 +167,7 @@ SELECT
     i.is_available,
     i.published_at,
     a.city,
+    a.postal_code,
     COALESCE(img.image_url, '') AS primary_image_url,
     COUNT(*) OVER() AS total_count
 FROM item i

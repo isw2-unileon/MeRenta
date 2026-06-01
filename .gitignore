@@ -46,6 +46,7 @@ backend/.air.toml
 # Configuration
 .air.toml
 tsconfig.app.json
+react-doctor.config.json
 
 # Aux
 etc/
