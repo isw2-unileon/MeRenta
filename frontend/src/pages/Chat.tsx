@@ -888,15 +888,6 @@ function useChatPage(conversationId: string | undefined) {
     return () => window.clearInterval(intervalID);
   }, [activeConversationID]);
 
-/**
- * Loads and polls messages for the active conversation, dispatching into
- * the shared chat reducer. Resets message state when no conversation is open.
- */
-function useChatMessages(
-  activeConversationID: string | undefined,
-  normalizeMessage: (message: MessageResponse) => MessageResponse,
-  dispatch: React.Dispatch<ChatAction>
-): void {
   useEffect(() => {
     if (!activeConversationID) {
       dispatch({ type: "messages:reset" });
