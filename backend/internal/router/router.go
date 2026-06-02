@@ -23,6 +23,7 @@ func Setup(
 	chatH *handler.ChatHandler,
 	reviewH *handler.ReviewHandler,
 	paymentH *handler.PaymentHandler,
+	bookingH *handler.BookingHandler,
 	jwtMgr *jwt.Manager,
 	corsAllowOrigin string,
 	readiness func(context.Context) error,
@@ -38,7 +39,7 @@ func Setup(
 
 	protected := api.Group("/")
 	protected.Use(middleware.JWTAuth(jwtMgr))
-	registerProtectedRoutes(protected, authH, itemH, itemImgH, addrH, favH, chatH, reviewH, paymentH)
+	registerProtectedRoutes(protected, authH, itemH, itemImgH, addrH, favH, chatH, reviewH, paymentH, bookingH)
 
 	registerAdminRoutes(api, jwtMgr)
 
@@ -77,6 +78,7 @@ func registerProtectedRoutes(
 	chatH *handler.ChatHandler,
 	reviewH *handler.ReviewHandler,
 	paymentH *handler.PaymentHandler,
+	bookingH *handler.BookingHandler,
 ) {
 	protected.GET("/session", authH.Session)
 	protected.GET("/me", authH.Me)
@@ -96,6 +98,7 @@ func registerProtectedRoutes(
 	items.GET("/:id/images", itemImgH.ListImages)
 	items.POST("/:id/images", itemImgH.AddImages)
 	items.GET("/:id/images/:imageId/content", itemImgH.ProxyImage)
+	items.GET("/:id/unavailable-dates", bookingH.UnavailableDates)
 
 	favs := protected.Group("/favorites")
 	favs.GET("", favH.List)
@@ -113,9 +116,18 @@ func registerProtectedRoutes(
 
 	reviews := protected.Group("/reviews")
 	reviews.GET("/received", reviewH.ListReceived)
+	reviews.GET("/summary/:id", reviewH.SummaryByCustomer)
 
 	payment := protected.Group("/payment")
 	payment.POST("/intent", paymentH.CreateIntent)
+
+	bookings := protected.Group("/bookings")
+	bookings.POST("", bookingH.Create)
+	bookings.GET("/mine", bookingH.ListMine)
+	bookings.GET("/as-owner", bookingH.ListAsOwner)
+	bookings.PATCH("/:id/accept", bookingH.Accept)
+	bookings.PATCH("/:id/reject", bookingH.Reject)
+	bookings.PATCH("/:id/cancel", bookingH.Cancel)
 }
 
 func registerAdminRoutes(api *gin.RouterGroup, jwtMgr *jwt.Manager) {

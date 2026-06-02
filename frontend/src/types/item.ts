@@ -64,6 +64,9 @@ interface ItemResponse {
   max_days?: number | null;
   is_available: boolean;
   published_at: string;
+  city: string;
+  province: string;
+  postal_code: string;
 }
 
 /**
@@ -80,6 +83,7 @@ interface SearchItemResponse {
   is_available: boolean;
   published_at: string;
   city: string;
+  postal_code: string;
   primary_image_url?: string;
   owner_first_name: string;
   owner_last_name: string;

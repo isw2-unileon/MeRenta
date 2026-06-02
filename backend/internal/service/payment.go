@@ -9,6 +9,7 @@ import (
 
 	"github.com/stripe/stripe-go/v82"
 	"github.com/stripe/stripe-go/v82/paymentintent"
+	"github.com/stripe/stripe-go/v82/refund"
 
 	"github.com/isw2-unileon/MeRenta/backend/internal/model"
 )
@@ -72,6 +73,21 @@ func (s *PaymentService) CreatePaymentIntent(
 		PaymentIntentID: pi.ID,
 		AmountEUR:       total,
 	}, nil
+}
+
+// RefundPayment issues a full Stripe refund for the given PaymentIntent.
+// If the intent has no completed charge it is a no-op.
+func (s *PaymentService) RefundPayment(_ context.Context, paymentIntentID string) error {
+	if paymentIntentID == "" {
+		return nil
+	}
+	_, err := refund.New(&stripe.RefundParams{
+		PaymentIntent: stripe.String(paymentIntentID),
+	})
+	if err != nil {
+		return fmt.Errorf("stripe refund: %w", err)
+	}
+	return nil
 }
 
 // rentalDays returns the number of calendar days in a rental period.

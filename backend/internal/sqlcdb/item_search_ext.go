@@ -25,6 +25,7 @@ SELECT
     i.is_available,
     i.published_at,
     a.city,
+    a.postal_code,
     img.image_url AS primary_image_url,
     c.first_name  AS owner_first_name,
     c.last_name   AS owner_last_name,
@@ -85,6 +86,7 @@ type SearchItemCardsRow struct {
 	IsAvailable     bool               `json:"is_available"`
 	PublishedAt     pgtype.Timestamptz `json:"published_at"`
 	City            string             `json:"city"`
+	PostalCode      string             `json:"postal_code"`
 	PrimaryImageURL string             `json:"primary_image_url"`
 	OwnerFirstName  string             `json:"owner_first_name"`
 	OwnerLastName   string             `json:"owner_last_name"`
@@ -104,6 +106,7 @@ SELECT
     i.is_available,
     i.published_at,
     a.city,
+    a.postal_code,
     COALESCE(img.image_url, '') AS primary_image_url,
     COUNT(*) OVER() AS total_count
 FROM item i
@@ -268,6 +271,7 @@ func (q *Queries) SearchItemCards(ctx context.Context, arg SearchItemCardsParams
 			&i.IsAvailable,
 			&i.PublishedAt,
 			&i.City,
+			&i.PostalCode,
 			&i.PrimaryImageURL,
 			&i.OwnerFirstName,
 			&i.OwnerLastName,

@@ -172,6 +172,7 @@ func (s *ItemService) ListOwnerItems(ctx context.Context, ownerID uuid.UUID, pag
 			IsAvailable:     row.IsAvailable,
 			PublishedAt:     row.PublishedAt.Time,
 			City:            row.City,
+			PostalCode:      row.PostalCode,
 			PrimaryImageURL: row.PrimaryImageURL,
 		})
 	}
@@ -266,6 +267,7 @@ func (s *ItemService) SearchItems(ctx context.Context, params sqlcdb.SearchItemC
 			IsAvailable:     row.IsAvailable,
 			PublishedAt:     row.PublishedAt.Time,
 			City:            row.City,
+			PostalCode:      row.PostalCode,
 			PrimaryImageURL: row.PrimaryImageURL,
 			OwnerFirstName:  row.OwnerFirstName,
 			OwnerLastName:   row.OwnerLastName,
@@ -321,6 +323,9 @@ func toItemResponse(item sqlcdb.GetItemByIDRow) (*model.ItemResponse, error) {
 		MaxDays:     maxDays,
 		IsAvailable: item.IsAvailable,
 		PublishedAt: item.PublishedAt.Time,
+		City:        item.City,
+		Province:    item.Province,
+		PostalCode:  item.PostalCode,
 	}, nil
 }
 
@@ -328,7 +333,23 @@ func toItemResponse(item sqlcdb.GetItemByIDRow) (*model.ItemResponse, error) {
 // same API response as toItemResponse. CreateItemRow and GetItemByIDRow have
 // identical underlying structure, so a direct type conversion is safe.
 func toItemResponseFromCreateRow(r sqlcdb.CreateItemRow) (*model.ItemResponse, error) {
-	return toItemResponse(sqlcdb.GetItemByIDRow(r))
+	return toItemResponse(sqlcdb.GetItemByIDRow{
+		ItemID:        r.ItemID,
+		OwnerID:       r.OwnerID,
+		AddressID:     r.AddressID,
+		Category:      r.Category,
+		Title:         r.Title,
+		Description:   r.Description,
+		UsageRules:    r.UsageRules,
+		ItemCondition: r.ItemCondition,
+		ItemStatus:    r.ItemStatus,
+		PricePerDay:   r.PricePerDay,
+		Deposit:       r.Deposit,
+		MinDays:       r.MinDays,
+		MaxDays:       r.MaxDays,
+		IsAvailable:   r.IsAvailable,
+		PublishedAt:   r.PublishedAt,
+	})
 }
 
 // isValidCategory checks whether c is one of the allowed category values.

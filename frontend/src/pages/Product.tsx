@@ -1,4 +1,4 @@
-import { useEffect, useReducer } from "react";
+import React, { useEffect, useReducer } from "react";
 import { useNavigate, useParams } from "react-router-dom";
 
 import { useFavorites } from "@/hooks/useFavorites";
@@ -13,6 +13,7 @@ import { useAuth } from "@/hooks/useAuth";
 import type { ApiResponse } from "@/types/common";
 import type { CustomerProfile } from "@/types/customer";
 import type { ItemImageResponse, ItemResponse } from "@/types/item";
+import type { ReviewSummary } from "@/types/review";
 
 // ── Label maps ──────────────────────────────────────────────────────────────
 
@@ -67,6 +68,33 @@ async function fetchOwnerProfile(ownerId: string): Promise<CustomerProfile> {
   return json.data;
 }
 
+async function fetchOccupiedDates(id: string): Promise<Set<string>> {
+  const res = await fetch(`/api/items/${id}/unavailable-dates`, { credentials: "include" });
+  const json = (await res.json()) as ApiResponse<Array<{ start_date: string; end_date: string }>>;
+  if (!json.success || !json.data) return new Set<string>();
+  const dates = new Set<string>();
+  for (const range of json.data) {
+    const cur = new Date(`${range.start_date}T00:00:00`);
+    const endD = new Date(`${range.end_date}T00:00:00`);
+    while (cur <= endD) {
+      dates.add(cur.toISOString().slice(0, 10));
+      cur.setDate(cur.getDate() + 1);
+    }
+  }
+  return dates;
+}
+
+async function fetchReviewSummary(ownerId: string): Promise<ReviewSummary> {
+  const res = await fetch(`/api/reviews/summary/${ownerId}`, {
+    credentials: "include",
+  });
+  const json = (await res.json()) as ApiResponse<ReviewSummary>;
+  if (!res.ok || !json.success || !json.data) {
+    throw new Error("Error al cargar las valoraciones");
+  }
+  return json.data;
+}
+
 // ── Date range state type ────────────────────────────────────────────────────
 
 interface DateRange {
@@ -78,6 +106,7 @@ interface ProductState {
   item: ItemResponse | null;
   images: ItemImageResponse[];
   owner: CustomerProfile | null;
+  ownerReviewSummary: ReviewSummary | null;
   loading: boolean;
   error: string;
   dateRange: DateRange;
@@ -89,12 +118,14 @@ type ProductAction =
   | { type: "set-item"; value: ItemResponse | null }
   | { type: "set-images"; value: ItemImageResponse[] }
   | { type: "set-owner"; value: CustomerProfile | null }
+  | { type: "set-owner-review-summary"; value: ReviewSummary | null }
   | { type: "set-date-range"; value: DateRange };
 
 const INITIAL_STATE: ProductState = {
   item: null,
   images: [],
   owner: null,
+  ownerReviewSummary: null,
   loading: true,
   error: "",
   dateRange: { start: null, end: null },
@@ -119,12 +150,20 @@ function productReducer(state: ProductState, action: ProductAction): ProductStat
       return { ...state, images: action.value };
     case "set-owner":
       return { ...state, owner: action.value };
+    case "set-owner-review-summary":
+      return { ...state, ownerReviewSummary: action.value };
     case "set-date-range":
       return { ...state, dateRange: action.value };
     default:
       return state;
   }
 }
+
+const emptyReviewSummary: ReviewSummary = {
+  average_rating: 0,
+  total: 0,
+  distribution: {},
+};
 
 // ── Skeleton ─────────────────────────────────────────────────────────────────
 
@@ -206,13 +245,12 @@ function ProductError({ message, onBack }: ProductErrorProps) {
 function Product() {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
-  useAuth();
+  const { user } = useAuth();
 
   const [state, dispatch] = useReducer(productReducer, INITIAL_STATE);
   const { isFav, toggle } = useFavorites();
 
-  // Placeholder — a real implementation would fetch from /api/items/:id/bookings
-  const occupiedDates = new Set<string>();
+  const [occupiedDates, setOccupiedDates] = React.useState<Set<string>>(new Set());
 
   useEffect(() => {
     if (!id) return;
@@ -232,6 +270,21 @@ function Product() {
           dispatch({ type: "set-owner", value: ownerData });
         } catch {
           // silently omit owner card if profile endpoint is unavailable
+        }
+
+        // Load blocked date ranges (non-critical — calendar stays fully open on failure)
+        try {
+          setOccupiedDates(await fetchOccupiedDates(id));
+        } catch {
+          // silently ignore: calendar shows all dates as available
+        }
+
+        // Load review summary for the owner (non-critical)
+        try {
+          const reviewSummary = await fetchReviewSummary(itemData.owner_id);
+          dispatch({ type: "set-owner-review-summary", value: reviewSummary });
+        } catch {
+          dispatch({ type: "set-owner-review-summary", value: emptyReviewSummary });
         }
       } catch (err) {
         dispatch({ type: "set-error", value: err instanceof Error ? err.message : "Error al cargar el producto" });
@@ -285,6 +338,9 @@ function Product() {
     ? (CONDITION_LABELS[state.item.condition] ?? state.item.condition)
     : undefined;
   const item = state.item;
+  const reviewSummary = state.ownerReviewSummary ?? emptyReviewSummary;
+  const ratingLabel = reviewSummary.total > 0 ? reviewSummary.average_rating.toFixed(1) : "0.0";
+  const locationLabel = item ? [item.city, item.province, item.postal_code].filter(Boolean).join(", ") : "";
 
   // ── Render ─────────────────────────────────────────────────────────────────
 
@@ -322,14 +378,14 @@ function Product() {
                   {condition && <span className="product-estado-badge">Estado: {condition}</span>}
                 </div>
 
-                {/* Rating row — uses placeholder values until reviews API exists */}
+                {/* Rating row */}
                 <div className="flex flex-wrap items-center gap-3">
                   <div className="flex items-center gap-1">
-                    <StarRating rating={4.9} />
-                    <p className="product-rating ml-1 font-medium">4.9</p>
-                    <p className="product-location">(48 valoraciones)</p>
+                    <StarRating rating={reviewSummary.average_rating} />
+                    <p className="product-rating ml-1 font-medium">{ratingLabel}</p>
+                    <p className="product-location">({reviewSummary.total} valoraciones)</p>
                   </div>
-                  <p className="product-location">Madrid, Comunidad de Madrid</p>
+                  {locationLabel && <p className="product-location">{locationLabel}</p>}
                 </div>
               </div>
 
@@ -380,12 +436,14 @@ function Product() {
               <BookingCard
                 itemId={item.item_id}
                 pricePerDay={item.price_per_day}
-                rating={4.9}
-                reviewCount={48}
+                rating={reviewSummary.average_rating}
+                reviewCount={reviewSummary.total}
                 selectedStart={state.dateRange.start}
                 selectedEnd={state.dateRange.end}
                 minDays={item.min_days}
                 maxDay={item.max_days}
+                isOwner={user?.customer_id === item.owner_id}
+                occupiedDates={occupiedDates}
                 onDateChange={handleDateChange}
               />
 
@@ -394,8 +452,8 @@ function Product() {
               {state.owner && (
                 <OwnerCard
                   owner={state.owner}
-                  rating={4.8}
-                  reviewCount={32}
+                  rating={reviewSummary.average_rating}
+                  reviewCount={reviewSummary.total}
                 />
               )}
             </div>

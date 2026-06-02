@@ -183,4 +183,4 @@ e2e:
 # ============================================================================
 
 ## Run all checks (lint + format check + test) — use in CI or before pushing
-check: lint format-check test
+check: test format-check lint doctor
