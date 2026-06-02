@@ -161,7 +161,7 @@ function categoryLabel(category: string): string {
 
 function categoryTone(category: string): string {
   const seed = Array.from(category).reduce((sum, char) => sum + char.charCodeAt(0), 0);
-  return CATEGORY_TONE_CLASSES[seed % CATEGORY_TONE_CLASSES.length];
+  return CATEGORY_TONE_CLASSES[seed % CATEGORY_TONE_CLASSES.length] ?? "bg-primary-light";
 }
 
 function fmtDate(value: string): string {
