@@ -2,6 +2,7 @@
 package handler
 
 import (
+	"log/slog"
 	"net/http"
 
 	"github.com/gin-gonic/gin"
@@ -9,6 +10,8 @@ import (
 
 	"github.com/isw2-unileon/MeRenta/backend/pkg/response"
 )
+
+type paginatedResponder func(page int, limit int) (any, error)
 
 // parseUUIDParam extracts the ":id" route parameter and parses it as a UUID.
 // On success it returns the UUID and true.
@@ -50,4 +53,26 @@ func getCustomerID(c *gin.Context) (uuid.UUID, bool) {
 		return uuid.UUID{}, false
 	}
 	return id, true
+}
+
+func respondWithPaginated(
+	c *gin.Context,
+	defaultLimit int,
+	maxLimit int,
+	logMessage string,
+	logKey string,
+	logValue any,
+	fetch paginatedResponder,
+) {
+	page := parsePositiveInt(c.DefaultQuery("page", "1"), 1, 500)
+	limit := parsePositiveInt(c.DefaultQuery("limit", ""), defaultLimit, maxLimit)
+
+	res, err := fetch(page, limit)
+	if err != nil {
+		slog.Error(logMessage, logKey, logValue, "error", err)
+		response.Error(c, http.StatusInternalServerError, "internal server error")
+		return
+	}
+
+	response.OK(c, http.StatusOK, res)
 }

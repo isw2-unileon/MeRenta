@@ -89,6 +89,7 @@ func registerProtectedRoutes(
 
 	customers := protected.Group("/customers")
 	customers.GET("/:id/profile", authH.ProfileByID)
+	customers.GET("/:id/items", itemH.ListByOwner)
 
 	items := protected.Group("/items")
 	items.GET("", itemH.List)
@@ -115,7 +116,9 @@ func registerProtectedRoutes(
 	conversations.POST("/:id/messages", chatH.SendMessage)
 
 	reviews := protected.Group("/reviews")
+	reviews.POST("", reviewH.Create)
 	reviews.GET("/received", reviewH.ListReceived)
+	reviews.GET("/received/:id", reviewH.ListReceivedByCustomer)
 	reviews.GET("/summary/:id", reviewH.SummaryByCustomer)
 
 	payment := protected.Group("/payment")
