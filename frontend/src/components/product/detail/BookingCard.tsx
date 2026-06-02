@@ -1,9 +1,9 @@
-import { useRef, useState } from "react";
+import { useReducer } from "react";
 import { useNavigate } from "react-router-dom";
 
+import { ProductCalendar } from "@/components/product/detail/ProductCalendar";
 import { StarRating } from "@/components/product/detail/StarRating";
 import type { ApiResponse } from "@/types/common";
-import * as React from "react";
 
 /** Fixed service fee applied to every rental (EUR). */
 const SERVICE_FEE = 5;
@@ -30,6 +30,8 @@ interface BookingCardProps {
   maxDay?: number | null;
   /** Whether the authenticated user owns this listing. */
   isOwner?: boolean;
+  /** Set of "YYYY-MM-DD" strings already occupied by active bookings. */
+  occupiedDates?: Set<string>;
   /**
    * Callback fired when the user changes a date from the booking card inputs.
    * Receives the new start and end dates (either may be null).
@@ -49,14 +51,6 @@ function toISODateStr(date: Date): string {
   return `${y}-${m}-${d}`;
 }
 
-/** Parses a "YYYY-MM-DD" string into a local midnight Date. */
-function parseISODateStr(value: string): Date {
-  const [y, mo, d] = value.split("-").map(Number);
-  const date = new Date(y ?? 0, (mo ?? 1) - 1, d ?? 1);
-  date.setHours(0, 0, 0, 0);
-  return date;
-}
-
 /** Formats a Date as localized Spanish short date, e.g. "28 May 2026". */
 function formatDateEs(date: Date): string {
   return date.toLocaleDateString("es-ES", {
@@ -71,19 +65,61 @@ function fmtPrice(value: number): string {
   return value.toFixed(2).replace(".", ",");
 }
 
-/** Opens the native date picker for the given input ref. */
-function openPicker(ref: React.RefObject<HTMLInputElement | null>): void {
-  const input = ref.current;
-  if (!input || input.disabled) return;
-  if (typeof input.showPicker === "function") {
-    try {
-      input.showPicker();
-    } catch {
-      input.focus();
-    }
-  } else {
-    input.focus();
+// ── BookingCard local state ───────────────────────────────────────────────────
+
+interface BookingCardFormState {
+  messageLoading: boolean;
+  messageError: string;
+  bookingError: string;
+  calendarOpen: boolean;
+}
+
+type BookingCardFormAction =
+  | { type: "message:start" }
+  | { type: "message:done" }
+  | { type: "message:error"; error: string }
+  | { type: "booking:error"; error: string }
+  | { type: "booking:clear" }
+  | { type: "calendar:toggle" }
+  | { type: "calendar:close" };
+
+const initialFormState: BookingCardFormState = {
+  messageLoading: false,
+  messageError: "",
+  bookingError: "",
+  calendarOpen: false,
+};
+
+function formReducer(state: BookingCardFormState, action: BookingCardFormAction): BookingCardFormState {
+  switch (action.type) {
+    case "message:start":
+      return { ...state, messageLoading: true, messageError: "" };
+    case "message:done":
+      return { ...state, messageLoading: false };
+    case "message:error":
+      return { ...state, messageLoading: false, messageError: action.error };
+    case "booking:error":
+      return { ...state, bookingError: action.error };
+    case "booking:clear":
+      return { ...state, bookingError: "" };
+    case "calendar:toggle":
+      return { ...state, calendarOpen: !state.calendarOpen };
+    case "calendar:close":
+      return { ...state, calendarOpen: false };
+    default:
+      return state;
   }
+}
+
+/** Returns true if any day in [start, end] appears in the occupied set. */
+function hasDateConflict(start: Date, end: Date, occupied: Set<string>): boolean {
+  const cur = new Date(start);
+  cur.setHours(0, 0, 0, 0);
+  while (cur <= end) {
+    if (occupied.has(toISODateStr(cur))) return true;
+    cur.setDate(cur.getDate() + 1);
+  }
+  return false;
 }
 
 async function startConversation(itemId: string): Promise<ConversationResponse> {
@@ -128,44 +164,30 @@ function BookingCard({
   minDays,
   maxDay,
   isOwner = false,
+  occupiedDates,
   onDateChange,
 }: BookingCardProps) {
   const navigate = useNavigate();
-  const [messageLoading, setMessageLoading] = useState(false);
-  const [messageError, setMessageError] = useState("");
+  const [formState, dispatchForm] = useReducer(formReducer, initialFormState);
+  const { messageLoading, messageError, bookingError, calendarOpen } = formState;
 
-  const startInputRef = useRef<HTMLInputElement>(null);
-  const endInputRef = useRef<HTMLInputElement>(null);
-
-  /** Today as "YYYY-MM-DD" — used as the minimum selectable date. */
-  const todayStr = toISODateStr(new Date());
-
-  /** One day after the selected start — minimum valid end date. */
-  const minEndStr = selectedStart
-    ? toISODateStr(new Date(selectedStart.getFullYear(), selectedStart.getMonth(), selectedStart.getDate() + 1))
-    : todayStr;
-
-  const handleStartInputChange = (value: string) => {
-    if (!value) {
-      onDateChange?.(null, null);
+  /**
+   * Two-click state machine for the mini calendar:
+   * – No start yet (or range already complete) → set start, clear end.
+   * – Start set, date after start → set end and close calendar.
+   * – Start set, date on/before start → reset to new start.
+   */
+  const handleCalendarDateSelect = (date: Date) => {
+    if (!selectedStart || selectedEnd !== null) {
+      onDateChange?.(date, null);
       return;
     }
-    const date = parseISODateStr(value);
-    // Clear end date if it's no longer after the new start
-    const newEnd = selectedEnd && selectedEnd > date ? selectedEnd : null;
-    onDateChange?.(date, newEnd);
-  };
-
-  const handleEndInputChange = (value: string) => {
-    if (!value) {
-      onDateChange?.(selectedStart, null);
+    if (date <= selectedStart) {
+      onDateChange?.(date, null);
       return;
     }
-    const date = parseISODateStr(value);
-    // Only accept end if it's strictly after start
-    if (selectedStart && date > selectedStart) {
-      onDateChange?.(selectedStart, date);
-    }
+    onDateChange?.(selectedStart, date);
+    dispatchForm({ type: "calendar:close" });
   };
 
   const days =
@@ -183,21 +205,28 @@ function BookingCard({
 
   const handleBook = () => {
     if (!canBook || !selectedStart || !selectedEnd) return;
-    const start = selectedStart.toISOString().split("T")[0] ?? "";
-    const end = selectedEnd.toISOString().split("T")[0] ?? "";
+    if (occupiedDates && hasDateConflict(selectedStart, selectedEnd, occupiedDates)) {
+      dispatchForm({ type: "booking:error", error: "Estas fechas ya están reservadas. Por favor, elige otras." });
+      return;
+    }
+    dispatchForm({ type: "booking:clear" });
+    const start = toISODateStr(selectedStart);
+    const end = toISODateStr(selectedEnd);
     void navigate(`/checkout/${itemId}?start=${start}&end=${end}`);
   };
 
   const handleMessage = async () => {
-    setMessageLoading(true);
-    setMessageError("");
+    dispatchForm({ type: "message:start" });
     try {
       const conversation = await startConversation(itemId);
       void navigate(`/chat/${conversation.conversation_id}`);
     } catch (err) {
-      setMessageError(err instanceof Error ? err.message : "Error al iniciar la conversación");
+      dispatchForm({
+        type: "message:error",
+        error: err instanceof Error ? err.message : "Error al iniciar la conversación",
+      });
     } finally {
-      setMessageLoading(false);
+      dispatchForm({ type: "message:done" });
     }
   };
 
@@ -221,38 +250,27 @@ function BookingCard({
         )}
       </div>
 
-      {/* ── Rental dates summary ── */}
+      {/* ── Rental dates summary — clicking toggles the mini calendar ── */}
       <p className="booking-field-label mb-2">Fechas del alquiler</p>
-      <div className="booking-dates mb-4">
-        {/* Start date cell: clicking opens the native date picker via ref */}
+      <div className="booking-dates mb-2">
         <button
           type="button"
           className="flex flex-1 flex-col justify-between px-3 py-2 text-left"
-          onClick={() => openPicker(startInputRef)}
+          onClick={() => dispatchForm({ type: "calendar:toggle" })}
+          aria-expanded={calendarOpen}
           aria-label="Seleccionar fecha de recogida"
         >
           <p className="booking-date-label">Recogida</p>
           <p className="booking-date-value">{selectedStart ? formatDateEs(selectedStart) : "Selecciona fecha"}</p>
         </button>
-        <input
-          ref={startInputRef}
-          type="date"
-          className="booking-date-hidden"
-          value={selectedStart ? toISODateStr(selectedStart) : ""}
-          min={todayStr}
-          onChange={(e) => handleStartInputChange(e.target.value)}
-          aria-label="Fecha de recogida"
-          tabIndex={-1}
-        />
 
         <div className="booking-dates-divider" />
 
-        {/* End date cell */}
         <button
           type="button"
           className="flex flex-1 flex-col justify-between px-3 py-2 text-left"
-          onClick={() => openPicker(endInputRef)}
-          disabled={!selectedStart}
+          onClick={() => dispatchForm({ type: "calendar:toggle" })}
+          aria-expanded={calendarOpen}
           aria-label="Seleccionar fecha de devolución"
         >
           <p className="booking-date-label">Devolución</p>
@@ -260,19 +278,21 @@ function BookingCard({
             {selectedEnd ? formatDateEs(selectedEnd) : "Selecciona fecha"}
           </p>
         </button>
-        <input
-          ref={endInputRef}
-          type="date"
-          className="booking-date-hidden"
-          value={selectedEnd ? toISODateStr(selectedEnd) : ""}
-          min={minEndStr}
-          disabled={!selectedStart}
-          onChange={(e) => handleEndInputChange(e.target.value)}
-          aria-label="Fecha de devolución"
-          tabIndex={-1}
-        />
       </div>
-      <p className="booking-row-label -mt-2 mb-4">{periodHint}</p>
+      <p className="booking-row-label mb-2">{periodHint}</p>
+
+      {/* ── Mini calendar dropdown ── */}
+      {calendarOpen && (
+        <div className="mb-4">
+          <ProductCalendar
+            occupiedDates={occupiedDates ?? new Set<string>()}
+            selectedStart={selectedStart}
+            selectedEnd={selectedEnd}
+            onDateSelect={handleCalendarDateSelect}
+            navigateTo={selectedStart}
+          />
+        </div>
+      )}
 
       {/* ── Price breakdown (only when dates are selected) ── */}
       {canBook && (
@@ -329,10 +349,14 @@ function BookingCard({
         )}
       </div>
 
+      {bookingError && <p className="field-error mt-3 text-center">{bookingError}</p>}
       {messageError && <p className="field-error mt-3 text-center">{messageError}</p>}
 
       {/* Disclaimer */}
-      <p className="booking-disclaimer mt-3 text-center">No se hará ningún cargo hasta que el propietario acepte</p>
+      <p className="booking-disclaimer mt-3 text-center">
+        El pago queda retenido hasta que el propietario acepte. Si rechaza o no responde en 5 días, recibirás un
+        reembolso completo.
+      </p>
 
       <hr className="divider-booking my-4" />
 

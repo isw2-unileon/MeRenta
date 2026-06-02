@@ -390,8 +390,7 @@ async function markConversationRead(conversationID: string): Promise<void> {
 }
 
 function buildWebSocketURL(conversationID: string): string {
-  const apiBaseURL = import.meta.env.VITE_API_BASE_URL.trim() || window.location.origin;
-  const url = new URL(`/api/conversations/${conversationID}/ws`, apiBaseURL);
+  const url = new URL(`/api/conversations/${conversationID}/ws`, window.location.origin);
   url.protocol = url.protocol === "https:" ? "wss:" : "ws:";
   return url.toString();
 }

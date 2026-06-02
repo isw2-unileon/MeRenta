@@ -1,0 +1,2 @@
+-- This migration is intentionally empty.
+-- The booking table was created directly in Supabase (see booking_ext.go for queries).
