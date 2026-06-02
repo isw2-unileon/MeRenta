@@ -169,10 +169,14 @@ function fmtDate(value: string): string {
 }
 
 function uniqueAddressCities(addresses: AddressResponse[]): string[] {
-  return Array.from(new Set(addresses.flatMap((address) => {
-    const city = address.city.trim();
-    return city ? [city] : [];
-  }))).sort((a, b) => a.localeCompare(b));
+  return Array.from(
+    new Set(
+      addresses.flatMap((address) => {
+        const city = address.city.trim();
+        return city ? [city] : [];
+      })
+    )
+  ).sort((a, b) => a.localeCompare(b));
 }
 
 function buildItemsUrl(params: Record<string, string>): string {
@@ -197,13 +201,10 @@ async function fetchProducts(signal: AbortSignal): Promise<SearchItemsResponse> 
 }
 
 async function fetchProductsByCity(city: string, signal: AbortSignal): Promise<SearchItemsResponse> {
-  const res = await fetch(
-    buildItemsUrl({ page: "1", limit: String(HOME_PAGE_SIZE), sort: "recent", city }),
-    {
-      credentials: "include",
-      signal,
-    }
-  );
+  const res = await fetch(buildItemsUrl({ page: "1", limit: String(HOME_PAGE_SIZE), sort: "recent", city }), {
+    credentials: "include",
+    signal,
+  });
   return readApiData<SearchItemsResponse>(res, "Error al cargar los productos cercanos");
 }
 
@@ -449,7 +450,7 @@ function NearbyProductsSection({
       <div className="mb-4 flex flex-col gap-4 md:flex-row md:items-start md:justify-between">
         <div>
           <div className="grid grid-cols-[auto_minmax(160px,220px)] items-center gap-3">
-            <h2 className="text-section-hd text-ink whitespace-nowrap font-semibold">Cerca de ti en</h2>
+            <h2 className="text-section-hd text-ink font-semibold whitespace-nowrap">Cerca de ti en</h2>
             <select
               value={activeCity}
               onChange={(event) => onCityChange(event.target.value)}
@@ -483,7 +484,9 @@ function NearbyProductsSection({
       </div>
 
       {activeCity && state.error && (
-        <p className="border-report bg-error-danger text-report mb-4 rounded-lg border p-3 text-[13px]">{state.error}</p>
+        <p className="border-report bg-error-danger text-report mb-4 rounded-lg border p-3 text-[13px]">
+          {state.error}
+        </p>
       )}
 
       {activeCity && (
@@ -738,8 +741,7 @@ function Home() {
           if (aIndex === -1) return 1;
           if (bIndex === -1) return -1;
           return aIndex - bIndex;
-        })
-,
+        }),
     [state.categoryCounts]
   );
 
