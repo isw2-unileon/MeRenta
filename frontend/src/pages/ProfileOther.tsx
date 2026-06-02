@@ -1097,7 +1097,7 @@ function ProfileOther() {
   const profileViewData: ProfileViewData = {
     fullName,
     initials,
-    avatarUrl: profile?.avatar_url,
+    avatarUrl: profile?.avatar_url ?? undefined,
     cityLabel,
     memberSince,
     summary,
