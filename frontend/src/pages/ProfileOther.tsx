@@ -455,7 +455,7 @@ function ReviewForm({
             <button
               key={value}
               type="button"
-              className="text-rating h-8 w-8 p-0"
+              className="text-rating size-8 p-0"
               aria-label={`${value} estrellas`}
               aria-checked={rating === value}
               role="radio"
@@ -503,6 +503,431 @@ function ReviewForm({
   );
 }
 
+// ── Review-draft state ────────────────────────────────────────────
+interface ReviewDraftState {
+  profileId: string;
+  rating: number;
+  comment: string;
+  error: string;
+  success: string;
+  submitting: boolean;
+}
+
+type ReviewDraftAction =
+  | { type: "set_rating"; profileId: string; rating: number }
+  | { type: "set_comment"; profileId: string; comment: string }
+  | { type: "submit_start"; profileId: string }
+  | { type: "submit_success" }
+  | { type: "submit_error"; error: string };
+
+const initialReviewDraftState: ReviewDraftState = {
+  profileId: "",
+  rating: 0,
+  comment: "",
+  error: "",
+  success: "",
+  submitting: false,
+};
+
+function reviewDraftReducer(state: ReviewDraftState, action: ReviewDraftAction): ReviewDraftState {
+  switch (action.type) {
+    case "set_rating":
+      return { ...state, profileId: action.profileId, rating: action.rating, error: "", success: "" };
+    case "set_comment":
+      return { ...state, profileId: action.profileId, comment: action.comment, error: "", success: "" };
+    case "submit_start":
+      return { ...state, profileId: action.profileId, submitting: true, error: "", success: "" };
+    case "submit_success":
+      return { ...state, submitting: false, rating: 0, comment: "", success: "Valoracion publicada correctamente." };
+    case "submit_error":
+      return { ...state, submitting: false, error: action.error };
+    default:
+      return state;
+  }
+}
+
+// ── Message-flow state ────────────────────────────────────────────
+interface MessageFlowState {
+  error: string;
+  opening: boolean;
+}
+
+type MessageFlowAction = { type: "open_start" } | { type: "open_error"; error: string };
+
+const initialMessageFlowState: MessageFlowState = { error: "", opening: false };
+
+function messageFlowReducer(_state: MessageFlowState, action: MessageFlowAction): MessageFlowState {
+  switch (action.type) {
+    case "open_start":
+      return { opening: true, error: "" };
+    case "open_error":
+      return { opening: false, error: action.error };
+    default:
+      return _state;
+  }
+}
+
+// ── Shared data/action shapes passed to sub-sections ─────────────
+interface ProfileViewData {
+  fullName: string;
+  initials: string;
+  avatarUrl?: string;
+  cityLabel: string;
+  memberSince: string;
+  summary: ReviewSummary;
+  activeProducts: number;
+  positivePercent: number;
+  fiveStarPercent: number;
+}
+
+interface ProfileActionProps {
+  openingMessage: boolean;
+  isOwnProfile: boolean;
+  productsLoading: boolean;
+  messageError: string;
+  onOpenMessage: () => void;
+  onReportUser: () => void;
+}
+
+// ── Profile hero ──────────────────────────────────────────────────
+function ProfileHero({
+  data,
+  profileLoading,
+  openingMessage,
+  isOwnProfile,
+  productsLoading,
+  messageError,
+  onOpenMessage,
+  onReportUser,
+}: { data: ProfileViewData; profileLoading: boolean } & ProfileActionProps) {
+  return (
+    <section className="profile-hero min-h-profile-hero h-auto bg-[#f0eef9]">
+      <div className="mx-auto flex h-full max-w-340 flex-col items-start justify-center gap-6 px-6 py-8 md:flex-row md:items-center md:justify-between md:px-10">
+        <div className="flex items-center gap-5">
+          {data.avatarUrl ? (
+            <img
+              src={data.avatarUrl}
+              alt={data.fullName}
+              className="avatar-hero"
+            />
+          ) : (
+            <div className="profile-avatar-hero bg-avatar-blue text-avatar-text-blue">{data.initials || "?"}</div>
+          )}
+          <div>
+            <p className="profile-name">{profileLoading ? "Cargando perfil..." : data.fullName}</p>
+            <p className="profile-meta mt-1">
+              {data.cityLabel} - {data.memberSince}
+            </p>
+            <p className="text-rating mt-1 flex items-center gap-2 text-[13px]">
+              <Star
+                size={14}
+                fill="currentColor"
+              />
+              {data.summary.average_rating.toFixed(1)} - {data.summary.total} valoraciones
+            </p>
+          </div>
+        </div>
+
+        <div className="flex flex-col items-start gap-4 md:items-center">
+          <button
+            type="button"
+            className="btn-primary h-11 px-7"
+            onClick={() => void onOpenMessage()}
+            disabled={openingMessage || isOwnProfile || productsLoading}
+          >
+            <Mail size={15} /> {openingMessage ? "Abriendo..." : "Enviar mensaje"}
+          </button>
+          <button
+            type="button"
+            className="text-report h-auto p-0 text-[12px]"
+            onClick={onReportUser}
+          >
+            Reportar usuario
+          </button>
+          {messageError && <p className="text-report max-w-60 text-center text-[12px]">{messageError}</p>}
+        </div>
+      </div>
+    </section>
+  );
+}
+
+// ── Stats strip ───────────────────────────────────────────────────
+interface StatItem {
+  value: string | number;
+  label: string;
+  rating?: boolean;
+}
+
+function ProfileStatsStrip({ stats }: { stats: StatItem[] }) {
+  return (
+    <section className="profile-stats-strip h-auto py-5">
+      <div className="mx-auto grid w-full max-w-340 grid-cols-2 gap-y-5 md:grid-cols-3 lg:grid-cols-6">
+        {stats.map((stat, index) => (
+          <div
+            key={stat.label}
+            className={`px-3 text-center ${index > 0 ? "border-border-input border-l" : ""}`}
+          >
+            <p className={stat.rating ? "profile-stat-value--rating" : "profile-stat-value"}>
+              {stat.rating ? (
+                <Star
+                  className="mr-1 inline"
+                  size={17}
+                  fill="currentColor"
+                />
+              ) : null}
+              {stat.value}
+            </p>
+            <p className="profile-stat-label mt-1">{stat.label}</p>
+          </div>
+        ))}
+      </div>
+    </section>
+  );
+}
+
+// ── Sidebar card ──────────────────────────────────────────────────
+function ProfileSidebar({
+  data,
+  openingMessage,
+  isOwnProfile,
+  productsLoading,
+  messageError,
+  onOpenMessage,
+  onReportUser,
+}: { data: ProfileViewData } & ProfileActionProps) {
+  return (
+    <aside className="lg:sticky lg:top-24 lg:self-start">
+      <div className="profile-info-panel p-5">
+        <div className="flex items-center gap-4">
+          {data.avatarUrl ? (
+            <img
+              src={data.avatarUrl}
+              alt={data.fullName}
+              className="owner-avatar object-cover"
+            />
+          ) : (
+            <div className="owner-avatar bg-avatar-blue text-avatar-text-blue">{data.initials || "?"}</div>
+          )}
+          <div>
+            <p className="text-owner-name font-bold">{data.fullName || "Perfil publico"}</p>
+            <p className="text-card-loc text-subtle">
+              {data.memberSince} - {data.cityLabel}
+            </p>
+            <p className="text-rating text-card-loc mt-1">
+              {data.summary.average_rating.toFixed(1)} ({data.summary.total} valoraciones)
+            </p>
+          </div>
+        </div>
+
+        <div className="divide-border-main my-5 divide-y">
+          {[
+            ["Valoracion media", data.summary.average_rating.toFixed(1)],
+            ["Valoraciones recibidas", String(data.summary.total)],
+            ["Opiniones positivas", `${data.positivePercent}%`],
+            ["Valoraciones de 5 estrellas", `${data.fiveStarPercent}%`],
+            ["Productos activos", String(data.activeProducts)],
+          ].map(([label, value]) => (
+            <div
+              key={label}
+              className="flex items-center justify-between gap-4 py-3 text-[12px]"
+            >
+              <span className="text-subtle">{label}</span>
+              <span className="text-ink text-right font-bold">{value}</span>
+            </div>
+          ))}
+        </div>
+
+        <button
+          type="button"
+          className="btn-primary h-12 w-full"
+          onClick={() => void onOpenMessage()}
+          disabled={openingMessage || isOwnProfile || productsLoading}
+        >
+          <Mail size={15} /> {openingMessage ? "Abriendo..." : "Enviar mensaje"}
+        </button>
+        {messageError && <p className="text-report mt-3 text-center text-[12px]">{messageError}</p>}
+        <button
+          type="button"
+          className="text-report mt-4 h-auto w-full p-0 text-[12px]"
+          onClick={onReportUser}
+        >
+          Reportar a este usuario
+        </button>
+      </div>
+    </aside>
+  );
+}
+
+// ── Products section ─────────────────────────────────────────────
+interface ProfileProductsSectionProps {
+  firstName?: string;
+  loading: boolean;
+  error: string;
+  visibleProducts: SearchItemResponse[];
+  categoryFilters: { value: string; label: string }[];
+  selectedCategory: string;
+  ownerRating: number;
+  onCategoryChange: (category: string) => void;
+}
+
+function ProfileProductsSection({
+  firstName,
+  loading,
+  error,
+  visibleProducts,
+  categoryFilters,
+  selectedCategory,
+  ownerRating,
+  onCategoryChange,
+}: ProfileProductsSectionProps) {
+  return (
+    <section className="mt-22">
+      <h2 className="heading-panel--sm">Articulos de {firstName ?? "este usuario"} en alquiler</h2>
+      <p className="profile-products-sub mt-1">
+        {loading
+          ? "Cargando productos..."
+          : `${visibleProducts.length} ${visibleProducts.length === 1 ? "producto disponible" : "productos disponibles"}`}
+      </p>
+
+      {categoryFilters.length > 1 && (
+        <div className="mt-3 flex flex-wrap gap-3">
+          {categoryFilters.map((filter) => (
+            <button
+              key={filter.value}
+              type="button"
+              className={`h-7 rounded-full border px-5 text-[12px] ${
+                selectedCategory === filter.value
+                  ? "bg-primary text-white"
+                  : "border-border-input bg-page text-subtle hover:border-primary hover:text-primary"
+              }`}
+              onClick={() => onCategoryChange(filter.value)}
+            >
+              {filter.label}
+            </button>
+          ))}
+        </div>
+      )}
+
+      {error && (
+        <p className="border-report bg-error-danger text-report mt-3 rounded-lg border p-3 text-[13px]">{error}</p>
+      )}
+
+      {!loading && visibleProducts.length === 0 && !error && (
+        <div className="profile-info-panel mt-4 flex min-h-36 items-center justify-center p-6 text-center">
+          <p className="text-subtle">Este usuario no tiene productos publicados en esta categoria.</p>
+        </div>
+      )}
+
+      <div className="mt-4 grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-3">
+        {visibleProducts.map((product) => (
+          <ProductCard
+            key={product.item_id}
+            product={product}
+            ownerRating={ownerRating}
+          />
+        ))}
+      </div>
+    </section>
+  );
+}
+
+// ── Reviews section ───────────────────────────────────────────────
+interface ReviewFormDraft {
+  rating: number;
+  comment: string;
+  submitting: boolean;
+  error: string;
+  success: string;
+}
+
+interface ProfileReviewsSectionProps {
+  isOwnProfile: boolean;
+  hasProfile: boolean;
+  fullName: string;
+  loading: boolean;
+  error: string;
+  total: number;
+  items: ReceivedReview[];
+  summary: ReviewSummary;
+  draft: ReviewFormDraft;
+  onRatingChange: (rating: number) => void;
+  onCommentChange: (comment: string) => void;
+  onSubmit: (event: FormEvent<HTMLFormElement>) => void;
+}
+
+function ProfileReviewsSection({
+  isOwnProfile,
+  hasProfile,
+  fullName,
+  loading,
+  error,
+  total,
+  items,
+  summary,
+  draft,
+  onRatingChange,
+  onCommentChange,
+  onSubmit,
+}: ProfileReviewsSectionProps) {
+  return (
+    <section className="mt-14">
+      <h2 className="heading-panel--sm">Valoraciones recibidas</h2>
+
+      {!isOwnProfile && hasProfile && (
+        <ReviewForm
+          profileName={fullName}
+          rating={draft.rating}
+          comment={draft.comment}
+          submitting={draft.submitting}
+          error={draft.error}
+          success={draft.success}
+          onRatingChange={onRatingChange}
+          onCommentChange={onCommentChange}
+          onSubmit={onSubmit}
+        />
+      )}
+
+      {error && (
+        <p className="border-report bg-error-danger text-report mt-3 rounded-lg border p-3 text-[13px]">{error}</p>
+      )}
+
+      {loading ? (
+        <div className="profile-info-panel mt-3 flex min-h-36 items-center justify-center p-6">
+          <p className="text-subtle">Cargando valoraciones…</p>
+        </div>
+      ) : (
+        <RatingSummary summary={summary} />
+      )}
+
+      {!loading && total === 0 && !error && (
+        <div className="profile-info-panel mt-4 flex min-h-36 items-center justify-center p-6 text-center">
+          <p className="text-subtle">Este usuario todavia no ha recibido valoraciones.</p>
+        </div>
+      )}
+
+      <div className="mt-4 space-y-4">
+        {items.map((review) => (
+          <ReviewCard
+            key={review.review_id}
+            review={review}
+          />
+        ))}
+      </div>
+
+      {!loading && total > items.length && (
+        <div className="mt-4 flex justify-center">
+          <button
+            type="button"
+            className="btn-secondary btn--sm min-w-64"
+          >
+            Ver las {total - items.length} valoraciones restantes
+          </button>
+        </div>
+      )}
+    </section>
+  );
+}
+
 /**
  * Shows another user's public profile details.
  * @returns The public profile page.
@@ -512,14 +937,8 @@ function ProfileOther() {
   const navigate = useNavigate();
   const { user } = useAuth();
   const [selectedCategory, setSelectedCategory] = useState("all");
-  const [draftProfileId, setDraftProfileId] = useState("");
-  const [draftRating, setDraftRating] = useState(0);
-  const [draftComment, setDraftComment] = useState("");
-  const [submitError, setSubmitError] = useState("");
-  const [submitSuccess, setSubmitSuccess] = useState("");
-  const [submittingReview, setSubmittingReview] = useState(false);
-  const [messageError, setMessageError] = useState("");
-  const [openingMessage, setOpeningMessage] = useState(false);
+  const [reviewDraft, dispatchReviewDraft] = useReducer(reviewDraftReducer, initialReviewDraftState);
+  const [msgFlow, dispatchMsgFlow] = useReducer(messageFlowReducer, initialMessageFlowState);
   const [profileState, dispatchProfile] = useReducer(profileReducer, initialProfileState);
   const [productsState, dispatchProducts] = useReducer(productsReducer, initialProductsState);
   const [reviewsState, dispatchReviews] = useReducer(reviewsReducer, initialReviewsState);
@@ -584,55 +1003,51 @@ function ProfileOther() {
   const positivePercent = percent(positiveReviews, summary.total);
   const fiveStarPercent = percent(summary.distribution["5"] ?? 0, summary.total);
   const isOwnProfile = Boolean(user?.customer_id && id === user.customer_id);
-  const isDraftForCurrentProfile = draftProfileId === (id ?? "");
-  const currentDraftRating = isDraftForCurrentProfile ? draftRating : 0;
-  const currentDraftComment = isDraftForCurrentProfile ? draftComment : "";
-  const currentSubmitError = isDraftForCurrentProfile ? submitError : "";
-  const currentSubmitSuccess = isDraftForCurrentProfile ? submitSuccess : "";
+  const isDraftForCurrentProfile = reviewDraft.profileId === (id ?? "");
+  const currentDraftRating = isDraftForCurrentProfile ? reviewDraft.rating : 0;
+  const currentDraftComment = isDraftForCurrentProfile ? reviewDraft.comment : "";
+  const currentSubmitError = isDraftForCurrentProfile ? reviewDraft.error : "";
+  const currentSubmitSuccess = isDraftForCurrentProfile ? reviewDraft.success : "";
 
   const handleReviewSubmit = async (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault();
     if (!id || currentDraftRating < 1 || currentDraftRating > 5) return;
 
-    setSubmittingReview(true);
-    setDraftProfileId(id);
-    setSubmitError("");
-    setSubmitSuccess("");
+    dispatchReviewDraft({ type: "submit_start", profileId: id });
 
     try {
       await createReview(id, currentDraftRating, currentDraftComment);
-      setDraftRating(0);
-      setDraftComment("");
-      setSubmitSuccess("Valoracion publicada correctamente.");
+      dispatchReviewDraft({ type: "submit_success" });
       const controller = new AbortController();
       loadReviews(id, controller.signal);
     } catch (err: unknown) {
-      setSubmitError(err instanceof Error ? err.message : "Error al guardar la valoracion");
-    } finally {
-      setSubmittingReview(false);
+      dispatchReviewDraft({
+        type: "submit_error",
+        error: err instanceof Error ? err.message : "Error al guardar la valoracion",
+      });
     }
   };
 
   const handleOpenMessage = async () => {
     if (isOwnProfile) {
-      setMessageError("No puedes abrir una conversacion contigo.");
+      dispatchMsgFlow({ type: "open_error", error: "No puedes abrir una conversacion contigo." });
       return;
     }
     if (!messageProduct) {
-      setMessageError("Este usuario no tiene productos disponibles para iniciar una conversacion.");
+      dispatchMsgFlow({
+        type: "open_error",
+        error: "Este usuario no tiene productos disponibles para iniciar una conversacion.",
+      });
       return;
     }
 
-    setOpeningMessage(true);
-    setMessageError("");
+    dispatchMsgFlow({ type: "open_start" });
 
     try {
       const conversationId = await openConversation(messageProduct.item_id);
       void navigate(`/chat/${conversationId}`);
     } catch (err: unknown) {
-      setMessageError(err instanceof Error ? err.message : "Error al abrir el chat");
-    } finally {
-      setOpeningMessage(false);
+      dispatchMsgFlow({ type: "open_error", error: err instanceof Error ? err.message : "Error al abrir el chat" });
     }
   };
 
@@ -679,6 +1094,27 @@ function ProfileOther() {
     ]
   );
 
+  const profileViewData: ProfileViewData = {
+    fullName,
+    initials,
+    avatarUrl: profile?.avatar_url,
+    cityLabel,
+    memberSince,
+    summary,
+    activeProducts,
+    positivePercent,
+    fiveStarPercent,
+  };
+
+  const actionProps: ProfileActionProps = {
+    openingMessage: msgFlow.opening,
+    isOwnProfile,
+    productsLoading: productsState.loading,
+    messageError: msgFlow.error,
+    onOpenMessage: () => void handleOpenMessage(),
+    onReportUser: handleReportUser,
+  };
+
   if (profileState.error) {
     return (
       <div className="bg-page flex min-h-screen items-center justify-center px-6">
@@ -699,76 +1135,13 @@ function ProfileOther() {
 
   return (
     <div className="bg-page min-h-screen">
-      <section className="profile-hero min-h-profile-hero h-auto bg-[#f0eef9]">
-        <div className="mx-auto flex h-full max-w-340 flex-col items-start justify-center gap-6 px-6 py-8 md:flex-row md:items-center md:justify-between md:px-10">
-          <div className="flex items-center gap-5">
-            {profile?.avatar_url ? (
-              <img
-                src={profile.avatar_url}
-                alt={fullName}
-                className="avatar-hero"
-              />
-            ) : (
-              <div className="profile-avatar-hero bg-avatar-blue text-avatar-text-blue">{initials || "?"}</div>
-            )}
-            <div>
-              <p className="profile-name">{profileState.loading ? "Cargando perfil..." : fullName}</p>
-              <p className="profile-meta mt-1">
-                {cityLabel} - {memberSince}
-              </p>
-              <p className="text-rating mt-1 flex items-center gap-2 text-[13px]">
-                <Star
-                  size={14}
-                  fill="currentColor"
-                />
-                {summary.average_rating.toFixed(1)} - {summary.total} valoraciones
-              </p>
-            </div>
-          </div>
+      <ProfileHero
+        data={profileViewData}
+        profileLoading={profileState.loading}
+        {...actionProps}
+      />
 
-          <div className="flex flex-col items-start gap-4 md:items-center">
-            <button
-              type="button"
-              className="btn-primary h-11 px-7"
-              onClick={() => void handleOpenMessage()}
-              disabled={openingMessage || isOwnProfile || productsState.loading}
-            >
-              <Mail size={15} /> {openingMessage ? "Abriendo..." : "Enviar mensaje"}
-            </button>
-            <button
-              type="button"
-              className="text-report h-auto p-0 text-[12px]"
-              onClick={handleReportUser}
-            >
-              Reportar usuario
-            </button>
-            {messageError && <p className="text-report max-w-60 text-center text-[12px]">{messageError}</p>}
-          </div>
-        </div>
-      </section>
-
-      <section className="profile-stats-strip h-auto py-5">
-        <div className="mx-auto grid w-full max-w-340 grid-cols-2 gap-y-5 md:grid-cols-3 lg:grid-cols-6">
-          {stats.map((stat, index) => (
-            <div
-              key={stat.label}
-              className={`px-3 text-center ${index > 0 ? "border-border-input border-l" : ""}`}
-            >
-              <p className={stat.rating ? "profile-stat-value--rating" : "profile-stat-value"}>
-                {stat.rating ? (
-                  <Star
-                    className="mr-1 inline"
-                    size={17}
-                    fill="currentColor"
-                  />
-                ) : null}
-                {stat.value}
-              </p>
-              <p className="profile-stat-label mt-1">{stat.label}</p>
-            </div>
-          ))}
-        </div>
-      </section>
+      <ProfileStatsStrip stats={stats} />
 
       <main className="mx-auto grid max-w-340 grid-cols-1 gap-9 px-6 pt-9 pb-18 md:px-10 lg:grid-cols-[minmax(0,1fr)_360px]">
         <div className="min-w-0">
@@ -781,184 +1154,43 @@ function ProfileOther() {
             </p>
           </section>
 
-          <section className="mt-22">
-            <h2 className="heading-panel--sm">Articulos de {profile?.first_name ?? "este usuario"} en alquiler</h2>
-            <p className="profile-products-sub mt-1">
-              {productsState.loading
-                ? "Cargando productos..."
-                : `${visibleProducts.length} ${visibleProducts.length === 1 ? "producto disponible" : "productos disponibles"}`}
-            </p>
+          <ProfileProductsSection
+            firstName={profile?.first_name}
+            loading={productsState.loading}
+            error={productsState.error}
+            visibleProducts={visibleProducts}
+            categoryFilters={categoryFilters}
+            selectedCategory={selectedCategory}
+            ownerRating={summary.average_rating}
+            onCategoryChange={setSelectedCategory}
+          />
 
-            {categoryFilters.length > 1 && (
-              <div className="mt-3 flex flex-wrap gap-3">
-                {categoryFilters.map((filter) => (
-                  <button
-                    key={filter.value}
-                    type="button"
-                    className={`h-7 rounded-full border px-5 text-[12px] ${
-                      selectedCategory === filter.value
-                        ? "bg-primary text-white"
-                        : "border-border-input bg-page text-subtle hover:border-primary hover:text-primary"
-                    }`}
-                    onClick={() => setSelectedCategory(filter.value)}
-                  >
-                    {filter.label}
-                  </button>
-                ))}
-              </div>
-            )}
-
-            {productsState.error && (
-              <p className="border-report bg-error-danger text-report mt-3 rounded-lg border p-3 text-[13px]">
-                {productsState.error}
-              </p>
-            )}
-
-            {!productsState.loading && visibleProducts.length === 0 && !productsState.error && (
-              <div className="profile-info-panel mt-4 flex min-h-36 items-center justify-center p-6 text-center">
-                <p className="text-subtle">Este usuario no tiene productos publicados en esta categoria.</p>
-              </div>
-            )}
-
-            <div className="mt-4 grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-3">
-              {visibleProducts.map((product) => (
-                <ProductCard
-                  key={product.item_id}
-                  product={product}
-                  ownerRating={summary.average_rating}
-                />
-              ))}
-            </div>
-          </section>
-
-          <section className="mt-14">
-            <h2 className="heading-panel--sm">Valoraciones recibidas</h2>
-
-            {!isOwnProfile && profile && (
-              <ReviewForm
-                profileName={fullName}
-                rating={currentDraftRating}
-                comment={currentDraftComment}
-                submitting={submittingReview}
-                error={currentSubmitError}
-                success={currentSubmitSuccess}
-                onRatingChange={(rating) => {
-                  setDraftProfileId(id ?? "");
-                  setDraftRating(rating);
-                  setSubmitError("");
-                  setSubmitSuccess("");
-                }}
-                onCommentChange={(comment) => {
-                  setDraftProfileId(id ?? "");
-                  setDraftComment(comment);
-                  setSubmitError("");
-                  setSubmitSuccess("");
-                }}
-                onSubmit={handleReviewSubmit}
-              />
-            )}
-
-            {reviewsState.error && (
-              <p className="border-report bg-error-danger text-report mt-3 rounded-lg border p-3 text-[13px]">
-                {reviewsState.error}
-              </p>
-            )}
-
-            {reviewsState.loading ? (
-              <div className="profile-info-panel mt-3 flex min-h-36 items-center justify-center p-6">
-                <p className="text-subtle">Cargando valoraciones...</p>
-              </div>
-            ) : (
-              <RatingSummary summary={summary} />
-            )}
-
-            {!reviewsState.loading && reviewsState.total === 0 && !reviewsState.error && (
-              <div className="profile-info-panel mt-4 flex min-h-36 items-center justify-center p-6 text-center">
-                <p className="text-subtle">Este usuario todavia no ha recibido valoraciones.</p>
-              </div>
-            )}
-
-            <div className="mt-4 space-y-4">
-              {reviewsState.items.map((review) => (
-                <ReviewCard
-                  key={review.review_id}
-                  review={review}
-                />
-              ))}
-            </div>
-
-            {!reviewsState.loading && reviewsState.total > reviewsState.items.length && (
-              <div className="mt-4 flex justify-center">
-                <button
-                  type="button"
-                  className="btn-secondary btn--sm min-w-64"
-                >
-                  Ver las {reviewsState.total - reviewsState.items.length} valoraciones restantes
-                </button>
-              </div>
-            )}
-          </section>
+          <ProfileReviewsSection
+            isOwnProfile={isOwnProfile}
+            hasProfile={Boolean(profile)}
+            fullName={fullName}
+            loading={reviewsState.loading}
+            error={reviewsState.error}
+            total={reviewsState.total}
+            items={reviewsState.items}
+            summary={summary}
+            draft={{
+              rating: currentDraftRating,
+              comment: currentDraftComment,
+              submitting: reviewDraft.submitting,
+              error: currentSubmitError,
+              success: currentSubmitSuccess,
+            }}
+            onRatingChange={(rating) => dispatchReviewDraft({ type: "set_rating", profileId: id ?? "", rating })}
+            onCommentChange={(comment) => dispatchReviewDraft({ type: "set_comment", profileId: id ?? "", comment })}
+            onSubmit={handleReviewSubmit}
+          />
         </div>
 
-        <aside className="lg:sticky lg:top-24 lg:self-start">
-          <div className="profile-info-panel p-5">
-            <div className="flex items-center gap-4">
-              {profile?.avatar_url ? (
-                <img
-                  src={profile.avatar_url}
-                  alt={fullName}
-                  className="owner-avatar object-cover"
-                />
-              ) : (
-                <div className="owner-avatar bg-avatar-blue text-avatar-text-blue">{initials || "?"}</div>
-              )}
-              <div>
-                <p className="text-owner-name font-bold">{fullName || "Perfil publico"}</p>
-                <p className="text-card-loc text-subtle">
-                  {memberSince} - {cityLabel}
-                </p>
-                <p className="text-rating text-card-loc mt-1">
-                  {summary.average_rating.toFixed(1)} ({summary.total} valoraciones)
-                </p>
-              </div>
-            </div>
-
-            <div className="divide-border-main my-5 divide-y">
-              {[
-                ["Valoracion media", summary.average_rating.toFixed(1)],
-                ["Valoraciones recibidas", String(summary.total)],
-                ["Opiniones positivas", `${positivePercent}%`],
-                ["Valoraciones de 5 estrellas", `${fiveStarPercent}%`],
-                ["Productos activos", String(activeProducts)],
-              ].map(([label, value]) => (
-                <div
-                  key={label}
-                  className="flex items-center justify-between gap-4 py-3 text-[12px]"
-                >
-                  <span className="text-subtle">{label}</span>
-                  <span className="text-ink text-right font-bold">{value}</span>
-                </div>
-              ))}
-            </div>
-
-            <button
-              type="button"
-              className="btn-primary h-12 w-full"
-              onClick={() => void handleOpenMessage()}
-              disabled={openingMessage || isOwnProfile || productsState.loading}
-            >
-              <Mail size={15} /> {openingMessage ? "Abriendo..." : "Enviar mensaje"}
-            </button>
-            {messageError && <p className="text-report mt-3 text-center text-[12px]">{messageError}</p>}
-            <button
-              type="button"
-              className="text-report mt-4 h-auto w-full p-0 text-[12px]"
-              onClick={handleReportUser}
-            >
-              Reportar a este usuario
-            </button>
-          </div>
-        </aside>
+        <ProfileSidebar
+          data={profileViewData}
+          {...actionProps}
+        />
       </main>
     </div>
   );
