@@ -52,7 +52,11 @@ func authTokenFromRequest(c *gin.Context) string {
 		return strings.TrimPrefix(header, "Bearer ")
 	}
 
-	return strings.TrimSpace(c.Query("access_token"))
+	if tokenStr := strings.TrimSpace(c.Query("access_token")); tokenStr != "" {
+		return tokenStr
+	}
+
+	return strings.TrimSpace(c.Query("token"))
 }
 
 // RequireRole restricts access to requests with the allowed roles.

@@ -2,6 +2,13 @@ package model
 
 import "time"
 
+// CreateReviewRequest defines the payload for creating a review for another user.
+type CreateReviewRequest struct {
+	ReviewedID string `json:"reviewed_id" binding:"required,uuid"`
+	Rating     int32  `json:"rating"      binding:"required,min=1,max=5"`
+	Comment    string `json:"comment"     binding:"omitempty,max=1000"`
+}
+
 // ReviewSummaryResponse aggregates ratings received by a customer.
 type ReviewSummaryResponse struct {
 	AverageRating float64          `json:"average_rating"`

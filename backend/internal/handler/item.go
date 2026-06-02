@@ -78,29 +78,31 @@ func (h *ItemHandler) List(c *gin.Context) {
 // Query params: page, limit.
 // Response 200: model.SearchItemsResponse
 func (h *ItemHandler) ListMine(c *gin.Context) {
-	ownerID, ok := c.Get("customer_id")
+	ownerID, ok := getCustomerID(c)
 	if !ok {
-		response.Error(c, http.StatusUnauthorized, "missing auth context")
 		return
 	}
 
-	id, ok := ownerID.(uuid.UUID)
+	h.respondWithOwnerItems(c, ownerID, "list owner items failed")
+}
+
+// ListByOwner handles GET /api/customers/:id/items -- returns item cards owned by a public profile.
+//
+// Query params: page, limit.
+// Response 200: model.SearchItemsResponse
+func (h *ItemHandler) ListByOwner(c *gin.Context) {
+	ownerID, ok := parseUUIDParam(c)
 	if !ok {
-		response.Error(c, http.StatusUnauthorized, "invalid auth context")
 		return
 	}
 
-	page := parsePositiveInt(c.DefaultQuery("page", "1"), 1, 500)
-	limit := parsePositiveInt(c.DefaultQuery("limit", "48"), 48, 48)
+	h.respondWithOwnerItems(c, ownerID, "list public owner items failed")
+}
 
-	res, err := h.svc.ListOwnerItems(c.Request.Context(), id, page, limit)
-	if err != nil {
-		slog.Error("list owner items failed", "owner_id", id, "error", err)
-		response.Error(c, http.StatusInternalServerError, "internal server error")
-		return
-	}
-
-	response.OK(c, http.StatusOK, res)
+func (h *ItemHandler) respondWithOwnerItems(c *gin.Context, ownerID uuid.UUID, logMessage string) {
+	respondWithPaginated(c, 48, 48, logMessage, "owner_id", ownerID, func(page int, limit int) (any, error) {
+		return h.svc.ListOwnerItems(c.Request.Context(), ownerID, page, limit)
+	})
 }
 
 // Get handles GET /api/items/:id -- returns a single item listing.

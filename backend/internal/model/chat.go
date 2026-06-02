@@ -4,8 +4,11 @@ package model
 import "time"
 
 // CreateConversationRequest starts or returns a conversation for an item.
+// WithUserID is optional: when the caller is the item owner and wants to
+// message the renter directly, they supply the renter's UUID here.
 type CreateConversationRequest struct {
-	ItemID string `json:"item_id" binding:"required,uuid"`
+	ItemID     string `json:"item_id"      binding:"required,uuid"`
+	WithUserID string `json:"with_user_id" binding:"omitempty,uuid"`
 }
 
 // SendMessageRequest defines the payload for creating a chat message.

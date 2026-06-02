@@ -389,9 +389,16 @@ async function markConversationRead(conversationID: string): Promise<void> {
   });
 }
 
-function buildWebSocketURL(conversationID: string, accessToken: string | null): string {
-  const protocol = window.location.protocol === "https:" ? "wss:" : "ws:";
-  const url = new URL(`${protocol}//${window.location.host}/api/conversations/${conversationID}/ws`);
+function buildWebSocketURL(conversationID: string, accessToken?: string | null): string {
+  // In dev the Vite proxy (ws: true) forwards /api/* to the backend, so we connect
+  // to the dev server origin and let the proxy handle the upgrade. This keeps the
+  // connection same-origin and avoids a CSP violation for ws://localhost:8080.
+  // In production we use VITE_API_BASE_URL directly (cross-origin backend).
+  const apiBaseURL = import.meta.env.DEV
+    ? window.location.origin
+    : import.meta.env.VITE_API_BASE_URL.trim() || window.location.origin;
+  const url = new URL(`/api/conversations/${conversationID}/ws`, apiBaseURL);
+  url.protocol = url.protocol === "https:" ? "wss:" : "ws:";
   if (accessToken) {
     url.searchParams.set("access_token", accessToken);
   }
@@ -811,87 +818,73 @@ function DeleteConversationDialog({
   );
 }
 
-/**
- * Messaging hub for user conversations.
- */
-function Chat() {
+// ── Chat page hook — keeps all state, effects and handlers out of the render ──
+function useChatPage(conversationId: string | undefined) {
   const navigate = useNavigate();
-  const { conversationId } = useParams();
   const { user, accessToken } = useAuth();
   const [state, dispatch] = useReducer(chatReducer, initialState);
   const [selectingConversations, setSelectingConversations] = useState(false);
   const [selectedConversationIDs, setSelectedConversationIDs] = useState<Set<string>>(new Set());
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
   const [deletingConversation, setDeletingConversation] = useState(false);
-  const {
-    conversations,
-    unreadCountsByConversationID,
-    messages,
-    draft,
-    searchQuery,
-    loadingConversations,
-    loadingMessages,
-    sending,
-    error,
-  } = state;
+
+  const { conversations, messages, draft, searchQuery, loadingMessages } = state;
   const socketRef = useRef<WebSocket | null>(null);
   const messagesEndRef = useRef<HTMLDivElement | null>(null);
   const currentUserID = user?.customer_id;
+
   const normalizeMessage = useCallback(
     (message: MessageResponse): MessageResponse =>
       currentUserID ? { ...message, is_mine: message.sender_id === currentUserID } : message,
     [currentUserID]
   );
+  // Keep a ref so the WS effect can always call the latest normalizeMessage without
+  // listing it as a dependency — avoids a spurious reconnect when auth finishes loading.
+  const normalizeMessageRef = useRef(normalizeMessage);
+  useEffect(() => {
+    normalizeMessageRef.current = normalizeMessage;
+  }, [normalizeMessage]);
 
   useEffect(() => {
     const controller = new AbortController();
     dispatch({ type: "error:clear" });
 
     apiGetWithRetry<ConversationsResponse>("/api/conversations", controller.signal)
-      .then((data) => dispatch({ type: "conversations:success", items: data.items }))
+      .then((data) => {
+        dispatch({ type: "conversations:success", items: data.items });
+        // If the user navigated directly to a conversation URL, clear its unread badge
+        // immediately after load — no effect needed, the handler runs once here.
+        if (conversationId) dispatch({ type: "conversation:open", conversationID: conversationId });
+      })
       .catch((err: Error) => {
         if (err.name !== "AbortError") dispatch({ type: "conversations:error", message: err.message });
       });
 
     return () => controller.abort();
-  }, []);
+  }, [conversationId]);
 
-  const activeConversation = useMemo(() => {
-    if (!conversationId) return undefined;
-    return conversations.find((conversation) => conversation.conversation_id === conversationId);
-  }, [conversationId, conversations]);
+  const activeConversation = useMemo(
+    () => conversations.find((c) => c.conversation_id === conversationId),
+    [conversationId, conversations]
+  );
   const activeConversationID = activeConversation?.conversation_id;
 
   const filteredConversations = useMemo(() => {
     const query = searchQuery.trim().toLocaleLowerCase("es-ES");
     if (!query) return conversations;
-
-    return conversations.filter((conversation) => {
-      const sellerName = conversation.other_user_name.toLocaleLowerCase("es-ES");
-      const productTitle = conversation.item_title.toLocaleLowerCase("es-ES");
+    return conversations.filter((c) => {
+      const sellerName = c.other_user_name.toLocaleLowerCase("es-ES");
+      const productTitle = c.item_title.toLocaleLowerCase("es-ES");
       return sellerName.includes(query) || productTitle.includes(query);
     });
   }, [conversations, searchQuery]);
 
   useEffect(() => {
-    if (activeConversationID) {
-      dispatch({ type: "conversation:open", conversationID: activeConversationID });
-    }
-  }, [activeConversationID]);
-
-  useEffect(() => {
     const intervalID = window.setInterval(() => {
       void apiGet<ConversationsResponse>("/api/conversations")
-        .then((data) =>
-          dispatch({
-            type: "conversations:refresh",
-            items: data.items,
-            activeConversationID,
-          })
-        )
+        .then((data) => dispatch({ type: "conversations:refresh", items: data.items, activeConversationID }))
         .catch(() => undefined);
     }, 5000);
-
     return () => window.clearInterval(intervalID);
   }, [activeConversationID]);
 
@@ -905,7 +898,6 @@ function Chat() {
 
     const loadMessages = async (showLoading: boolean) => {
       if (showLoading) dispatch({ type: "messages:loading" });
-
       try {
         const data = await apiGetWithRetry<MessagesResponse>(
           `/api/conversations/${activeConversationID}/messages`,
@@ -927,7 +919,6 @@ function Chat() {
 
     void loadMessages(true);
     const intervalID = window.setInterval(() => void loadMessages(false), 2500);
-
     return () => {
       window.clearInterval(intervalID);
       controller.abort();
@@ -939,7 +930,9 @@ function Chat() {
   }, [activeConversationID, loadingMessages, messages.length]);
 
   useEffect(() => {
-    if (!activeConversationID) return undefined;
+    // Wait until the user identity is resolved — avoids a short-lived connection
+    // that closes as soon as auth finishes and currentUserID becomes available.
+    if (!activeConversationID || !currentUserID) return undefined;
 
     const socket = new WebSocket(buildWebSocketURL(activeConversationID, accessToken));
     socketRef.current = socket;
@@ -956,7 +949,8 @@ function Chat() {
       }
       if (!payload.data) return;
 
-      const message = normalizeMessage(payload.data);
+      // Use the ref so we always call the latest version without re-creating the socket.
+      const message = normalizeMessageRef.current(payload.data);
       dispatch({ type: "message:receive", message, activeConversationID });
       if (!message.is_mine && message.conversation_id === activeConversationID) {
         void markConversationRead(activeConversationID);
@@ -964,22 +958,17 @@ function Chat() {
     };
 
     socket.onerror = () => undefined;
-
     socket.onclose = () => {
-      if (socketRef.current === socket) {
-        socketRef.current = null;
-      }
+      if (socketRef.current === socket) socketRef.current = null;
     };
 
     return () => {
       socket.close();
-      if (socketRef.current === socket) {
-        socketRef.current = null;
-      }
+      if (socketRef.current === socket) socketRef.current = null;
     };
-  }, [accessToken, activeConversationID, normalizeMessage]);
+  }, [accessToken, activeConversationID, currentUserID]);
 
-  async function handleSubmit(event: FormEvent<HTMLFormElement>) {
+  const handleSubmit = async (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault();
     if (!activeConversation || draft.trim() === "") return;
 
@@ -991,19 +980,15 @@ function Chat() {
         dispatch({ type: "draft:set", value: "" });
         return;
       }
-
       const message = await sendMessage(activeConversation.conversation_id, draft);
       dispatch({ type: "message:receive", message: normalizeMessage(message), activeConversationID });
       dispatch({ type: "draft:set", value: "" });
     } catch (err) {
-      dispatch({
-        type: "error:set",
-        message: err instanceof Error ? err.message : "Error al enviar el mensaje",
-      });
+      dispatch({ type: "error:set", message: err instanceof Error ? err.message : "Error al enviar el mensaje" });
     } finally {
       dispatch({ type: "sending:end" });
     }
-  }
+  };
 
   const toggleSelectedConversation = (conversationID: string) => {
     setSelectedConversationIDs((current) => {
@@ -1023,7 +1008,7 @@ function Chat() {
     setDeleteDialogOpen(false);
   };
 
-  async function handleConfirmDeleteConversation() {
+  const handleConfirmDeleteConversation = async () => {
     const ids = Array.from(selectedConversationIDs);
     if (ids.length === 0) return;
 
@@ -1031,12 +1016,8 @@ function Chat() {
     dispatch({ type: "error:clear" });
     try {
       await Promise.all(ids.map((id) => deleteConversation(id)));
-      for (const id of ids) {
-        dispatch({ type: "conversation:delete", conversationID: id });
-      }
-      if (activeConversationID && ids.includes(activeConversationID)) {
-        void navigate("/chat");
-      }
+      for (const id of ids) dispatch({ type: "conversation:delete", conversationID: id });
+      if (activeConversationID && ids.includes(activeConversationID)) void navigate("/chat");
       setSelectedConversationIDs(new Set());
       setSelectingConversations(false);
       setDeleteDialogOpen(false);
@@ -1048,7 +1029,60 @@ function Chat() {
     } finally {
       setDeletingConversation(false);
     }
-  }
+  };
+
+  return {
+    state,
+    dispatch,
+    messagesEndRef,
+    selectingConversations,
+    selectedConversationIDs,
+    deleteDialogOpen,
+    deletingConversation,
+    filteredConversations,
+    activeConversation,
+    setDeleteDialogOpen,
+    handleSubmit,
+    toggleSelectedConversation,
+    toggleSelectingConversations,
+    handleConfirmDeleteConversation,
+    navigate,
+  };
+}
+
+/**
+ * Messaging hub for user conversations.
+ */
+function Chat() {
+  const { conversationId } = useParams();
+  const {
+    state,
+    dispatch,
+    messagesEndRef,
+    selectingConversations,
+    selectedConversationIDs,
+    deleteDialogOpen,
+    deletingConversation,
+    filteredConversations,
+    activeConversation,
+    setDeleteDialogOpen,
+    handleSubmit,
+    toggleSelectedConversation,
+    toggleSelectingConversations,
+    handleConfirmDeleteConversation,
+    navigate,
+  } = useChatPage(conversationId);
+
+  const {
+    unreadCountsByConversationID,
+    messages,
+    draft,
+    searchQuery,
+    loadingConversations,
+    loadingMessages,
+    sending,
+    error,
+  } = state;
 
   return (
     <div className="bg-surface flex h-[calc(100vh-var(--spacing-navbar))] overflow-hidden">
@@ -1097,6 +1131,7 @@ function Chat() {
           </div>
         )}
       </section>
+
       <DeleteConversationDialog
         count={deleteDialogOpen ? selectedConversationIDs.size : 0}
         deleting={deletingConversation}

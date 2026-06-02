@@ -21,6 +21,8 @@ var (
 	ErrConversationNotFound = errors.New("conversation not found")
 	// ErrCannotMessageSelf prevents owners from opening a chat with themselves.
 	ErrCannotMessageSelf = errors.New("cannot message yourself")
+	// ErrConversationForbidden is returned when the caller is not authorised to start a conversation.
+	ErrConversationForbidden = errors.New("not authorised to start this conversation")
 	// ErrEmptyMessage indicates the message body is blank after trimming.
 	ErrEmptyMessage = errors.New("message body is required")
 )
@@ -83,6 +85,53 @@ func (s *ChatService) StartConversation(ctx context.Context, customerID, itemID 
 	}
 
 	conversation, err := s.q.GetConversation(ctx, conversationID, customerID)
+	if err != nil {
+		return nil, err
+	}
+
+	res, err := s.toConversationResponse(conversation)
+	if err != nil {
+		return nil, err
+	}
+	return &res, nil
+}
+
+// StartConversationWith is called when the item owner wants to message a specific
+// renter. It validates that the caller is the item owner and that they are not
+// attempting to message themselves.
+func (s *ChatService) StartConversationWith(
+	ctx context.Context,
+	ownerID, renterID, itemID uuid.UUID,
+) (*model.ConversationResponse, error) {
+	if ownerID == renterID {
+		return nil, ErrCannotMessageSelf
+	}
+
+	item, err := s.q.GetItemChatInfo(ctx, itemID)
+	if err != nil {
+		if errors.Is(err, pgx.ErrNoRows) {
+			return nil, ErrItemNotFound
+		}
+		return nil, err
+	}
+	if item.OwnerID != ownerID {
+		return nil, ErrConversationForbidden
+	}
+
+	conversationID, err := s.q.CreateConversation(ctx, sqlcdb.CreateConversationParams{
+		ItemID:   item.ItemID,
+		OwnerID:  ownerID,
+		RenterID: renterID,
+	})
+	if err != nil {
+		return nil, err
+	}
+
+	if err := s.q.RestoreConversationForCustomer(ctx, conversationID, ownerID); err != nil {
+		return nil, err
+	}
+
+	conversation, err := s.q.GetConversation(ctx, conversationID, ownerID)
 	if err != nil {
 		return nil, err
 	}

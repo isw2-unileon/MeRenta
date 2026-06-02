@@ -1,6 +1,6 @@
 import { useNavigate } from "react-router-dom";
 import { useAuth } from "@/hooks/useAuth";
-import { Heart, MessageSquare, LogOut } from "lucide-react";
+import { Heart, MessageSquare, LogOut, CalendarDays } from "lucide-react";
 
 /**
  * Renders the authenticated navigation bar with profile shortcuts.
@@ -72,6 +72,16 @@ function NavbarAuth() {
         </div>
 
         <div className="flex items-center gap-4">
+          <button
+            type="button"
+            className="btn-icon"
+            onClick={() => navigate("/bookings")}
+            aria-label="Mis reservas"
+            title="Mis reservas"
+          >
+            <CalendarDays size={16} />
+          </button>
+
           <button
             type="button"
             className="btn-icon"

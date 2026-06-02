@@ -77,14 +77,15 @@ func main() {
 		return
 	}
 	chatHub := handler.NewChatHub()
-	chatH := handler.NewChatHandler(chatSvc, chatHub)
+	chatH := handler.NewChatHandler(chatSvc, chatHub, jwtMgr)
 
 	reviewSvc := service.NewReviewService(q)
 	reviewH := handler.NewReviewHandler(reviewSvc)
 
-	paymentH := handler.NewPaymentHandler(service.NewPaymentService(cfg.StripeSecretKey))
+	bookingSvc, paymentH, bookingH := wirePaymentAndBooking(q, cfg.StripeSecretKey)
+	go startAutoExpireJob(ctx, bookingSvc)
 
-	r := router.Setup(authH, itemH, itemImgH, addrH, favH, chatH, reviewH, paymentH, jwtMgr, cfg.CORSAllowOrigin, pool.Ping)
+	r := router.Setup(authH, itemH, itemImgH, addrH, favH, chatH, reviewH, paymentH, bookingH, jwtMgr, cfg.CORSAllowOrigin, pool.Ping)
 	portNum, err := strconv.Atoi(cfg.Port)
 	if err != nil || portNum < 1 || portNum > 65535 {
 		slog.Error("invalid port", "port", cfg.Port)
@@ -95,8 +96,6 @@ func main() {
 		Addr:              fmt.Sprintf(":%d", portNum),
 		Handler:           r,
 		ReadHeaderTimeout: 5 * time.Second,
-		ReadTimeout:       15 * time.Second,
-		WriteTimeout:      15 * time.Second,
 		IdleTimeout:       60 * time.Second,
 	}
 
@@ -117,10 +116,48 @@ func main() {
 		}
 	}
 
-	shutdownCtx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
-	defer cancel()
+	gracefulShutdown(srv)
+}
 
-	if err := srv.Shutdown(shutdownCtx); err != nil {
+// wirePaymentAndBooking constructs the payment and booking handlers.
+func wirePaymentAndBooking(
+	q *sqlcdb.Queries,
+	stripeKey string,
+) (*service.BookingService, *handler.PaymentHandler, *handler.BookingHandler) {
+	paymentSvc := service.NewPaymentService(stripeKey)
+	bookingSvc := service.NewBookingService(q, paymentSvc)
+	return bookingSvc, handler.NewPaymentHandler(paymentSvc), handler.NewBookingHandler(bookingSvc)
+}
+
+// startAutoExpireJob runs in a goroutine. On startup it reconciles item
+// availability for all existing bookings. Every hour it auto-cancels pending
+// bookings whose 5-day window has elapsed and resynchronises availability.
+func startAutoExpireJob(ctx context.Context, svc *service.BookingService) {
+	if err := svc.SyncAllAvailabilities(ctx); err != nil {
+		slog.Error("startup availability sync failed", "error", err)
+	}
+	ticker := time.NewTicker(1 * time.Hour)
+	defer ticker.Stop()
+	for {
+		select {
+		case <-ctx.Done():
+			return
+		case <-ticker.C:
+			if err := svc.ExpireOldBookings(ctx); err != nil {
+				slog.Error("auto-expire bookings failed", "error", err)
+			}
+			if err := svc.SyncAllAvailabilities(ctx); err != nil {
+				slog.Error("availability sync failed", "error", err)
+			}
+		}
+	}
+}
+
+// gracefulShutdown attempts a clean server shutdown within a 10-second timeout.
+func gracefulShutdown(srv *http.Server) {
+	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
+	defer cancel()
+	if err := srv.Shutdown(ctx); err != nil {
 		slog.Error("graceful shutdown failed", "error", err)
 	}
 }

@@ -2,22 +2,30 @@
 package handler
 
 import (
+	"context"
 	"errors"
 	"log/slog"
 	"net/http"
+	"strings"
 
 	"github.com/gin-gonic/gin"
 	"github.com/google/uuid"
-	"golang.org/x/net/websocket"
+	"github.com/gorilla/websocket"
 
 	"github.com/isw2-unileon/MeRenta/backend/internal/model"
 	"github.com/isw2-unileon/MeRenta/backend/internal/service"
 	"github.com/isw2-unileon/MeRenta/backend/pkg/response"
 )
 
+var chatWebSocketUpgrader = websocket.Upgrader{
+	CheckOrigin: func(*http.Request) bool {
+		return true
+	},
+}
+
 // WebSocket handles GET /api/conversations/:id/ws.
 func (h *ChatHandler) WebSocket(c *gin.Context) {
-	customerID, ok := getCustomerID(c)
+	customerID, ok := h.authenticateWebSocket(c)
 	if !ok {
 		return
 	}
@@ -31,15 +39,64 @@ func (h *ChatHandler) WebSocket(c *gin.Context) {
 		return
 	}
 
-	server := websocket.Server{
-		Handshake: func(*websocket.Config, *http.Request) error {
-			return nil
-		},
-		Handler: func(ws *websocket.Conn) {
-			h.handleWebSocketConnection(ws, customerID, conversationID)
-		},
+	ws, err := chatWebSocketUpgrader.Upgrade(c.Writer, c.Request, nil)
+	if err != nil {
+		slog.Error("websocket upgrade failed", "error", err)
+		return
 	}
-	server.ServeHTTP(c.Writer, c.Request)
+
+	h.handleWebSocketConnection(c.Request.Context(), ws, customerID, conversationID)
+}
+
+func (h *ChatHandler) authenticateWebSocket(c *gin.Context) (uuid.UUID, bool) {
+	tokenStr := ""
+	tokenSource := ""
+	if cookie, err := c.Cookie(authCookieName); err == nil {
+		tokenStr = strings.TrimSpace(cookie)
+		if tokenStr != "" {
+			tokenSource = "cookie"
+		}
+	}
+	if tokenStr == "" {
+		tokenStr = strings.TrimSpace(c.Query("access_token"))
+		if tokenStr != "" {
+			tokenSource = "access_token_query"
+		}
+	}
+	if tokenStr == "" {
+		tokenStr = strings.TrimSpace(c.Query("token"))
+		if tokenStr != "" {
+			tokenSource = "token_query"
+		}
+	}
+	if tokenStr == "" {
+		slog.Info(
+			"websocket auth missing token",
+			"origin", c.GetHeader("Origin"),
+			"host", c.Request.Host,
+			"path", c.Request.URL.Path,
+			"has_access_token_query", c.Query("access_token") != "",
+			"has_token_query", c.Query("token") != "",
+		)
+		response.Error(c, http.StatusUnauthorized, "missing token")
+		return uuid.UUID{}, false
+	}
+
+	claims, err := h.jwtMgr.Verify(tokenStr)
+	if err != nil {
+		slog.Info(
+			"websocket auth invalid token",
+			"source", tokenSource,
+			"origin", c.GetHeader("Origin"),
+			"host", c.Request.Host,
+			"error", err,
+		)
+		response.Error(c, http.StatusUnauthorized, "invalid token")
+		return uuid.UUID{}, false
+	}
+
+	slog.Info("websocket auth ok", "source", tokenSource, "customer_id", claims.CustomerID)
+	return claims.CustomerID, true
 }
 
 func (h *ChatHandler) ensureConversationAccess(c *gin.Context, customerID, conversationID uuid.UUID) bool {
@@ -56,7 +113,12 @@ func (h *ChatHandler) ensureConversationAccess(c *gin.Context, customerID, conve
 	return true
 }
 
-func (h *ChatHandler) handleWebSocketConnection(ws *websocket.Conn, customerID, conversationID uuid.UUID) {
+func (h *ChatHandler) handleWebSocketConnection(
+	ctx context.Context,
+	ws *websocket.Conn,
+	customerID uuid.UUID,
+	conversationID uuid.UUID,
+) {
 	defer ws.Close()
 
 	out := h.hub.Subscribe(conversationID)
@@ -64,18 +126,19 @@ func (h *ChatHandler) handleWebSocketConnection(ws *websocket.Conn, customerID, 
 
 	go h.forwardWebSocketEvents(ws, out)
 
-	h.receiveWebSocketEvents(ws, customerID, conversationID, out)
+	h.receiveWebSocketEvents(ctx, ws, customerID, conversationID, out)
 }
 
 func (h *ChatHandler) forwardWebSocketEvents(ws *websocket.Conn, out <-chan model.ChatWebSocketOut) {
 	for event := range out {
-		if err := websocket.JSON.Send(ws, event); err != nil {
+		if err := ws.WriteJSON(event); err != nil {
 			return
 		}
 	}
 }
 
 func (h *ChatHandler) receiveWebSocketEvents(
+	ctx context.Context,
 	ws *websocket.Conn,
 	customerID uuid.UUID,
 	conversationID uuid.UUID,
@@ -83,7 +146,7 @@ func (h *ChatHandler) receiveWebSocketEvents(
 ) {
 	for {
 		var incoming model.ChatWebSocketIn
-		if err := websocket.JSON.Receive(ws, &incoming); err != nil {
+		if err := ws.ReadJSON(&incoming); err != nil {
 			return
 		}
 
@@ -92,7 +155,7 @@ func (h *ChatHandler) receiveWebSocketEvents(
 			continue
 		}
 
-		message, err := h.svc.SendMessage(ws.Request().Context(), customerID, conversationID, incoming.Body)
+		message, err := h.svc.SendMessage(ctx, customerID, conversationID, incoming.Body)
 		if err != nil {
 			out <- model.ChatWebSocketOut{Type: "error", Error: err.Error()}
 			continue

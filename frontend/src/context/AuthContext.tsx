@@ -19,6 +19,8 @@ interface AuthContextType {
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
 const API_BASE_URL = "/api";
+const AUTH_TOKEN_STORAGE_KEY = "merenta:access-token";
+let initialSessionLoadStarted = false;
 
 /**
  * Extracts a readable error message from an API response payload.
@@ -94,8 +96,32 @@ const initialState: AuthState = {
   isAuthenticated: false,
   isLoading: true,
   user: null,
-  accessToken: null,
+  accessToken: readStoredAccessToken(),
 };
+
+function readStoredAccessToken(): string | null {
+  try {
+    return window.localStorage.getItem(AUTH_TOKEN_STORAGE_KEY);
+  } catch {
+    return null;
+  }
+}
+
+function storeAccessToken(token: string): void {
+  try {
+    window.localStorage.setItem(AUTH_TOKEN_STORAGE_KEY, token);
+  } catch {
+    // The auth cookie still keeps HTTP requests authenticated when storage is unavailable.
+  }
+}
+
+function clearStoredAccessToken(): void {
+  try {
+    window.localStorage.removeItem(AUTH_TOKEN_STORAGE_KEY);
+  } catch {
+    // Ignore storage failures while clearing auth state.
+  }
+}
 
 /**
  * Handles state transitions for authentication actions.
@@ -113,7 +139,6 @@ const authReducer = (state: AuthState, action: AuthAction): AuthState => {
         isLoading: false,
         isAuthenticated: true,
         user: action.user,
-        accessToken: null,
       };
     case "load_failure":
       return {
@@ -179,18 +204,29 @@ function AuthProvider({ children }: { children: React.ReactNode }) {
   const { getMe } = useMe(accessToken);
 
   useEffect(() => {
+    if (initialSessionLoadStarted) {
+      return;
+    }
+    initialSessionLoadStarted = true;
+
+    if (!accessToken) {
+      dispatch({ type: "load_failure" });
+      return;
+    }
+
     const loadSession = async () => {
       dispatch({ type: "load_start" });
       try {
         const customer = await getMe();
         dispatch({ type: "load_success", user: customer });
       } catch {
+        clearStoredAccessToken();
         dispatch({ type: "load_failure" });
       }
     };
 
     void loadSession();
-  }, [getMe]);
+  }, [accessToken, getMe]);
 
   /**
    * Executes the login flow and stores the auth token locally.
@@ -215,8 +251,10 @@ function AuthProvider({ children }: { children: React.ReactNode }) {
       }
 
       const { token, customer } = await parseAuthResponse(response);
+      storeAccessToken(token);
       dispatch({ type: "login_success", user: customer, token });
     } catch (error) {
+      clearStoredAccessToken();
       dispatch({ type: "login_failure" });
       throw error;
     }
@@ -251,8 +289,10 @@ function AuthProvider({ children }: { children: React.ReactNode }) {
         throw new Error(await parseErrorMessage(response));
       }
       const { token, customer } = await parseAuthResponse(response);
+      storeAccessToken(token);
       dispatch({ type: "register_success", user: customer, token });
     } catch (error) {
+      clearStoredAccessToken();
       dispatch({ type: "register_failure" });
       throw error;
     }
@@ -274,8 +314,10 @@ function AuthProvider({ children }: { children: React.ReactNode }) {
       if (!response.ok) {
         throw new Error(await parseErrorMessage(response));
       }
+      clearStoredAccessToken();
       dispatch({ type: "logout_success" });
     } catch (error) {
+      clearStoredAccessToken();
       dispatch({ type: "logout_failure" });
       throw error;
     }
