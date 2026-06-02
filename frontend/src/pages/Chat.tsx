@@ -843,6 +843,12 @@ function Chat() {
       currentUserID ? { ...message, is_mine: message.sender_id === currentUserID } : message,
     [currentUserID]
   );
+  // Keep a ref so the WS effect can always call the latest normalizeMessage without
+  // listing it as a dependency — avoids a spurious reconnect when auth finishes loading.
+  const normalizeMessageRef = useRef(normalizeMessage);
+  useEffect(() => {
+    normalizeMessageRef.current = normalizeMessage;
+  }, [normalizeMessage]);
 
   useEffect(() => {
     const controller = new AbortController();
@@ -940,7 +946,9 @@ function Chat() {
   }, [activeConversationID, loadingMessages, messages.length]);
 
   useEffect(() => {
-    if (!activeConversationID) return undefined;
+    // Wait until the user identity is resolved — avoids a short-lived connection
+    // that closes as soon as auth finishes and currentUserID becomes available.
+    if (!activeConversationID || !currentUserID) return undefined;
 
     const socket = new WebSocket(buildWebSocketURL(activeConversationID, accessToken));
     socketRef.current = socket;
@@ -957,7 +965,8 @@ function Chat() {
       }
       if (!payload.data) return;
 
-      const message = normalizeMessage(payload.data);
+      // Use the ref so we always call the latest version without re-creating the socket.
+      const message = normalizeMessageRef.current(payload.data);
       dispatch({ type: "message:receive", message, activeConversationID });
       if (!message.is_mine && message.conversation_id === activeConversationID) {
         void markConversationRead(activeConversationID);
@@ -978,7 +987,7 @@ function Chat() {
         socketRef.current = null;
       }
     };
-  }, [accessToken, activeConversationID, normalizeMessage]);
+  }, [accessToken, activeConversationID, currentUserID]);
 
   async function handleSubmit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
