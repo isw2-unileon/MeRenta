@@ -390,7 +390,13 @@ async function markConversationRead(conversationID: string): Promise<void> {
 }
 
 function buildWebSocketURL(conversationID: string, accessToken?: string | null): string {
-  const apiBaseURL = import.meta.env.VITE_API_BASE_URL.trim() || window.location.origin;
+  // In dev the Vite proxy (ws: true) forwards /api/* to the backend, so we connect
+  // to the dev server origin and let the proxy handle the upgrade. This keeps the
+  // connection same-origin and avoids a CSP violation for ws://localhost:8080.
+  // In production we use VITE_API_BASE_URL directly (cross-origin backend).
+  const apiBaseURL = import.meta.env.DEV
+    ? window.location.origin
+    : import.meta.env.VITE_API_BASE_URL.trim() || window.location.origin;
   const url = new URL(`/api/conversations/${conversationID}/ws`, apiBaseURL);
   url.protocol = url.protocol === "https:" ? "wss:" : "ws:";
   if (accessToken) {
@@ -882,6 +888,15 @@ function useChatPage(conversationId: string | undefined) {
     return () => window.clearInterval(intervalID);
   }, [activeConversationID]);
 
+/**
+ * Loads and polls messages for the active conversation, dispatching into
+ * the shared chat reducer. Resets message state when no conversation is open.
+ */
+function useChatMessages(
+  activeConversationID: string | undefined,
+  normalizeMessage: (message: MessageResponse) => MessageResponse,
+  dispatch: React.Dispatch<ChatAction>
+): void {
   useEffect(() => {
     if (!activeConversationID) {
       dispatch({ type: "messages:reset" });
