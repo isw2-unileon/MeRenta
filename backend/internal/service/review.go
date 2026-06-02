@@ -2,6 +2,7 @@ package service
 
 import (
 	"context"
+	"errors"
 
 	"github.com/google/uuid"
 
@@ -10,9 +11,17 @@ import (
 )
 
 type reviewQuerier interface {
+	CreateReview(ctx context.Context, arg sqlcdb.CreateReviewParams) (sqlcdb.ReviewRow, error)
 	ListReceivedReviews(ctx context.Context, arg sqlcdb.ListReceivedReviewsParams) ([]sqlcdb.ReceivedReviewRow, error)
 	GetReceivedReviewSummary(ctx context.Context, reviewedID uuid.UUID) (sqlcdb.ReceivedReviewSummaryRow, error)
 }
+
+var (
+	// ErrInvalidReviewRating indicates a review rating outside the 1-5 range.
+	ErrInvalidReviewRating = errors.New("invalid review rating")
+	// ErrCannotReviewSelf prevents customers from reviewing themselves.
+	ErrCannotReviewSelf = errors.New("cannot review yourself")
+)
 
 // ReviewService handles review read use cases.
 type ReviewService struct {
@@ -22,6 +31,42 @@ type ReviewService struct {
 // NewReviewService creates a ReviewService with its dependencies.
 func NewReviewService(q reviewQuerier) *ReviewService {
 	return &ReviewService{q: q}
+}
+
+// CreateReview stores a new review written by reviewerID.
+func (s *ReviewService) CreateReview(ctx context.Context, reviewerID uuid.UUID, req model.CreateReviewRequest) (*model.ReceivedReviewResponse, error) {
+	if req.Rating < 1 || req.Rating > 5 {
+		return nil, ErrInvalidReviewRating
+	}
+
+	reviewedID, err := uuid.Parse(req.ReviewedID)
+	if err != nil {
+		return nil, err
+	}
+	if reviewedID == reviewerID {
+		return nil, ErrCannotReviewSelf
+	}
+
+	row, err := s.q.CreateReview(ctx, sqlcdb.CreateReviewParams{
+		ReviewerID: reviewerID,
+		ReviewedID: reviewedID,
+		Rating:     req.Rating,
+		Comment:    req.Comment,
+	})
+	if err != nil {
+		return nil, err
+	}
+
+	return &model.ReceivedReviewResponse{
+		ReviewID:          row.ReviewID.String(),
+		ReviewerID:        row.ReviewerID.String(),
+		ReviewerFirstName: row.FirstName,
+		ReviewerLastName:  row.LastName,
+		ReviewerAvatarURL: row.AvatarURL.String,
+		Rating:            row.Rating,
+		Comment:           row.Comment,
+		ReviewedAt:        row.ReviewedAt.Time,
+	}, nil
 }
 
 // ListReceivedReviews returns reviews received by a customer with summary stats.

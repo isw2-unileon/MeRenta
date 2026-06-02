@@ -1,11 +1,962 @@
+import { useEffect, useMemo, useReducer, useState, type FormEvent } from "react";
+import { useNavigate, useParams } from "react-router-dom";
+import { Heart, Mail, Star } from "lucide-react";
+
+import { StarRating } from "@/components/product/detail/StarRating";
+import type { ApiResponse } from "@/types/common";
+import type { CustomerProfile } from "@/types/customer";
+import type { SearchItemResponse, SearchItemsResponse } from "@/types/item";
+import type { ReviewSummary } from "@/types/review";
+import { useAuth } from "@/hooks/useAuth";
+import {
+  formatMemberSince,
+  getInitials,
+  initialProductsState,
+  productsReducer,
+  uniqueProductCities,
+  type ReceivedReviewsResponseBase,
+} from "@/pages/profile/profileShared";
+
+const emptyReviewSummary: ReviewSummary = {
+  average_rating: 0,
+  total: 0,
+  distribution: {
+    "5": 0,
+    "4": 0,
+    "3": 0,
+    "2": 0,
+    "1": 0,
+  },
+};
+
+const productTones: Record<string, string> = {
+  sports: "bg-cat-deporte",
+  photography: "bg-cat-fotografia",
+  camping: "bg-cat-aventura",
+  tools: "bg-cat-herramientas",
+  electronics: "bg-cat-blue-alt",
+  home: "bg-cat-orange-alt",
+  gardening: "bg-cat-deporte",
+  vehicles: "bg-cat-blue-alt",
+  clothing: "bg-cat-purple-alt",
+  music: "bg-cat-musica",
+  leisure: "bg-cat-purple-alt2",
+  other: "bg-primary-light",
+};
+
+const categoryLabels: Record<string, string> = {
+  sports: "Deporte",
+  photography: "Fotografia",
+  camping: "Camping",
+  tools: "Herramientas",
+  electronics: "Electronica",
+  home: "Hogar",
+  gardening: "Jardineria",
+  vehicles: "Vehiculos",
+  clothing: "Ropa",
+  music: "Musica",
+  leisure: "Ocio",
+  other: "Otros",
+};
+
+interface PublicProfileState {
+  profile: CustomerProfile | null;
+  loading: boolean;
+  error: string;
+}
+
+type PublicProfileAction =
+  | { type: "fetch_start" }
+  | { type: "fetch_success"; payload: CustomerProfile }
+  | { type: "fetch_error"; error: string };
+
+const initialProfileState: PublicProfileState = {
+  profile: null,
+  loading: true,
+  error: "",
+};
+
+function profileReducer(state: PublicProfileState, action: PublicProfileAction): PublicProfileState {
+  switch (action.type) {
+    case "fetch_start":
+      return { ...state, loading: true, error: "" };
+    case "fetch_success":
+      return { profile: action.payload, loading: false, error: "" };
+    case "fetch_error":
+      return { profile: null, loading: false, error: action.error };
+    default:
+      return state;
+  }
+}
+
+interface ReceivedReview {
+  review_id: string;
+  reviewer_id: string;
+  reviewer_first_name: string;
+  reviewer_last_name: string;
+  reviewer_avatar_url?: string;
+  rating: number;
+  comment: string;
+  reviewed_at: string;
+}
+
+type ReceivedReviewsResponse = ReceivedReviewsResponseBase<ReceivedReview>;
+
+interface ReviewsState {
+  items: ReceivedReview[];
+  total: number;
+  summary: ReviewSummary;
+  loading: boolean;
+  error: string;
+}
+
+type ReviewsAction =
+  | { type: "fetch_start" }
+  | { type: "fetch_success"; payload: ReceivedReviewsResponse }
+  | { type: "fetch_error"; error: string };
+
+const initialReviewsState: ReviewsState = {
+  items: [],
+  total: 0,
+  summary: emptyReviewSummary,
+  loading: true,
+  error: "",
+};
+
+function reviewsReducer(state: ReviewsState, action: ReviewsAction): ReviewsState {
+  switch (action.type) {
+    case "fetch_start":
+      return { ...state, loading: true, error: "" };
+    case "fetch_success":
+      return {
+        items: action.payload.items,
+        total: action.payload.total,
+        summary: action.payload.summary,
+        loading: false,
+        error: "",
+      };
+    case "fetch_error":
+      return {
+        items: [],
+        total: 0,
+        summary: emptyReviewSummary,
+        loading: false,
+        error: action.error,
+      };
+    default:
+      return state;
+  }
+}
+
+async function fetchPublicProfile(id: string, signal: AbortSignal): Promise<CustomerProfile> {
+  const res = await fetch(`/api/customers/${id}/profile`, {
+    credentials: "include",
+    signal,
+  });
+  const json = (await res.json()) as ApiResponse<CustomerProfile>;
+  if (!res.ok || !json.success || !json.data) {
+    throw new Error(json.message ?? json.error ?? "Error al cargar el perfil");
+  }
+  return json.data;
+}
+
+async function fetchOwnerProducts(ownerId: string, signal: AbortSignal): Promise<SearchItemsResponse> {
+  const res = await fetch(`/api/customers/${ownerId}/items?limit=48`, {
+    credentials: "include",
+    signal,
+  });
+  const json = (await res.json()) as ApiResponse<SearchItemsResponse>;
+  if (!res.ok || !json.success || !json.data) {
+    throw new Error(json.message ?? json.error ?? "Error al cargar los productos");
+  }
+  return json.data;
+}
+
+async function fetchReceivedReviews(ownerId: string, signal: AbortSignal): Promise<ReceivedReviewsResponse> {
+  const res = await fetch(`/api/reviews/received/${ownerId}?limit=4`, {
+    credentials: "include",
+    signal,
+  });
+  const json = (await res.json()) as ApiResponse<ReceivedReviewsResponse>;
+  if (!res.ok || !json.success || !json.data) {
+    throw new Error(json.message ?? json.error ?? "Error al cargar las valoraciones");
+  }
+  return json.data;
+}
+
+async function createReview(reviewedId: string, rating: number, comment: string): Promise<ReceivedReview> {
+  const res = await fetch("/api/reviews", {
+    method: "POST",
+    credentials: "include",
+    headers: {
+      "Content-Type": "application/json",
+    },
+    body: JSON.stringify({
+      reviewed_id: reviewedId,
+      rating,
+      comment: comment.trim(),
+    }),
+  });
+  const json = (await res.json()) as ApiResponse<ReceivedReview>;
+  if (!res.ok || !json.success || !json.data) {
+    throw new Error(json.message ?? json.error ?? "Error al guardar la valoracion");
+  }
+  return json.data;
+}
+
+async function openConversation(itemId: string): Promise<string> {
+  const res = await fetch("/api/conversations", {
+    method: "POST",
+    credentials: "include",
+    headers: {
+      "Content-Type": "application/json",
+    },
+    body: JSON.stringify({ item_id: itemId }),
+  });
+  const json = (await res.json()) as ApiResponse<{ conversation_id: string }>;
+  if (!res.ok || !json.success || !json.data) {
+    throw new Error(json.message ?? json.error ?? "Error al abrir el chat");
+  }
+  return json.data.conversation_id;
+}
+
+function formatCompactMemberSince(date?: string) {
+  const formatted = formatMemberSince(date);
+  return formatted ? `Miembro desde ${formatted}` : "Miembro desde fecha no disponible";
+}
+
+function formatRelativeDate(value: string) {
+  const created = new Date(value);
+  if (Number.isNaN(created.getTime())) return "";
+
+  const diffDays = Math.floor((Date.now() - created.getTime()) / 86_400_000);
+  if (diffDays <= 0) return "Hoy";
+  if (diffDays === 1) return "Hace 1 dia";
+  if (diffDays < 7) return `Hace ${diffDays} dias`;
+
+  const weeks = Math.floor(diffDays / 7);
+  if (weeks === 1) return "Hace 1 semana";
+  if (weeks < 5) return `Hace ${weeks} semanas`;
+
+  const months = Math.floor(diffDays / 30);
+  if (months <= 1) return "Hace 1 mes";
+  return `Hace ${months} meses`;
+}
+
+function reviewerInitials(review: ReceivedReview) {
+  return getInitials(review.reviewer_first_name, review.reviewer_last_name);
+}
+
+function reviewerDisplayName(review: ReceivedReview) {
+  const lastInitial = review.reviewer_last_name[0] ? `${review.reviewer_last_name[0]}.` : "";
+  return `${review.reviewer_first_name} ${lastInitial}`.trim();
+}
+
+function percent(part: number, total: number) {
+  if (total === 0) return 0;
+  return Math.round((part / total) * 100);
+}
+
+function buildReportUserMailto(profileId: string, profileName: string) {
+  const subject = `Incidencia con usuario: ${profileName || profileId}`;
+  const body = [
+    "Hola equipo de MeRenta,",
+    "",
+    "Quiero reportar una incidencia con este usuario:",
+    `- Nombre: ${profileName || "No disponible"}`,
+    `- ID: ${profileId}`,
+    "",
+    "Describe aqui que ha ocurrido:",
+    "",
+  ].join("\n");
+
+  return `mailto:contact@merenta.com?subject=${encodeURIComponent(subject)}&body=${encodeURIComponent(body)}`;
+}
+
+function ProductCard({ product, ownerRating }: { product: SearchItemResponse; ownerRating: number }) {
+  const navigate = useNavigate();
+  const tone = productTones[product.category] ?? productTones.other;
+  const isAvailable = product.is_available && product.item_status !== "rented" && product.item_status !== "retired";
+
+  return (
+    <article className="border-border-main bg-page overflow-hidden rounded-xl border transition-shadow hover:shadow-md">
+      <button
+        type="button"
+        className={`${tone} relative block h-34 w-full overflow-hidden rounded-none p-0 text-left`}
+        onClick={() => navigate(`/product/${product.item_id}`)}
+        aria-label={`Abrir ${product.title}`}
+      >
+        {product.primary_image_url ? (
+          <img
+            src={product.primary_image_url}
+            alt={product.title}
+            className="h-full w-full object-cover"
+          />
+        ) : null}
+        <span
+          className={`absolute top-3 left-4 rounded-full px-3 py-1 text-[11px] font-medium ${
+            isAvailable ? "bg-primary-light text-primary" : "bg-[#fff0c4] text-[#9b7411]"
+          }`}
+        >
+          {isAvailable ? "Disponible" : "No disponible"}
+        </span>
+        <span className="text-heart-inactive absolute top-3 right-3 flex size-8 items-center justify-center rounded-full bg-white">
+          <Heart size={17} />
+        </span>
+      </button>
+
+      <div className="p-3">
+        <button
+          type="button"
+          className="block h-auto min-h-9 w-full p-0 text-left"
+          onClick={() => navigate(`/product/${product.item_id}`)}
+        >
+          <h3 className="text-card-sm text-ink line-clamp-2 leading-snug font-medium">{product.title}</h3>
+        </button>
+
+        <div className="mt-3 flex items-center justify-between gap-3">
+          <p className="location truncate">{product.city || "Sin ubicacion"}</p>
+          <p className="text-card-loc text-rating flex items-center gap-1">
+            <Star
+              size={12}
+              fill="currentColor"
+            />
+            {ownerRating > 0 ? ownerRating.toFixed(1) : "Sin valorar"}
+          </p>
+        </div>
+
+        <div className="mt-2 flex items-center justify-between gap-3">
+          <p className="text-primary text-[15px] font-bold">{Math.round(product.price_per_day)} EUR/dia</p>
+          <button
+            type="button"
+            className="btn-primary btn--sm"
+            disabled={!isAvailable}
+            onClick={() => navigate(`/product/${product.item_id}`)}
+          >
+            Alquilar
+          </button>
+        </div>
+      </div>
+    </article>
+  );
+}
+
+function RatingSummary({ summary }: { summary: ReviewSummary }) {
+  const total = summary.total;
+
+  return (
+    <div className="profile-info-panel mt-3 grid grid-cols-1 gap-8 p-6 md:grid-cols-[150px_minmax(0,1fr)] md:p-7">
+      <div>
+        <p className="rating-big-number leading-none">{summary.average_rating.toFixed(1)}</p>
+        <p className="rating-count-label mt-2">
+          de 5 - {summary.total} {summary.total === 1 ? "valoracion" : "valoraciones"}
+        </p>
+        <StarRating
+          rating={summary.average_rating}
+          className="text-stars-lg mt-2"
+        />
+      </div>
+
+      <div className="space-y-2">
+        {[5, 4, 3, 2, 1].map((stars) => {
+          const count = summary.distribution[String(stars)] ?? 0;
+          const ratingPercent = percent(count, total);
+
+          return (
+            <div
+              key={stars}
+              className="grid grid-cols-[32px_minmax(0,1fr)_42px] items-center gap-2"
+            >
+              <p className="rating-bar-label">{stars} estrellas</p>
+              <div className="rating-bar-track">
+                <div
+                  className="rating-bar-fill"
+                  style={{ width: `${ratingPercent}%` }}
+                />
+              </div>
+              <p className="rating-bar-label text-right">{ratingPercent}%</p>
+            </div>
+          );
+        })}
+      </div>
+    </div>
+  );
+}
+
+function ReviewCard({ review }: { review: ReceivedReview }) {
+  return (
+    <article className="review-card p-5">
+      <div className="flex items-start justify-between gap-4">
+        <div className="flex min-w-0 items-start gap-3">
+          {review.reviewer_avatar_url ? (
+            <img
+              src={review.reviewer_avatar_url}
+              alt={reviewerDisplayName(review)}
+              className="reviewer-avatar object-cover"
+            />
+          ) : (
+            <div className="reviewer-avatar reviewer-avatar--blue">{reviewerInitials(review)}</div>
+          )}
+          <div className="min-w-0">
+            <p className="review-author">{reviewerDisplayName(review)}</p>
+            <p className="review-date">{formatRelativeDate(review.reviewed_at)}</p>
+          </div>
+        </div>
+        <StarRating
+          rating={review.rating}
+          className="text-review-star shrink-0"
+        />
+      </div>
+      {review.comment && <p className="review-body mt-4">{review.comment}</p>}
+    </article>
+  );
+}
+
+interface ReviewFormProps {
+  profileName: string;
+  rating: number;
+  comment: string;
+  submitting: boolean;
+  error: string;
+  success: string;
+  onRatingChange: (rating: number) => void;
+  onCommentChange: (comment: string) => void;
+  onSubmit: (event: FormEvent<HTMLFormElement>) => void;
+}
+
+function ReviewForm({
+  profileName,
+  rating,
+  comment,
+  submitting,
+  error,
+  success,
+  onRatingChange,
+  onCommentChange,
+  onSubmit,
+}: ReviewFormProps) {
+  return (
+    <form
+      className="profile-info-panel mt-4 p-5"
+      onSubmit={onSubmit}
+    >
+      <div className="flex flex-col gap-4 md:flex-row md:items-start md:justify-between">
+        <div>
+          <p className="profile-about-heading">Escribe una valoracion</p>
+          <p className="profile-products-sub mt-1">Puntua tu experiencia con {profileName || "este usuario"}.</p>
+        </div>
+
+        <div
+          className="flex items-center gap-1"
+          role="radiogroup"
+          aria-label="Puntuacion"
+        >
+          {[1, 2, 3, 4, 5].map((value) => (
+            <button
+              key={value}
+              type="button"
+              className="h-8 w-8 p-0 text-rating"
+              aria-label={`${value} estrellas`}
+              aria-checked={rating === value}
+              role="radio"
+              onClick={() => onRatingChange(value)}
+            >
+              <Star
+                size={22}
+                fill={value <= rating ? "currentColor" : "none"}
+              />
+            </button>
+          ))}
+        </div>
+      </div>
+
+      <label className="text-card-sm text-subtle mt-4 mb-2">
+        Comentario
+        <textarea
+          value={comment}
+          onChange={(event) => onCommentChange(event.target.value)}
+          placeholder="Cuenta como fue tu experiencia..."
+          maxLength={1000}
+          className="mt-2 min-h-28"
+        />
+      </label>
+
+      {error && <p className="border-report bg-error-danger text-report mt-3 rounded-lg border p-3 text-[13px]">{error}</p>}
+      {success && <p className="border-primary-border bg-primary-light text-primary mt-3 rounded-lg border p-3 text-[13px]">{success}</p>}
+
+      <div className="mt-4 flex justify-end">
+        <button
+          type="submit"
+          className="btn-primary btn--sm min-w-36"
+          disabled={submitting || rating === 0}
+        >
+          {submitting ? "Enviando..." : "Publicar valoracion"}
+        </button>
+      </div>
+    </form>
+  );
+}
+
 /**
  * Shows another user's public profile details.
- * @returns The public profile placeholder content.
+ * @returns The public profile page.
  */
 function ProfileOther() {
+  const { id } = useParams();
+  const navigate = useNavigate();
+  const { user } = useAuth();
+  const [selectedCategory, setSelectedCategory] = useState("all");
+  const [draftProfileId, setDraftProfileId] = useState("");
+  const [draftRating, setDraftRating] = useState(0);
+  const [draftComment, setDraftComment] = useState("");
+  const [submitError, setSubmitError] = useState("");
+  const [submitSuccess, setSubmitSuccess] = useState("");
+  const [submittingReview, setSubmittingReview] = useState(false);
+  const [messageError, setMessageError] = useState("");
+  const [openingMessage, setOpeningMessage] = useState(false);
+  const [profileState, dispatchProfile] = useReducer(profileReducer, initialProfileState);
+  const [productsState, dispatchProducts] = useReducer(productsReducer, initialProductsState);
+  const [reviewsState, dispatchReviews] = useReducer(reviewsReducer, initialReviewsState);
+
+  function loadReviews(ownerId: string, signal: AbortSignal) {
+    dispatchReviews({ type: "fetch_start" });
+    fetchReceivedReviews(ownerId, signal)
+      .then((reviews) => dispatchReviews({ type: "fetch_success", payload: reviews }))
+      .catch((err: unknown) => {
+        if (err instanceof DOMException && err.name === "AbortError") return;
+        dispatchReviews({
+          type: "fetch_error",
+          error: err instanceof Error ? err.message : "Error al cargar las valoraciones",
+        });
+      });
+  }
+
+  useEffect(() => {
+    if (!id) return;
+    const controller = new AbortController();
+
+    dispatchProfile({ type: "fetch_start" });
+    fetchPublicProfile(id, controller.signal)
+      .then((profile) => dispatchProfile({ type: "fetch_success", payload: profile }))
+      .catch((err: unknown) => {
+        if (err instanceof DOMException && err.name === "AbortError") return;
+        dispatchProfile({
+          type: "fetch_error",
+          error: err instanceof Error ? err.message : "Error al cargar el perfil",
+        });
+      });
+
+    dispatchProducts({ type: "fetch_start" });
+    fetchOwnerProducts(id, controller.signal)
+      .then((products) => dispatchProducts({ type: "fetch_success", payload: products }))
+      .catch((err: unknown) => {
+        if (err instanceof DOMException && err.name === "AbortError") return;
+        dispatchProducts({
+          type: "fetch_error",
+          error: err instanceof Error ? err.message : "Error al cargar los productos",
+        });
+      });
+
+    loadReviews(id, controller.signal);
+
+    return () => controller.abort();
+  }, [id]);
+
+  const profile = profileState.profile;
+  const products = productsState.items.filter((product) => product.item_status !== "retired");
+  const summary = reviewsState.summary;
+  const fullName = profile ? `${profile.first_name} ${profile.last_name}`.trim() : "";
+  const initials = profile ? getInitials(profile.first_name, profile.last_name) : "";
+  const cities = uniqueProductCities(products);
+  const cityLabel = cities.join(", ") || "Ubicacion no disponible";
+  const memberSince = formatCompactMemberSince(profile?.registration_date);
+  const activeProducts = products.filter((product) => product.is_available && product.item_status !== "retired").length;
+  const messageProduct = products.find(
+    (product) => product.is_available && product.item_status !== "retired" && product.item_status !== "rented"
+  );
+  const positiveReviews = (summary.distribution["5"] ?? 0) + (summary.distribution["4"] ?? 0);
+  const positivePercent = percent(positiveReviews, summary.total);
+  const fiveStarPercent = percent(summary.distribution["5"] ?? 0, summary.total);
+  const isOwnProfile = Boolean(user?.customer_id && id === user.customer_id);
+  const isDraftForCurrentProfile = draftProfileId === (id ?? "");
+  const currentDraftRating = isDraftForCurrentProfile ? draftRating : 0;
+  const currentDraftComment = isDraftForCurrentProfile ? draftComment : "";
+  const currentSubmitError = isDraftForCurrentProfile ? submitError : "";
+  const currentSubmitSuccess = isDraftForCurrentProfile ? submitSuccess : "";
+
+  const handleReviewSubmit = async (event: FormEvent<HTMLFormElement>) => {
+    event.preventDefault();
+    if (!id || currentDraftRating < 1 || currentDraftRating > 5) return;
+
+    setSubmittingReview(true);
+    setDraftProfileId(id);
+    setSubmitError("");
+    setSubmitSuccess("");
+
+    try {
+      await createReview(id, currentDraftRating, currentDraftComment);
+      setDraftRating(0);
+      setDraftComment("");
+      setSubmitSuccess("Valoracion publicada correctamente.");
+      const controller = new AbortController();
+      loadReviews(id, controller.signal);
+    } catch (err: unknown) {
+      setSubmitError(err instanceof Error ? err.message : "Error al guardar la valoracion");
+    } finally {
+      setSubmittingReview(false);
+    }
+  };
+
+  const handleOpenMessage = async () => {
+    if (isOwnProfile) {
+      setMessageError("No puedes abrir una conversacion contigo.");
+      return;
+    }
+    if (!messageProduct) {
+      setMessageError("Este usuario no tiene productos disponibles para iniciar una conversacion.");
+      return;
+    }
+
+    setOpeningMessage(true);
+    setMessageError("");
+
+    try {
+      const conversationId = await openConversation(messageProduct.item_id);
+      void navigate(`/chat/${conversationId}`);
+    } catch (err: unknown) {
+      setMessageError(err instanceof Error ? err.message : "Error al abrir el chat");
+    } finally {
+      setOpeningMessage(false);
+    }
+  };
+
+  const handleReportUser = () => {
+    if (!id) return;
+    window.location.href = buildReportUserMailto(id, fullName);
+  };
+
+  const categoryFilters = useMemo(() => {
+    const categories = Array.from(new Set(products.map((product) => product.category)));
+    return [
+      { value: "all", label: "Todos" },
+      ...categories.map((category) => ({ value: category, label: categoryLabels[category] ?? category })),
+    ];
+  }, [products]);
+
+  const visibleProducts = useMemo(
+    () =>
+      selectedCategory === "all"
+        ? products
+        : products.filter((product) => product.category === selectedCategory),
+    [products, selectedCategory]
+  );
+
+  const stats = useMemo(
+    () => [
+      { value: productsState.loading ? "..." : activeProducts, label: "Productos activos" },
+      {
+        value: reviewsState.loading ? "..." : summary.average_rating.toFixed(1),
+        label: "Valoracion media",
+        rating: true,
+      },
+      { value: reviewsState.loading ? "..." : summary.total, label: "Valoraciones" },
+      { value: reviewsState.loading ? "..." : `${positivePercent}%`, label: "Opiniones positivas" },
+      { value: reviewsState.loading ? "..." : `${fiveStarPercent}%`, label: "5 estrellas" },
+      { value: memberSince.replace("Miembro desde ", ""), label: "En la plataforma" },
+    ],
+    [
+      activeProducts,
+      fiveStarPercent,
+      memberSince,
+      positivePercent,
+      productsState.loading,
+      reviewsState.loading,
+      summary.average_rating,
+      summary.total,
+    ]
+  );
+
+  if (profileState.error) {
+    return (
+      <div className="bg-page flex min-h-screen items-center justify-center px-6">
+        <div className="profile-info-panel max-w-120 p-6 text-center">
+          <h1 className="heading-panel--sm">No se pudo cargar el perfil</h1>
+          <p className="text-body-color mt-2">{profileState.error}</p>
+          <button
+            type="button"
+            className="btn-primary btn--sm mt-4"
+            onClick={() => navigate("/search")}
+          >
+            Volver a explorar
+          </button>
+        </div>
+      </div>
+    );
+  }
+
   return (
-    <div className="p-4">
-      <h1 className="mb-4 text-2xl font-semibold">Perfil de Otro Usuario</h1>
+    <div className="bg-page min-h-screen">
+      <section className="profile-hero min-h-profile-hero h-auto bg-[#f0eef9]">
+        <div className="mx-auto flex h-full max-w-340 flex-col items-start justify-center gap-6 px-6 py-8 md:flex-row md:items-center md:justify-between md:px-10">
+          <div className="flex items-center gap-5">
+            {profile?.avatar_url ? (
+              <img
+                src={profile.avatar_url}
+                alt={fullName}
+                className="avatar-hero"
+              />
+            ) : (
+              <div className="profile-avatar-hero bg-avatar-blue text-avatar-text-blue">{initials || "?"}</div>
+            )}
+            <div>
+              <p className="profile-name">{profileState.loading ? "Cargando perfil..." : fullName}</p>
+              <p className="profile-meta mt-1">
+                {cityLabel} - {memberSince}
+              </p>
+              <p className="text-rating mt-1 flex items-center gap-2 text-[13px]">
+                <Star
+                  size={14}
+                  fill="currentColor"
+                />
+                {summary.average_rating.toFixed(1)} - {summary.total} valoraciones
+              </p>
+            </div>
+          </div>
+
+          <div className="flex flex-col items-start gap-4 md:items-center">
+            <button
+              type="button"
+              className="btn-primary h-11 px-7"
+              onClick={() => void handleOpenMessage()}
+              disabled={openingMessage || isOwnProfile || productsState.loading}
+            >
+              <Mail size={15} /> {openingMessage ? "Abriendo..." : "Enviar mensaje"}
+            </button>
+            <button
+              type="button"
+              className="text-report h-auto p-0 text-[12px]"
+              onClick={handleReportUser}
+            >
+              Reportar usuario
+            </button>
+            {messageError && <p className="text-report max-w-60 text-center text-[12px]">{messageError}</p>}
+          </div>
+        </div>
+      </section>
+
+      <section className="profile-stats-strip h-auto py-5">
+        <div className="mx-auto grid w-full max-w-340 grid-cols-2 gap-y-5 md:grid-cols-3 lg:grid-cols-6">
+          {stats.map((stat, index) => (
+            <div
+              key={stat.label}
+              className={`px-3 text-center ${index > 0 ? "border-border-input border-l" : ""}`}
+            >
+              <p className={stat.rating ? "profile-stat-value--rating" : "profile-stat-value"}>
+                {stat.rating ? (
+                  <Star
+                    className="mr-1 inline"
+                    size={17}
+                    fill="currentColor"
+                  />
+                ) : null}
+                {stat.value}
+              </p>
+              <p className="profile-stat-label mt-1">{stat.label}</p>
+            </div>
+          ))}
+        </div>
+      </section>
+
+      <main className="mx-auto grid max-w-340 grid-cols-1 gap-9 px-6 pt-9 pb-18 md:px-10 lg:grid-cols-[minmax(0,1fr)_360px]">
+        <div className="min-w-0">
+          <section className="profile-info-panel px-5 py-4">
+            <p className="profile-about-heading">Resumen del perfil</p>
+            <p className="profile-about-body mt-2">
+              {fullName || "Este usuario"} tiene {activeProducts} productos activos y {summary.total} valoraciones
+              recibidas. La informacion de confianza se calcula unicamente con las valoraciones publicadas por otros
+              usuarios.
+            </p>
+          </section>
+
+          <section className="mt-22">
+            <h2 className="heading-panel--sm">Articulos de {profile?.first_name ?? "este usuario"} en alquiler</h2>
+            <p className="profile-products-sub mt-1">
+              {productsState.loading
+                ? "Cargando productos..."
+                : `${visibleProducts.length} ${visibleProducts.length === 1 ? "producto disponible" : "productos disponibles"}`}
+            </p>
+
+            {categoryFilters.length > 1 && (
+              <div className="mt-3 flex flex-wrap gap-3">
+                {categoryFilters.map((filter) => (
+                  <button
+                    key={filter.value}
+                    type="button"
+                    className={`h-7 rounded-full border px-5 text-[12px] ${
+                      selectedCategory === filter.value
+                        ? "bg-primary text-white"
+                        : "border-border-input bg-page text-subtle hover:border-primary hover:text-primary"
+                    }`}
+                    onClick={() => setSelectedCategory(filter.value)}
+                  >
+                    {filter.label}
+                  </button>
+                ))}
+              </div>
+            )}
+
+            {productsState.error && (
+              <p className="border-report bg-error-danger text-report mt-3 rounded-lg border p-3 text-[13px]">
+                {productsState.error}
+              </p>
+            )}
+
+            {!productsState.loading && visibleProducts.length === 0 && !productsState.error && (
+              <div className="profile-info-panel mt-4 flex min-h-36 items-center justify-center p-6 text-center">
+                <p className="text-subtle">Este usuario no tiene productos publicados en esta categoria.</p>
+              </div>
+            )}
+
+            <div className="mt-4 grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-3">
+              {visibleProducts.map((product) => (
+                <ProductCard
+                  key={product.item_id}
+                  product={product}
+                  ownerRating={summary.average_rating}
+                />
+              ))}
+            </div>
+          </section>
+
+          <section className="mt-14">
+            <h2 className="heading-panel--sm">Valoraciones recibidas</h2>
+
+            {!isOwnProfile && profile && (
+              <ReviewForm
+                profileName={fullName}
+                rating={currentDraftRating}
+                comment={currentDraftComment}
+                submitting={submittingReview}
+                error={currentSubmitError}
+                success={currentSubmitSuccess}
+                onRatingChange={(rating) => {
+                  setDraftProfileId(id ?? "");
+                  setDraftRating(rating);
+                  setSubmitError("");
+                  setSubmitSuccess("");
+                }}
+                onCommentChange={(comment) => {
+                  setDraftProfileId(id ?? "");
+                  setDraftComment(comment);
+                  setSubmitError("");
+                  setSubmitSuccess("");
+                }}
+                onSubmit={handleReviewSubmit}
+              />
+            )}
+
+            {reviewsState.error && (
+              <p className="border-report bg-error-danger text-report mt-3 rounded-lg border p-3 text-[13px]">
+                {reviewsState.error}
+              </p>
+            )}
+
+            {reviewsState.loading ? (
+              <div className="profile-info-panel mt-3 flex min-h-36 items-center justify-center p-6">
+                <p className="text-subtle">Cargando valoraciones...</p>
+              </div>
+            ) : (
+              <RatingSummary summary={summary} />
+            )}
+
+            {!reviewsState.loading && reviewsState.total === 0 && !reviewsState.error && (
+              <div className="profile-info-panel mt-4 flex min-h-36 items-center justify-center p-6 text-center">
+                <p className="text-subtle">Este usuario todavia no ha recibido valoraciones.</p>
+              </div>
+            )}
+
+            <div className="mt-4 space-y-4">
+              {reviewsState.items.map((review) => (
+                <ReviewCard
+                  key={review.review_id}
+                  review={review}
+                />
+              ))}
+            </div>
+
+            {!reviewsState.loading && reviewsState.total > reviewsState.items.length && (
+              <div className="mt-4 flex justify-center">
+                <button
+                  type="button"
+                  className="btn-secondary btn--sm min-w-64"
+                >
+                  Ver las {reviewsState.total - reviewsState.items.length} valoraciones restantes
+                </button>
+              </div>
+            )}
+          </section>
+        </div>
+
+        <aside className="lg:sticky lg:top-24 lg:self-start">
+          <div className="profile-info-panel p-5">
+            <div className="flex items-center gap-4">
+              {profile?.avatar_url ? (
+                <img
+                  src={profile.avatar_url}
+                  alt={fullName}
+                  className="owner-avatar object-cover"
+                />
+              ) : (
+                <div className="owner-avatar bg-avatar-blue text-avatar-text-blue">{initials || "?"}</div>
+              )}
+              <div>
+                <p className="text-owner-name font-bold">{fullName || "Perfil publico"}</p>
+                <p className="text-card-loc text-subtle">
+                  {memberSince} - {cityLabel}
+                </p>
+                <p className="text-rating text-card-loc mt-1">
+                  {summary.average_rating.toFixed(1)} ({summary.total} valoraciones)
+                </p>
+              </div>
+            </div>
+
+            <div className="my-5 divide-y divide-border-main">
+              {[
+                ["Valoracion media", summary.average_rating.toFixed(1)],
+                ["Valoraciones recibidas", String(summary.total)],
+                ["Opiniones positivas", `${positivePercent}%`],
+                ["Valoraciones de 5 estrellas", `${fiveStarPercent}%`],
+                ["Productos activos", String(activeProducts)],
+              ].map(([label, value]) => (
+                <div
+                  key={label}
+                  className="flex items-center justify-between gap-4 py-3 text-[12px]"
+                >
+                  <span className="text-subtle">{label}</span>
+                  <span className="text-ink text-right font-bold">{value}</span>
+                </div>
+              ))}
+            </div>
+
+            <button
+              type="button"
+              className="btn-primary h-12 w-full"
+              onClick={() => void handleOpenMessage()}
+              disabled={openingMessage || isOwnProfile || productsState.loading}
+            >
+              <Mail size={15} /> {openingMessage ? "Abriendo..." : "Enviar mensaje"}
+            </button>
+            {messageError && <p className="text-report mt-3 text-center text-[12px]">{messageError}</p>}
+            <button
+              type="button"
+              className="text-report mt-4 h-auto w-full p-0 text-[12px]"
+              onClick={handleReportUser}
+            >
+              Reportar a este usuario
+            </button>
+          </div>
+        </aside>
+      </main>
     </div>
   );
 }
