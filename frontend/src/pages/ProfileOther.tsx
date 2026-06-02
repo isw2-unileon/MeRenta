@@ -455,7 +455,7 @@ function ReviewForm({
             <button
               key={value}
               type="button"
-              className="h-8 w-8 p-0 text-rating"
+              className="text-rating h-8 w-8 p-0"
               aria-label={`${value} estrellas`}
               aria-checked={rating === value}
               role="radio"
@@ -481,8 +481,14 @@ function ReviewForm({
         />
       </label>
 
-      {error && <p className="border-report bg-error-danger text-report mt-3 rounded-lg border p-3 text-[13px]">{error}</p>}
-      {success && <p className="border-primary-border bg-primary-light text-primary mt-3 rounded-lg border p-3 text-[13px]">{success}</p>}
+      {error && (
+        <p className="border-report bg-error-danger text-report mt-3 rounded-lg border p-3 text-[13px]">{error}</p>
+      )}
+      {success && (
+        <p className="border-primary-border bg-primary-light text-primary mt-3 rounded-lg border p-3 text-[13px]">
+          {success}
+        </p>
+      )}
 
       <div className="mt-4 flex justify-end">
         <button
@@ -644,10 +650,7 @@ function ProfileOther() {
   }, [products]);
 
   const visibleProducts = useMemo(
-    () =>
-      selectedCategory === "all"
-        ? products
-        : products.filter((product) => product.category === selectedCategory),
+    () => (selectedCategory === "all" ? products : products.filter((product) => product.category === selectedCategory)),
     [products, selectedCategory]
   );
 
@@ -920,7 +923,7 @@ function ProfileOther() {
               </div>
             </div>
 
-            <div className="my-5 divide-y divide-border-main">
+            <div className="divide-border-main my-5 divide-y">
               {[
                 ["Valoracion media", summary.average_rating.toFixed(1)],
                 ["Valoraciones recibidas", String(summary.total)],
