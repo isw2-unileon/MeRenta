@@ -165,6 +165,8 @@ func (h *ItemHandler) Create(c *gin.Context) {
 			response.Error(c, http.StatusBadRequest, err.Error())
 		case errors.Is(err, service.ErrInvalidCondition):
 			response.Error(c, http.StatusBadRequest, err.Error())
+		case errors.Is(err, service.ErrInvalidItemStatus):
+			response.Error(c, http.StatusBadRequest, err.Error())
 		case errors.Is(err, service.ErrInvalidRentalPeriod):
 			response.Error(c, http.StatusBadRequest, err.Error())
 		case errors.Is(err, service.ErrAddressNotFound):
@@ -177,6 +179,84 @@ func (h *ItemHandler) Create(c *gin.Context) {
 	}
 
 	response.OK(c, http.StatusCreated, res)
+}
+
+// Update handles PATCH /api/items/:id -- updates an item listing owned by the
+// authenticated customer.
+//
+// Request body: model.UpdateItemRequest (JSON)
+// Response 200: model.ItemResponse
+// Response 403: caller does not own the item
+// Response 404: item not found
+func (h *ItemHandler) Update(c *gin.Context) {
+	itemID, ok := parseUUIDParam(c)
+	if !ok {
+		return
+	}
+
+	var req model.UpdateItemRequest
+	if err := c.ShouldBindJSON(&req); err != nil {
+		response.Error(c, http.StatusBadRequest, formatBindError(err))
+		return
+	}
+
+	ownerID, ok := getCustomerID(c)
+	if !ok {
+		return
+	}
+
+	res, err := h.svc.UpdateItem(c.Request.Context(), ownerID, itemID, req)
+	if err != nil {
+		switch {
+		case errors.Is(err, service.ErrInvalidCategory):
+			response.Error(c, http.StatusBadRequest, err.Error())
+		case errors.Is(err, service.ErrInvalidCondition):
+			response.Error(c, http.StatusBadRequest, err.Error())
+		case errors.Is(err, service.ErrInvalidRentalPeriod):
+			response.Error(c, http.StatusBadRequest, err.Error())
+		case errors.Is(err, service.ErrAddressNotFound):
+			response.Error(c, http.StatusUnprocessableEntity, err.Error())
+		case errors.Is(err, service.ErrForbidden):
+			response.Error(c, http.StatusForbidden, err.Error())
+		case errors.Is(err, service.ErrItemNotFound):
+			response.Error(c, http.StatusNotFound, err.Error())
+		default:
+			slog.Error("update item failed", "item_id", itemID, "owner_id", ownerID, "error", err)
+			response.Error(c, http.StatusInternalServerError, "internal server error")
+		}
+		return
+	}
+
+	response.OK(c, http.StatusOK, res)
+}
+
+// Delete handles DELETE /api/items/:id -- permanently deletes an item listing
+// owned by the authenticated customer.
+func (h *ItemHandler) Delete(c *gin.Context) {
+	itemID, ok := parseUUIDParam(c)
+	if !ok {
+		return
+	}
+
+	ownerID, ok := getCustomerID(c)
+	if !ok {
+		return
+	}
+
+	if err := h.svc.DeleteItem(c.Request.Context(), ownerID, itemID); err != nil {
+		switch {
+		case errors.Is(err, service.ErrForbidden):
+			response.Error(c, http.StatusForbidden, err.Error())
+		case errors.Is(err, service.ErrItemNotFound):
+			response.Error(c, http.StatusNotFound, err.Error())
+		default:
+			slog.Error("delete item failed", "item_id", itemID, "owner_id", ownerID, "error", err)
+			response.Error(c, http.StatusInternalServerError, "internal server error")
+		}
+		return
+	}
+
+	response.OK(c, http.StatusOK, gin.H{"message": "item deleted"})
 }
 
 func parsePositiveInt(raw string, fallback int, maxValue int) int {

@@ -2,6 +2,14 @@
  * UI-level form state for the product creation form.
  * Not the same as the API payload — includes extra UI-only fields.
  */
+interface ExistingProductPhoto {
+  image_id: string;
+  image_url: string;
+  display_order: number;
+}
+
+type ProductPhoto = File | ExistingProductPhoto;
+
 interface ProductFormData {
   // Basic info
   title: string;
@@ -10,7 +18,7 @@ interface ProductFormData {
   condition: string;
   description: string;
   // Photos
-  photos: File[];
+  photos: ProductPhoto[];
   // Price
   pricePerDay: string;
   pricePerWeek: string;
@@ -42,6 +50,11 @@ interface CreateItemRequest {
   deposit?: number;
   min_days: number;
   max_days?: number;
+}
+
+interface UpdateItemRequest extends CreateItemRequest {
+  is_available: boolean;
+  item_status: "available" | "withdrawn";
 }
 
 /**
@@ -157,12 +170,15 @@ interface FavoriteCheckResponse {
 export type {
   CategoryOption,
   CreateItemRequest,
+  ExistingProductPhoto,
   FavoriteCheckResponse,
   FavoriteItemResponse,
   FavoritesResponse,
   ItemImageResponse,
   ItemResponse,
+  ProductPhoto,
   ProductFormData,
   SearchItemResponse,
   SearchItemsResponse,
+  UpdateItemRequest,
 };
