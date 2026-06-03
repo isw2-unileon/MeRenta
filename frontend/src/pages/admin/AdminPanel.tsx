@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import {
   AlertTriangle,
   CreditCard,
@@ -12,6 +12,7 @@ import {
 } from "lucide-react";
 
 import { useAuth } from "@/hooks/useAuth";
+import { PRODUCT_REPORTS_STORAGE_KEY } from "@/constants/storageKeys";
 import type { ApiResponse } from "@/types/common";
 import type { IncidentListResponse, IncidentStatus } from "@/types/incident";
 import { GREEN, MINT } from "@/pages/admin/components/adminTokens";
@@ -78,7 +79,7 @@ function isStoredProductReport(value: unknown): value is StoredProductReport {
 
 function getStoredProductReportCount(): number {
   try {
-    const value = localStorage.getItem("product_reports");
+    const value = localStorage.getItem(PRODUCT_REPORTS_STORAGE_KEY);
     if (!value) return 0;
     const parsed: unknown = JSON.parse(value);
     return Array.isArray(parsed)
@@ -219,18 +220,26 @@ function AdminPanel() {
       .then((total) => setIncidentBadge(total + localCount))
       .catch(() => setIncidentBadge(localCount));
   }, []);
+  const refreshIncidentBadgeRef = useRef(refreshIncidentBadge);
 
   useEffect(() => {
-    refreshIncidentBadge();
-    window.addEventListener("focus", refreshIncidentBadge);
-    window.addEventListener("storage", refreshIncidentBadge);
-    window.addEventListener("merenta:incidents-updated", refreshIncidentBadge);
-    return () => {
-      window.removeEventListener("focus", refreshIncidentBadge);
-      window.removeEventListener("storage", refreshIncidentBadge);
-      window.removeEventListener("merenta:incidents-updated", refreshIncidentBadge);
-    };
+    refreshIncidentBadgeRef.current = refreshIncidentBadge;
   }, [refreshIncidentBadge]);
+
+  useEffect(() => {
+    const handleIncidentBadgeRefresh = () => {
+      refreshIncidentBadgeRef.current();
+    };
+    handleIncidentBadgeRefresh();
+    window.addEventListener("focus", handleIncidentBadgeRefresh);
+    window.addEventListener("storage", handleIncidentBadgeRefresh);
+    window.addEventListener("merenta:incidents-updated", handleIncidentBadgeRefresh);
+    return () => {
+      window.removeEventListener("focus", handleIncidentBadgeRefresh);
+      window.removeEventListener("storage", handleIncidentBadgeRefresh);
+      window.removeEventListener("merenta:incidents-updated", handleIncidentBadgeRefresh);
+    };
+  }, []);
 
   return (
     <div

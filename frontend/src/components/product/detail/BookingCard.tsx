@@ -4,6 +4,7 @@ import { AlertTriangle, X } from "lucide-react";
 
 import { ProductCalendar } from "@/components/product/detail/ProductCalendar";
 import { StarRating } from "@/components/product/detail/StarRating";
+import { PRODUCT_REPORTS_STORAGE_KEY } from "@/constants/storageKeys";
 import type { ApiResponse } from "@/types/common";
 
 /** Fixed service fee applied to every rental (EUR). */
@@ -217,8 +218,8 @@ function ProductReportModal({
       reported_at: new Date().toISOString(),
     };
 
-    const storedReports = JSON.parse(localStorage.getItem("product_reports") ?? "[]") as StoredProductReport[];
-    localStorage.setItem("product_reports", JSON.stringify([report, ...storedReports]));
+    const storedReports = JSON.parse(localStorage.getItem(PRODUCT_REPORTS_STORAGE_KEY) ?? "[]") as StoredProductReport[];
+    localStorage.setItem(PRODUCT_REPORTS_STORAGE_KEY, JSON.stringify([report, ...storedReports]));
     onSuccess();
   }
 

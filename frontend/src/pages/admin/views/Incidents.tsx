@@ -4,6 +4,7 @@ import { AlertTriangle, Check, ChevronDown, Filter, Package, RotateCcw, Users } 
 import type { ApiResponse } from "@/types/common";
 import type { IncidentListResponse, IncidentPriority, IncidentResponse, IncidentStatus } from "@/types/incident";
 import type { ItemResponse } from "@/types/item";
+import { PRODUCT_REPORTS_STORAGE_KEY } from "@/constants/storageKeys";
 import { GREEN } from "@/pages/admin/components/adminTokens";
 import { Badge, Card } from "@/pages/admin/components/adminUi";
 
@@ -80,7 +81,7 @@ function isStoredProductReport(value: unknown): value is StoredProductReport {
 
 function readStoredProductReports(): StoredProductReport[] {
   try {
-    const value = localStorage.getItem("product_reports");
+    const value = localStorage.getItem(PRODUCT_REPORTS_STORAGE_KEY);
     if (!value) return [];
     const parsed: unknown = JSON.parse(value);
     return Array.isArray(parsed) ? parsed.filter(isStoredProductReport) : [];
@@ -109,7 +110,7 @@ async function getEnrichedStoredProductReports(): Promise<StoredProductReport[]>
       return itemTitle ? { ...report, item_title: itemTitle } : report;
     })
   );
-  localStorage.setItem("product_reports", JSON.stringify(enrichedReports));
+  localStorage.setItem(PRODUCT_REPORTS_STORAGE_KEY, JSON.stringify(enrichedReports));
   return enrichedReports;
 }
 
@@ -141,7 +142,13 @@ function storedReportToIncident(report: StoredProductReport, index: number): Inc
 async function getStoredProductIncidents(typeFilter: string, statusFilter: string): Promise<IncidentResponse[]> {
   if (typeFilter && typeFilter !== "product") return [];
   const reports = await getEnrichedStoredProductReports();
-  return reports.map(storedReportToIncident).filter((incident) => !statusFilter || incident.status === statusFilter);
+  return reports.reduce<IncidentResponse[]>((incidents, report, index) => {
+    const incident = storedReportToIncident(report, index);
+    if (!statusFilter || incident.status === statusFilter) {
+      incidents.push(incident);
+    }
+    return incidents;
+  }, []);
 }
 
 function updateStoredProductReportStatus(incidentId: string, status: IncidentStatus): void {
@@ -151,7 +158,7 @@ function updateStoredProductReportStatus(incidentId: string, status: IncidentSta
     const fallbackId = `${report.item_id}-${report.reported_at}-${index}`;
     return (report.report_id ?? fallbackId) === reportId ? { ...report, status } : report;
   });
-  localStorage.setItem("product_reports", JSON.stringify(nextReports));
+  localStorage.setItem(PRODUCT_REPORTS_STORAGE_KEY, JSON.stringify(nextReports));
 }
 
 function notifyIncidentsChanged(): void {
