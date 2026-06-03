@@ -339,6 +339,8 @@ function Product() {
     : undefined;
   const item = state.item;
   const reviewSummary = state.ownerReviewSummary ?? emptyReviewSummary;
+  const reporterName = user ? `${user.first_name} ${user.last_name}`.trim() || user.email : "Usuario";
+  const reporterId = user?.customer_id ?? "local-product-report";
   const ratingLabel = reviewSummary.total > 0 ? reviewSummary.average_rating.toFixed(1) : "0.0";
   const locationLabel = item ? [item.city, item.province, item.postal_code].filter(Boolean).join(", ") : "";
 
@@ -435,6 +437,9 @@ function Product() {
             <div className="top-8 flex flex-col gap-5">
               <BookingCard
                 itemId={item.item_id}
+                itemTitle={item.title}
+                reporterId={reporterId}
+                reporterName={reporterName}
                 pricePerDay={item.price_per_day}
                 rating={reviewSummary.average_rating}
                 reviewCount={reviewSummary.total}

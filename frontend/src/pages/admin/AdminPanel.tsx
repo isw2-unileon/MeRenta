@@ -1,7 +1,6 @@
-import { useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import {
   AlertTriangle,
-  Bell,
   CreditCard,
   LayoutDashboard,
   Package,
@@ -13,6 +12,8 @@ import {
 } from "lucide-react";
 
 import { useAuth } from "@/hooks/useAuth";
+import type { ApiResponse } from "@/types/common";
+import type { IncidentListResponse, IncidentStatus } from "@/types/incident";
 import { GREEN, MINT } from "@/pages/admin/components/adminTokens";
 import { Avatar } from "@/pages/admin/components/adminUi";
 import { Dashboard } from "@/pages/admin/views/Dashboard";
@@ -40,14 +41,14 @@ interface NavItem {
   id: SectionId;
   label: string;
   Icon: React.ComponentType<{ size?: number }>;
-  badge?: number;
+  badge?: number | null;
 }
 
 const DEFAULT_NAV_ITEM: NavItem = { id: "dashboard", label: "Resumen", Icon: LayoutDashboard };
 
 const NAV: NavItem[] = [
   DEFAULT_NAV_ITEM,
-  { id: "incidents", label: "Incidencias", Icon: AlertTriangle, badge: 37 },
+  { id: "incidents", label: "Incidencias", Icon: AlertTriangle },
   { id: "operations", label: "Operaciones", Icon: Repeat },
   { id: "users", label: "Usuarios", Icon: Users },
   { id: "products", label: "Productos", Icon: Package, badge: 184 },
@@ -67,21 +68,67 @@ const VIEWS: Record<SectionId, React.ComponentType> = {
   settings: SettingsView,
 };
 
+interface StoredProductReport {
+  status?: IncidentStatus;
+}
+
+function isStoredProductReport(value: unknown): value is StoredProductReport {
+  return typeof value === "object" && value !== null;
+}
+
+function getStoredProductReportCount(): number {
+  try {
+    const value = localStorage.getItem("product_reports");
+    if (!value) return 0;
+    const parsed: unknown = JSON.parse(value);
+    return Array.isArray(parsed)
+      ? parsed.filter((report) => isStoredProductReport(report) && report.status !== "resolved").length
+      : 0;
+  } catch {
+    return 0;
+  }
+}
+
+async function fetchIncidentTotal(status: IncidentStatus): Promise<number> {
+  const params = new URLSearchParams({ page: "1", limit: "1" });
+  params.set("status", status);
+  const res = await fetch(`/api/admin/incidents?${params.toString()}`, {
+    credentials: "include",
+  });
+  const json = (await res.json()) as ApiResponse<IncidentListResponse>;
+  if (!res.ok || !json.success || !json.data) {
+    throw new Error(json.error ?? "Error al cargar incidencias");
+  }
+  return json.data.total;
+}
+
+async function fetchUnresolvedIncidentTotal(): Promise<number> {
+  const totals = await Promise.all([
+    fetchIncidentTotal("open"),
+    fetchIncidentTotal("reviewing"),
+    fetchIncidentTotal("escalated"),
+  ]);
+  return totals.reduce((sum, total) => sum + total, 0);
+}
+
 // ── Sidebar ────────────────────────────────────────────────────────────────────
 
 interface SidebarProps {
   active: SectionId;
+  navItems: NavItem[];
   onSelect: (id: SectionId) => void;
   userEmail: string;
   userName: string;
 }
 
-function Sidebar({ active, onSelect, userEmail, userName }: SidebarProps) {
+function Sidebar({ active, navItems, onSelect, userEmail, userName }: SidebarProps) {
   return (
     <aside className="flex w-60 shrink-0 flex-col border-r border-neutral-200 bg-white">
       {/* Logo */}
       <div className="flex h-16 items-center border-b border-neutral-100 px-5">
-        <span
+        <a
+          href="/"
+          aria-label="Ir a la pagina principal"
           className="text-xl font-light text-neutral-900"
           style={{ fontFamily: "Inter, ui-sans-serif, system-ui, sans-serif" }}
         >
@@ -92,7 +139,7 @@ function Sidebar({ active, onSelect, userEmail, userName }: SidebarProps) {
           >
             Renta
           </span>
-        </span>
+        </a>
         <span
           className="ml-2 rounded px-1.5 py-0.5 text-[10px] font-semibold tracking-wide uppercase"
           style={{ backgroundColor: MINT, color: GREEN }}
@@ -103,7 +150,7 @@ function Sidebar({ active, onSelect, userEmail, userName }: SidebarProps) {
 
       {/* Nav */}
       <nav className="flex-1 space-y-0.5 overflow-y-auto p-3">
-        {NAV.map(({ id, label, Icon, badge }) => {
+        {navItems.map(({ id, label, Icon, badge }) => {
           const on = active === id;
           return (
             <button
@@ -153,13 +200,37 @@ function Sidebar({ active, onSelect, userEmail, userName }: SidebarProps) {
  */
 function AdminPanel() {
   const [active, setActive] = useState<SectionId>("dashboard");
+  const [incidentBadge, setIncidentBadge] = useState<number | null>(null);
   const { user } = useAuth();
 
   const View = VIEWS[active];
-  const current = NAV.find((n) => n.id === active) ?? DEFAULT_NAV_ITEM;
+  const navItems = useMemo(
+    () => NAV.map((item) => (item.id === "incidents" ? { ...item, badge: incidentBadge } : item)),
+    [incidentBadge]
+  );
+  const current = navItems.find((n) => n.id === active) ?? DEFAULT_NAV_ITEM;
 
   const userName = user ? `${user.first_name} ${user.last_name}` : "Admin";
   const userEmail = user?.email ?? "";
+
+  const refreshIncidentBadge = useCallback(() => {
+    const localCount = getStoredProductReportCount();
+    fetchUnresolvedIncidentTotal()
+      .then((total) => setIncidentBadge(total + localCount))
+      .catch(() => setIncidentBadge(localCount));
+  }, []);
+
+  useEffect(() => {
+    refreshIncidentBadge();
+    window.addEventListener("focus", refreshIncidentBadge);
+    window.addEventListener("storage", refreshIncidentBadge);
+    window.addEventListener("merenta:incidents-updated", refreshIncidentBadge);
+    return () => {
+      window.removeEventListener("focus", refreshIncidentBadge);
+      window.removeEventListener("storage", refreshIncidentBadge);
+      window.removeEventListener("merenta:incidents-updated", refreshIncidentBadge);
+    };
+  }, [refreshIncidentBadge]);
 
   return (
     <div
@@ -168,6 +239,7 @@ function AdminPanel() {
     >
       <Sidebar
         active={active}
+        navItems={navItems}
         onSelect={setActive}
         userEmail={userEmail}
         userName={userName}
@@ -192,14 +264,6 @@ function AdminPanel() {
                 className="w-48 rounded-lg border border-neutral-200 py-2 pr-3 pl-9 text-sm outline-none focus:border-emerald-500"
               />
             </div>
-            <button
-              type="button"
-              aria-label="Ver notificaciones"
-              className="relative flex size-9 items-center justify-center rounded-full bg-neutral-100 text-neutral-600"
-            >
-              <Bell size={17} />
-              <span className="absolute top-1.5 right-1.5 size-2 rounded-full bg-red-500" />
-            </button>
           </div>
         </header>
 
