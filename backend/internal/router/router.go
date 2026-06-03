@@ -141,6 +141,7 @@ func registerProtectedRoutes(
 	bookings.PATCH("/:id/accept", bookingH.Accept)
 	bookings.PATCH("/:id/reject", bookingH.Reject)
 	bookings.PATCH("/:id/cancel", bookingH.Cancel)
+	bookings.PATCH("/:id/complete", bookingH.Complete)
 
 	incidents := protected.Group("/incidents")
 	incidents.POST("", incidentH.Create)
@@ -157,6 +158,13 @@ func registerAdminRoutes(api *gin.RouterGroup, adminH *handler.AdminHandler, inc
 
 	items := admin.Group("/items")
 	items.GET("", adminH.ListProducts)
+
+	bookings := admin.Group("/bookings")
+	bookings.GET("", adminH.ListBookings)
+	bookings.PATCH("/:id/status", adminH.AdminUpdateBookingStatus)
+
+	admin.GET("/payments", adminH.ListPayments)
+	admin.GET("/stats", adminH.GetStats)
 
 	incidents := admin.Group("/incidents")
 	incidents.GET("", incidentH.AdminList)

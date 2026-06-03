@@ -150,4 +150,52 @@ function ComingSoon({ title, description }: ComingSoonProps) {
   );
 }
 
-export { Card, Badge, Avatar, SectionTitle, Stars, ComingSoon };
+// ── ConfirmModal ──────────────────────────────────────────────────────────────
+
+interface ConfirmModalProps {
+  message: string;
+  confirmLabel?: string;
+  /** Use true when the action is destructive (cancel, delete). */
+  dangerous?: boolean;
+  onConfirm: () => void;
+  onCancel: () => void;
+}
+
+/**
+ * Lightweight confirmation dialog rendered as a fixed overlay.
+ * Use before any irreversible admin action (status change, refund, etc.).
+ */
+function ConfirmModal({
+  message,
+  confirmLabel = "Confirmar",
+  dangerous = false,
+  onConfirm,
+  onCancel,
+}: ConfirmModalProps) {
+  return (
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/30 px-4">
+      <div className="w-full max-w-sm rounded-xl border border-neutral-200 bg-white p-6 shadow-xl">
+        <p className="text-sm font-medium text-neutral-800">{message}</p>
+        <div className="mt-5 flex gap-2">
+          <button
+            type="button"
+            onClick={onConfirm}
+            className="flex-1 rounded-lg py-2.5 text-sm font-semibold text-white"
+            style={{ backgroundColor: dangerous ? "#dc2626" : GREEN }}
+          >
+            {confirmLabel}
+          </button>
+          <button
+            type="button"
+            onClick={onCancel}
+            className="flex-1 rounded-lg border border-neutral-200 py-2.5 text-sm font-medium text-neutral-600 hover:bg-neutral-50"
+          >
+            Cancelar
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+export { Card, Badge, Avatar, SectionTitle, Stars, ComingSoon, ConfirmModal };

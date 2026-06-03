@@ -7,6 +7,12 @@ import { Badge, Card, SectionTitle } from "@/pages/admin/components/adminUi";
 
 const LIMIT = 20;
 
+const EUR_FORMAT = new Intl.NumberFormat("es-ES", {
+  style: "currency",
+  currency: "EUR",
+  maximumFractionDigits: 2,
+});
+
 const STATUS_LABELS: Record<string, string> = {
   available: "disponible",
   reserved: "reservado",
@@ -87,11 +93,7 @@ function fmtDate(iso: string): string {
 }
 
 function fmtPrice(value: number): string {
-  return new Intl.NumberFormat("es-ES", {
-    style: "currency",
-    currency: "EUR",
-    maximumFractionDigits: 2,
-  }).format(value);
+  return EUR_FORMAT.format(value);
 }
 
 function ownerName(product: SearchItemResponse): string {

@@ -335,7 +335,17 @@ function DetailPanel({ incident, onStatusUpdate, onPriorityUpdate }: DetailPanel
             onUpdate={(status) => onStatusUpdate(incident.incident_id, status)}
           />
         </div>
-        {incident.status !== "resolved" && incident.status !== "closed" && (
+
+        {/* Quick-action button — context-aware, always visible */}
+        {incident.status === "resolved" || incident.status === "closed" ? (
+          <button
+            type="button"
+            onClick={() => onStatusUpdate(incident.incident_id, "open")}
+            className="inline-flex w-full items-center justify-center gap-2 rounded-lg border border-neutral-200 py-2.5 text-sm font-semibold text-neutral-700 hover:bg-neutral-50"
+          >
+            <RotateCcw size={16} /> Reabrir incidencia
+          </button>
+        ) : (
           <>
             <button
               type="button"
@@ -345,14 +355,12 @@ function DetailPanel({ incident, onStatusUpdate, onPriorityUpdate }: DetailPanel
             >
               <Check size={16} /> Resolver incidencia
             </button>
-            <div>
-              <button
-                type="button"
-                className="inline-flex w-full items-center justify-center gap-1.5 rounded-lg border border-neutral-200 py-2 text-sm font-medium text-neutral-700"
-              >
-                <RotateCcw size={14} /> Reembolsar
-              </button>
-            </div>
+            <button
+              type="button"
+              className="inline-flex w-full items-center justify-center gap-1.5 rounded-lg border border-neutral-200 py-2 text-sm font-medium text-neutral-700"
+            >
+              <RotateCcw size={14} /> Reembolsar
+            </button>
           </>
         )}
       </div>
@@ -530,102 +538,107 @@ function Incidents() {
 
       {error && <p className="text-sm text-red-600">{error}</p>}
 
-      <div className="grid grid-cols-1 gap-4 xl:grid-cols-5">
-        {/* List */}
-        <div className="space-y-2 xl:col-span-3">
-          {loading ? (
-            Array.from({ length: 5 }).map((_, i) => (
-              <div
-                key={i}
-                className="h-20 animate-pulse rounded-xl bg-neutral-100"
-              />
-            ))
-          ) : incidents.length === 0 ? (
-            <Card className="p-10 text-center">
-              <AlertTriangle
-                size={28}
-                className="mx-auto mb-2 text-neutral-300"
-              />
-              <p className="text-sm text-neutral-500">No hay incidencias con estos filtros.</p>
-            </Card>
-          ) : (
-            <Card>
-              {incidents.map((inc, idx) => (
-                <button
-                  key={inc.incident_id}
-                  type="button"
-                  onClick={() => dispatch({ type: "select", incident: inc })}
-                  className={`flex w-full items-center gap-3 p-4 text-left ${
-                    idx !== incidents.length - 1 ? "border-b border-neutral-100" : ""
-                  } ${selected?.incident_id === inc.incident_id ? "bg-neutral-50" : "hover:bg-neutral-50"}`}
-                >
-                  <TypeIcon type={inc.type} />
-                  <div className="min-w-0 flex-1">
-                    <div className="flex items-center gap-2">
-                      <span className="font-mono text-xs text-neutral-400">
-                        {inc.incident_id.slice(0, 8).toUpperCase()}
-                      </span>
-                      <span className={`text-xs font-semibold ${PRIORITY_COLOR[inc.priority]}`}>
-                        ▲ {PRIORITY_LABEL[inc.priority]}
-                      </span>
-                    </div>
-                    <p className="truncate text-sm font-medium text-neutral-900">{inc.item_title}</p>
-                    <p className="truncate text-xs text-neutral-500">
-                      {inc.reporter_name} → {inc.reported_name} ·{" "}
-                      {inc.reported_at
-                        ? new Date(inc.reported_at).toLocaleDateString("es-ES", {
-                            day: "numeric",
-                            month: "short",
-                          })
-                        : "—"}
-                    </p>
-                  </div>
-                  <Badge color={STATUS_COLOR[inc.status]}>{STATUS_LABELS[inc.status]}</Badge>
-                </button>
-              ))}
-            </Card>
-          )}
+      {/* Empty state — full width, shown outside the grid */}
+      {!loading && !error && incidents.length === 0 && (
+        <Card className="py-16 text-center">
+          <AlertTriangle
+            size={32}
+            className="mx-auto mb-3 text-neutral-300"
+          />
+          <p className="text-sm text-neutral-500">No hay incidencias con estos filtros.</p>
+        </Card>
+      )}
 
-          {total > 20 && !loading && (
-            <div className="flex justify-between px-1 text-sm text-neutral-500">
-              <span>
-                {(page - 1) * 20 + 1}-{Math.min(page * 20, total)} de {total}
-              </span>
-              <div className="flex gap-1">
-                <button
-                  type="button"
-                  disabled={page <= 1}
-                  onClick={() => setPage((p) => p - 1)}
-                  aria-label="Página anterior"
-                  className="rounded px-2 py-1 hover:bg-neutral-100 disabled:opacity-40"
-                >
-                  ‹
-                </button>
-                <button
-                  type="button"
-                  disabled={page * 20 >= total}
-                  onClick={() => setPage((p) => p + 1)}
-                  aria-label="Página siguiente"
-                  className="rounded px-2 py-1 hover:bg-neutral-100 disabled:opacity-40"
-                >
-                  ›
-                </button>
+      {(loading || incidents.length > 0) && (
+        <div className="grid grid-cols-1 gap-4 xl:grid-cols-5">
+          {/* List */}
+          <div className="space-y-2 xl:col-span-3">
+            {loading ? (
+              Array.from({ length: 5 }).map((_, i) => (
+                <div
+                  key={i}
+                  className="h-20 animate-pulse rounded-xl bg-neutral-100"
+                />
+              ))
+            ) : (
+              <Card>
+                {incidents.map((inc, idx) => (
+                  <button
+                    key={inc.incident_id}
+                    type="button"
+                    onClick={() => dispatch({ type: "select", incident: inc })}
+                    className={`flex w-full items-center gap-3 p-4 text-left ${
+                      idx !== incidents.length - 1 ? "border-b border-neutral-100" : ""
+                    } ${selected?.incident_id === inc.incident_id ? "bg-neutral-50" : "hover:bg-neutral-50"}`}
+                  >
+                    <TypeIcon type={inc.type} />
+                    <div className="min-w-0 flex-1">
+                      <div className="flex items-center gap-2">
+                        <span className="font-mono text-xs text-neutral-400">
+                          {inc.incident_id.slice(0, 8).toUpperCase()}
+                        </span>
+                        <span className={`text-xs font-semibold ${PRIORITY_COLOR[inc.priority]}`}>
+                          ▲ {PRIORITY_LABEL[inc.priority]}
+                        </span>
+                      </div>
+                      <p className="truncate text-sm font-medium text-neutral-900">{inc.item_title}</p>
+                      <p className="truncate text-xs text-neutral-500">
+                        {inc.reporter_name} → {inc.reported_name} ·{" "}
+                        {inc.reported_at
+                          ? new Date(inc.reported_at).toLocaleDateString("es-ES", {
+                              day: "numeric",
+                              month: "short",
+                            })
+                          : "—"}
+                      </p>
+                    </div>
+                    <Badge color={STATUS_COLOR[inc.status]}>{STATUS_LABELS[inc.status]}</Badge>
+                  </button>
+                ))}
+              </Card>
+            )}
+
+            {total > 20 && !loading && (
+              <div className="flex justify-between px-1 text-sm text-neutral-500">
+                <span>
+                  {(page - 1) * 20 + 1}-{Math.min(page * 20, total)} de {total}
+                </span>
+                <div className="flex gap-1">
+                  <button
+                    type="button"
+                    disabled={page <= 1}
+                    onClick={() => setPage((p) => p - 1)}
+                    aria-label="Página anterior"
+                    className="rounded px-2 py-1 hover:bg-neutral-100 disabled:opacity-40"
+                  >
+                    ‹
+                  </button>
+                  <button
+                    type="button"
+                    disabled={page * 20 >= total}
+                    onClick={() => setPage((p) => p + 1)}
+                    aria-label="Página siguiente"
+                    className="rounded px-2 py-1 hover:bg-neutral-100 disabled:opacity-40"
+                  >
+                    ›
+                  </button>
+                </div>
               </div>
+            )}
+          </div>
+
+          {/* Detail panel */}
+          {selected && (
+            <div className="xl:col-span-2">
+              <DetailPanel
+                incident={selected}
+                onStatusUpdate={handleStatusUpdate}
+                onPriorityUpdate={handlePriorityUpdate}
+              />
             </div>
           )}
         </div>
-
-        {/* Detail panel */}
-        {selected && (
-          <div className="xl:col-span-2">
-            <DetailPanel
-              incident={selected}
-              onStatusUpdate={handleStatusUpdate}
-              onPriorityUpdate={handlePriorityUpdate}
-            />
-          </div>
-        )}
-      </div>
+      )}
     </div>
   );
 }

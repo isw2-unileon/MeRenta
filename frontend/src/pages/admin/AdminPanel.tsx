@@ -53,7 +53,7 @@ const NAV: NavItem[] = [
   { id: "operations", label: "Operaciones", Icon: Repeat },
   { id: "users", label: "Usuarios", Icon: Users },
   { id: "products", label: "Productos", Icon: Package },
-  { id: "payments", label: "Pagos y disputas", Icon: CreditCard },
+  { id: "payments", label: "Transacciones", Icon: CreditCard },
   { id: "verification", label: "Verificación", Icon: ShieldCheck, badge: 23 },
   { id: "settings", label: "Auditoría y ajustes", Icon: SettingsIcon },
 ];

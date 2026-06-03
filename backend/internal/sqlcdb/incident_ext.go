@@ -225,6 +225,10 @@ const countOpenIncidents = `
 SELECT COUNT(*) FROM incident WHERE incident_status = 'open'
 `
 
+const countUnderReviewIncidents = `
+SELECT COUNT(*) FROM incident WHERE incident_status = 'under_review'
+`
+
 // ── Methods ───────────────────────────────────────────────────────────────────
 
 // CreateIncident opens a new incident and returns its generated ID.
@@ -309,6 +313,13 @@ func (q *Queries) UpdateIncidentPriority(ctx context.Context, id uuid.UUID, prio
 func (q *Queries) CountOpenIncidents(ctx context.Context) (int64, error) {
 	var n int64
 	err := q.db.QueryRow(ctx, countOpenIncidents).Scan(&n)
+	return n, err
+}
+
+// CountUnderReviewIncidents returns the number of incidents currently under review.
+func (q *Queries) CountUnderReviewIncidents(ctx context.Context) (int64, error) {
+	var n int64
+	err := q.db.QueryRow(ctx, countUnderReviewIncidents).Scan(&n)
 	return n, err
 }
 
