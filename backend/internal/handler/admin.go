@@ -3,7 +3,9 @@ package handler
 
 import (
 	"errors"
+	"log/slog"
 	"net/http"
+	"strings"
 	"time"
 
 	"github.com/gin-gonic/gin"
@@ -38,6 +40,23 @@ func (h *AdminHandler) ListUsers(c *gin.Context) {
 
 	res, err := h.svc.ListUsers(c.Request.Context(), query, status, page, limit)
 	if err != nil {
+		response.Error(c, http.StatusInternalServerError, "internal server error")
+		return
+	}
+
+	response.OK(c, http.StatusOK, res)
+}
+
+// ListProducts handles GET /api/admin/items.
+// Query params: q, page, limit. Unlike the public item list, this includes every DB item.
+func (h *AdminHandler) ListProducts(c *gin.Context) {
+	query := strings.TrimSpace(c.Query("q"))
+	page := parsePositiveInt(c.DefaultQuery("page", "1"), 1, 500)
+	limit := parsePositiveInt(c.DefaultQuery("limit", "20"), 20, 100)
+
+	res, err := h.svc.ListProducts(c.Request.Context(), query, page, limit)
+	if err != nil {
+		slog.Error("admin list products failed", "error", err)
 		response.Error(c, http.StatusInternalServerError, "internal server error")
 		return
 	}

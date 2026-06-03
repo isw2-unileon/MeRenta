@@ -194,7 +194,8 @@ func respondIncidentMutation(c *gin.Context, res *model.IncidentResponse, err er
 
 func incidentErrStatus(err error) int {
 	switch {
-	case errors.Is(err, service.ErrIncidentForbidden):
+	case errors.Is(err, service.ErrIncidentForbidden),
+		errors.Is(err, service.ErrCannotReportOwnItem):
 		return http.StatusForbidden
 	case errors.Is(err, service.ErrIncidentInvalidState),
 		errors.Is(err, service.ErrIncidentInvalidType),

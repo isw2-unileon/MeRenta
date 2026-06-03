@@ -165,6 +165,10 @@ const emptyReviewSummary: ReviewSummary = {
   distribution: {},
 };
 
+function formatRating(rating: number): string {
+  return rating.toFixed(2);
+}
+
 // ── Skeleton ─────────────────────────────────────────────────────────────────
 
 function ProductSkeleton() {
@@ -341,7 +345,7 @@ function Product() {
   const reviewSummary = state.ownerReviewSummary ?? emptyReviewSummary;
   const reporterName = user ? `${user.first_name} ${user.last_name}`.trim() || user.email : "Usuario";
   const reporterId = user?.customer_id ?? "local-product-report";
-  const ratingLabel = reviewSummary.total > 0 ? reviewSummary.average_rating.toFixed(1) : "0.0";
+  const ratingLabel = reviewSummary.total > 0 ? formatRating(reviewSummary.average_rating) : "0.00";
   const locationLabel = item ? [item.city, item.province, item.postal_code].filter(Boolean).join(", ") : "";
 
   // ── Render ─────────────────────────────────────────────────────────────────

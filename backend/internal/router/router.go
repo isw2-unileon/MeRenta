@@ -155,6 +155,9 @@ func registerAdminRoutes(api *gin.RouterGroup, adminH *handler.AdminHandler, inc
 	users.GET("", adminH.ListUsers)
 	users.PATCH("/:id/status", adminH.UpdateUserStatus)
 
+	items := admin.Group("/items")
+	items.GET("", adminH.ListProducts)
+
 	incidents := admin.Group("/incidents")
 	incidents.GET("", incidentH.AdminList)
 	incidents.GET("/:id", incidentH.AdminGet)

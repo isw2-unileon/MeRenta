@@ -22,6 +22,10 @@ function getMemberYear(registrationDate: string): number {
   return new Date(registrationDate).getFullYear();
 }
 
+function formatRating(rating: number): string {
+  return rating.toFixed(2);
+}
+
 /**
  * Card showing the listing owner's avatar, name, member-since year and rating.
  * Includes a link to the full public profile page.
@@ -37,6 +41,7 @@ function OwnerCard({ owner, rating = 0, reviewCount = 0 }: OwnerCardProps) {
   const memberYear = getMemberYear(owner.registration_date);
   // Display as "Miguel G." to match the design
   const displayName = `${owner.first_name} ${owner.last_name.charAt(0)}.`;
+  const ratingLabel = formatRating(rating);
 
   return (
     <div className="owner-card">
@@ -70,7 +75,7 @@ function OwnerCard({ owner, rating = 0, reviewCount = 0 }: OwnerCardProps) {
                 className="text-sm"
               />
               <p className="owner-rating">
-                {rating} · {reviewCount} valoraciones
+                {ratingLabel} · {reviewCount} valoraciones
               </p>
             </div>
           )}

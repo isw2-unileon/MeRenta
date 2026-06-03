@@ -14,6 +14,7 @@ import {
 import { useAuth } from "@/hooks/useAuth";
 import type { ApiResponse } from "@/types/common";
 import type { IncidentListResponse, IncidentStatus } from "@/types/incident";
+import type { SearchItemsResponse } from "@/types/item";
 import { GREEN, MINT } from "@/pages/admin/components/adminTokens";
 import { Avatar } from "@/pages/admin/components/adminUi";
 import { Dashboard } from "@/pages/admin/views/Dashboard";
@@ -51,7 +52,7 @@ const NAV: NavItem[] = [
   { id: "incidents", label: "Incidencias", Icon: AlertTriangle },
   { id: "operations", label: "Operaciones", Icon: Repeat },
   { id: "users", label: "Usuarios", Icon: Users },
-  { id: "products", label: "Productos", Icon: Package, badge: 184 },
+  { id: "products", label: "Productos", Icon: Package },
   { id: "payments", label: "Pagos y disputas", Icon: CreditCard },
   { id: "verification", label: "Verificación", Icon: ShieldCheck, badge: 23 },
   { id: "settings", label: "Auditoría y ajustes", Icon: SettingsIcon },
@@ -82,12 +83,20 @@ async function fetchIncidentTotal(status: IncidentStatus): Promise<number> {
 }
 
 async function fetchUnresolvedIncidentTotal(): Promise<number> {
-  const totals = await Promise.all([
-    fetchIncidentTotal("open"),
-    fetchIncidentTotal("reviewing"),
-    fetchIncidentTotal("escalated"),
-  ]);
+  const totals = await Promise.all([fetchIncidentTotal("open"), fetchIncidentTotal("under_review")]);
   return totals.reduce((sum, total) => sum + total, 0);
+}
+
+async function fetchProductTotal(): Promise<number> {
+  const params = new URLSearchParams({ page: "1", limit: "1" });
+  const res = await fetch(`/api/admin/items?${params.toString()}`, {
+    credentials: "include",
+  });
+  const json = (await res.json()) as ApiResponse<SearchItemsResponse>;
+  if (!res.ok || !json.success || !json.data) {
+    throw new Error(json.error ?? "Error al cargar productos");
+  }
+  return json.data.total;
 }
 
 // ── Sidebar ────────────────────────────────────────────────────────────────────
@@ -180,12 +189,18 @@ function Sidebar({ active, navItems, onSelect, userEmail, userName }: SidebarPro
 function AdminPanel() {
   const [active, setActive] = useState<SectionId>("dashboard");
   const [incidentBadge, setIncidentBadge] = useState<number | null>(null);
+  const [productBadge, setProductBadge] = useState<number | null>(null);
   const { user } = useAuth();
 
   const View = VIEWS[active];
   const navItems = useMemo(
-    () => NAV.map((item) => (item.id === "incidents" ? { ...item, badge: incidentBadge } : item)),
-    [incidentBadge]
+    () =>
+      NAV.map((item) => {
+        if (item.id === "incidents") return { ...item, badge: incidentBadge };
+        if (item.id === "products") return { ...item, badge: productBadge };
+        return item;
+      }),
+    [incidentBadge, productBadge]
   );
   const current = navItems.find((n) => n.id === active) ?? DEFAULT_NAV_ITEM;
 
@@ -197,11 +212,21 @@ function AdminPanel() {
       .then((total) => setIncidentBadge(total))
       .catch(() => setIncidentBadge(0));
   }, []);
+  const refreshProductBadge = useCallback(() => {
+    fetchProductTotal()
+      .then((total) => setProductBadge(total))
+      .catch(() => setProductBadge(0));
+  }, []);
   const refreshIncidentBadgeRef = useRef(refreshIncidentBadge);
+  const refreshProductBadgeRef = useRef(refreshProductBadge);
 
   useEffect(() => {
     refreshIncidentBadgeRef.current = refreshIncidentBadge;
   }, [refreshIncidentBadge]);
+
+  useEffect(() => {
+    refreshProductBadgeRef.current = refreshProductBadge;
+  }, [refreshProductBadge]);
 
   useEffect(() => {
     const handleIncidentBadgeRefresh = () => {
@@ -215,6 +240,21 @@ function AdminPanel() {
       window.removeEventListener("focus", handleIncidentBadgeRefresh);
       window.removeEventListener("storage", handleIncidentBadgeRefresh);
       window.removeEventListener("merenta:incidents-updated", handleIncidentBadgeRefresh);
+    };
+  }, []);
+
+  useEffect(() => {
+    const handleProductBadgeRefresh = () => {
+      refreshProductBadgeRef.current();
+    };
+    handleProductBadgeRefresh();
+    window.addEventListener("focus", handleProductBadgeRefresh);
+    window.addEventListener("storage", handleProductBadgeRefresh);
+    window.addEventListener("merenta:products-updated", handleProductBadgeRefresh);
+    return () => {
+      window.removeEventListener("focus", handleProductBadgeRefresh);
+      window.removeEventListener("storage", handleProductBadgeRefresh);
+      window.removeEventListener("merenta:products-updated", handleProductBadgeRefresh);
     };
   }, []);
 

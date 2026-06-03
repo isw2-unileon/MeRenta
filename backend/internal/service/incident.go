@@ -33,6 +33,8 @@ var (
 	ErrIncidentRentalUnavailable = errors.New("rental record not available for this booking")
 	// ErrProductReportInvalidType is returned when an unknown product report type is supplied.
 	ErrProductReportInvalidType = errors.New("invalid product report type")
+	// ErrCannotReportOwnItem prevents owners from reporting their own listings.
+	ErrCannotReportOwnItem = errors.New("cannot report your own item")
 )
 
 // incidentQuerier is the minimal DB interface needed by IncidentService.
@@ -126,11 +128,15 @@ func (s *IncidentService) CreateProductReport(
 		return nil, err
 	}
 
-	if _, err := s.q.GetItemByID(ctx, itemID); err != nil {
+	item, err := s.q.GetItemByID(ctx, itemID)
+	if err != nil {
 		if errors.Is(err, pgx.ErrNoRows) {
 			return nil, ErrIncidentForbidden
 		}
 		return nil, err
+	}
+	if item.OwnerID == reporterID {
+		return nil, ErrCannotReportOwnItem
 	}
 
 	incidentID, err := s.q.CreateProductIncident(ctx, sqlcdb.CreateProductIncidentParams{

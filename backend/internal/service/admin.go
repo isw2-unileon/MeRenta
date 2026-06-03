@@ -11,6 +11,7 @@ import (
 	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgtype"
 
+	"github.com/isw2-unileon/MeRenta/backend/internal/model"
 	"github.com/isw2-unileon/MeRenta/backend/internal/sqlcdb"
 )
 
@@ -23,6 +24,7 @@ type adminQuerier interface {
 	ListCustomers(ctx context.Context, arg sqlcdb.ListCustomersParams) ([]sqlcdb.ListCustomersRow, error)
 	ListCustomersByStatus(ctx context.Context, arg sqlcdb.ListCustomersByStatusParams) ([]sqlcdb.ListCustomersByStatusRow, error)
 	SearchCustomers(ctx context.Context, arg sqlcdb.SearchCustomersParams) ([]sqlcdb.SearchCustomersRow, error)
+	SearchItemCards(ctx context.Context, arg sqlcdb.SearchItemCardsParams) ([]sqlcdb.SearchItemCardsRow, error)
 	UpdateCustomerStatus(ctx context.Context, arg sqlcdb.UpdateCustomerStatusParams) (sqlcdb.UpdateCustomerStatusRow, error)
 	SetCustomerSuspendedUntil(ctx context.Context, customerID uuid.UUID, until pgtype.Timestamptz) error
 }
@@ -75,6 +77,36 @@ func (s *AdminService) ListUsers(
 	default:
 		return s.listAll(ctx, page, limit, offset, lim)
 	}
+}
+
+// ListProducts returns all item rows visible to admins, including unavailable and retired listings.
+func (s *AdminService) ListProducts(ctx context.Context, query string, page, limit int) (*model.SearchItemsResponse, error) {
+	offset := (page - 1) * limit
+	rows, err := s.q.SearchItemCards(ctx, sqlcdb.SearchItemCardsParams{
+		RequireAvailable: false,
+		Query:            query,
+		Sort:             "recent",
+		Limit:            limit,
+		Offset:           offset,
+	})
+	if err != nil {
+		return nil, err
+	}
+
+	items, total, err := searchItemCardRowsToResponses(rows)
+	if err != nil {
+		return nil, err
+	}
+
+	return &model.SearchItemsResponse{
+		Items:           items,
+		Total:           total,
+		Page:            page,
+		Limit:           limit,
+		CategoryCounts:  map[string]int64{},
+		CityCounts:      map[string]int64{},
+		ConditionCounts: map[string]int64{},
+	}, nil
 }
 
 func (s *AdminService) listByQuery(

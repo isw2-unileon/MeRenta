@@ -82,6 +82,10 @@ function fmtPrice(value: number): string {
   return value.toFixed(2).replace(".", ",");
 }
 
+function formatRating(value: number): string {
+  return value.toFixed(2);
+}
+
 // ── BookingCard local state ───────────────────────────────────────────────────
 
 interface BookingCardFormState {
@@ -300,7 +304,7 @@ function ProductReportModal({ itemId, onClose, onSuccess }: ProductReportModalPr
  * @param selectedEnd Rental end date or null.
  * @param minDays Minimum rental days configured for the listing.
  * @param maxDay Maximum rental days configured for the listing. Null means unlimited.
- * @param isOwner Whether the authenticated user owns this listing. If true, the "Enviar mensaje" button is hidden.
+ * @param isOwner Whether the authenticated user owns this listing. If true, owner-only actions are hidden.
  * @param onDateChange Callback fired when the user changes a date from the booking card inputs. Receives the new start and end dates (either may be null).
  * @returns Booking card JSX.
  */
@@ -354,6 +358,7 @@ function BookingCard({
   const isAboveMaximum = days > 0 && maxDay !== null && maxDay !== undefined && days > maxDay;
   const canBook = days > 0 && !isBelowMinimum && !isAboveMaximum;
   const periodHint = maxDay ? `Min. ${minDays} días · Max. ${maxDay} días` : `Min. ${minDays} días`;
+  const ratingLabel = formatRating(rating);
 
   const handleBook = () => {
     if (!canBook || !selectedStart || !selectedEnd) return;
@@ -396,7 +401,7 @@ function BookingCard({
               max={1}
               className="text-base"
             />
-            <span className="booking-rating font-medium">{rating}</span>
+            <span className="booking-rating font-medium">{ratingLabel}</span>
             <span className="booking-rating">({reviewCount})</span>
           </div>
         )}
@@ -515,21 +520,25 @@ function BookingCard({
         reembolso completo.
       </p>
 
-      <hr className="divider-booking my-4" />
+      {!isOwner && (
+        <>
+          <hr className="divider-booking my-4" />
 
-      {/* Report link */}
-      <button
-        type="button"
-        className="booking-report flex w-full items-center justify-center gap-1.5 bg-transparent p-0 text-center"
-        onClick={() => {
-          setReportSuccess(false);
-          setReportOpen(true);
-        }}
-      >
-        <AlertTriangle size={14} /> Reportar producto
-      </button>
+          {/* Report link */}
+          <button
+            type="button"
+            className="booking-report flex w-full items-center justify-center gap-1.5 bg-transparent p-0 text-center"
+            onClick={() => {
+              setReportSuccess(false);
+              setReportOpen(true);
+            }}
+          >
+            <AlertTriangle size={14} /> Reportar producto
+          </button>
+        </>
+      )}
 
-      {reportOpen && (
+      {!isOwner && reportOpen && (
         <ProductReportModal
           itemId={itemId}
           onClose={() => setReportOpen(false)}
