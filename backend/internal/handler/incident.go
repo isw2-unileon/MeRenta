@@ -45,6 +45,31 @@ func (h *IncidentHandler) Create(c *gin.Context) {
 	response.OK(c, http.StatusCreated, res)
 }
 
+// CreateProductReport handles POST /api/items/:id/reports.
+func (h *IncidentHandler) CreateProductReport(c *gin.Context) {
+	reporterID, ok := getCustomerID(c)
+	if !ok {
+		return
+	}
+	itemID, ok := parseUUIDParam(c)
+	if !ok {
+		return
+	}
+
+	var req model.CreateProductReportRequest
+	if err := c.ShouldBindJSON(&req); err != nil {
+		response.Error(c, http.StatusBadRequest, formatBindError(err))
+		return
+	}
+
+	res, err := h.svc.CreateProductReport(c.Request.Context(), reporterID, itemID, req)
+	if err != nil {
+		response.Error(c, incidentErrStatus(err), err.Error())
+		return
+	}
+	response.OK(c, http.StatusCreated, res)
+}
+
 // ListMine handles GET /api/incidents/mine.
 func (h *IncidentHandler) ListMine(c *gin.Context) {
 	reporterID, ok := getCustomerID(c)
@@ -123,7 +148,8 @@ func incidentErrStatus(err error) int {
 		return http.StatusForbidden
 	case errors.Is(err, service.ErrIncidentInvalidState),
 		errors.Is(err, service.ErrIncidentInvalidType),
-		errors.Is(err, service.ErrIncidentRentalUnavailable):
+		errors.Is(err, service.ErrIncidentRentalUnavailable),
+		errors.Is(err, service.ErrProductReportInvalidType):
 		return http.StatusUnprocessableEntity
 	default:
 		return http.StatusInternalServerError

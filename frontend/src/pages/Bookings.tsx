@@ -74,9 +74,16 @@ async function patchBookingStatus(bookingId: string, action: "accept" | "reject"
 // ── Incident helpers ──────────────────────────────────────────────────────────
 
 const INCIDENT_TYPE_LABELS: Record<IncidentType, string> = {
-  product: "Problema con el producto",
-  user: "Problema con el usuario",
+  damage: "Producto danado",
+  late_return: "Devolucion tardia",
+  item_mismatch: "Producto no coincide",
+  not_delivered: "No entregado",
+  other: "Otra incidencia",
+  not_available: "No disponible",
+  forbidden_item: "Producto no permitido",
 };
+
+const BOOKING_INCIDENT_TYPES: IncidentType[] = ["damage", "late_return", "item_mismatch", "not_delivered", "other"];
 
 async function submitIncident(bookingId: string, type: IncidentType, description: string): Promise<void> {
   const res = await fetch("/api/incidents", {
@@ -100,7 +107,7 @@ interface IncidentModalProps {
 }
 
 function IncidentModal({ booking, onClose, onSuccess }: IncidentModalProps) {
-  const [type, setType] = useState<IncidentType>("product");
+  const [type, setType] = useState<IncidentType>("damage");
   const [description, setDescription] = useState("");
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
@@ -149,8 +156,8 @@ function IncidentModal({ booking, onClose, onSuccess }: IncidentModalProps) {
           {/* Type */}
           <div>
             <p className="mb-1.5 text-sm font-medium text-neutral-700">Tipo de incidencia</p>
-            <div className="grid grid-cols-2 gap-2">
-              {(["product", "user"] as IncidentType[]).map((t) => (
+            <div className="grid grid-cols-1 gap-2 sm:grid-cols-2">
+              {BOOKING_INCIDENT_TYPES.map((t) => (
                 <button
                   key={t}
                   type="button"

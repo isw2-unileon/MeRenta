@@ -29,6 +29,8 @@ var (
 	ErrIncidentInvalidStatus = errors.New("invalid incident status")
 	// ErrIncidentRentalUnavailable is returned when a rental record could not be resolved.
 	ErrIncidentRentalUnavailable = errors.New("rental record not available for this booking")
+	// ErrProductReportInvalidType is returned when an unknown product report type is supplied.
+	ErrProductReportInvalidType = errors.New("invalid product report type")
 )
 
 // incidentQuerier is the minimal DB interface needed by IncidentService.
@@ -40,6 +42,8 @@ type incidentQuerier interface {
 	ListIncidentsByReporter(ctx context.Context, reporterID uuid.UUID, limit, offset int32) ([]sqlcdb.IncidentRow, error)
 	ListIncidentsAdmin(ctx context.Context, arg sqlcdb.ListIncidentsAdminParams) ([]sqlcdb.IncidentRow, error)
 	UpdateIncidentStatus(ctx context.Context, id uuid.UUID, status sqlcdb.IncidentStatus) (sqlcdb.IncidentStatus, error)
+	GetItemByID(ctx context.Context, itemID uuid.UUID) (sqlcdb.GetItemByIDRow, error)
+	CreateProductIncident(ctx context.Context, arg sqlcdb.CreateProductIncidentParams) (uuid.UUID, error)
 }
 
 // IncidentService handles the incident use-cases.
@@ -92,6 +96,44 @@ func (s *IncidentService) Create(
 		IncidentType:   itype,
 		Description:    req.Description,
 		AssociatedCost: cost,
+	})
+	if err != nil {
+		return nil, err
+	}
+
+	row, err := s.q.GetIncidentByID(ctx, incidentID)
+	if err != nil {
+		return nil, err
+	}
+	resp := toIncidentResponse(row)
+	return &resp, nil
+}
+
+// CreateProductReport stores a product report that is not tied to a booking.
+func (s *IncidentService) CreateProductReport(
+	ctx context.Context,
+	reporterID uuid.UUID,
+	itemID uuid.UUID,
+	req model.CreateProductReportRequest,
+) (*model.IncidentResponse, error) {
+	incidentType, priority, err := parseProductReportType(req.Type)
+	if err != nil {
+		return nil, err
+	}
+
+	if _, err := s.q.GetItemByID(ctx, itemID); err != nil {
+		if errors.Is(err, pgx.ErrNoRows) {
+			return nil, ErrIncidentForbidden
+		}
+		return nil, err
+	}
+
+	incidentID, err := s.q.CreateProductIncident(ctx, sqlcdb.CreateProductIncidentParams{
+		ItemID:       itemID,
+		ReporterID:   reporterID,
+		IncidentType: incidentType,
+		Description:  req.Description,
+		Priority:     priority,
 	})
 	if err != nil {
 		return nil, err
@@ -189,10 +231,30 @@ func (s *IncidentService) authoriseReporter(b sqlcdb.BookingDetailRow, reporterI
 
 func parseIncidentType(s string) (sqlcdb.IncidentType, error) {
 	switch sqlcdb.IncidentType(s) {
-	case sqlcdb.IncidentTypeProduct, sqlcdb.IncidentTypeUser:
+	case sqlcdb.IncidentTypeDamage, sqlcdb.IncidentTypeLateReturn,
+		sqlcdb.IncidentTypeItemMismatch, sqlcdb.IncidentTypeNotDelivered,
+		sqlcdb.IncidentTypeOther, sqlcdb.IncidentTypeNotAvailable,
+		sqlcdb.IncidentTypeForbiddenItem:
 		return sqlcdb.IncidentType(s), nil
 	}
 	return "", ErrIncidentInvalidType
+}
+
+func parseProductReportType(s string) (sqlcdb.IncidentType, string, error) {
+	incidentType, err := parseIncidentType(s)
+	if err != nil {
+		return "", "", ErrProductReportInvalidType
+	}
+	switch incidentType {
+	case sqlcdb.IncidentTypeItemMismatch:
+		return incidentType, "low", nil
+	case sqlcdb.IncidentTypeNotAvailable, sqlcdb.IncidentTypeOther:
+		return incidentType, "medium", nil
+	case sqlcdb.IncidentTypeDamage, sqlcdb.IncidentTypeForbiddenItem:
+		return incidentType, "high", nil
+	default:
+		return "", "", ErrProductReportInvalidType
+	}
 }
 
 func parseIncidentStatus(s string) (sqlcdb.IncidentStatus, error) {

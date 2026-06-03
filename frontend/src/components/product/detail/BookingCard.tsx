@@ -4,7 +4,6 @@ import { AlertTriangle, X } from "lucide-react";
 
 import { ProductCalendar } from "@/components/product/detail/ProductCalendar";
 import { StarRating } from "@/components/product/detail/StarRating";
-import { PRODUCT_REPORTS_STORAGE_KEY } from "@/constants/storageKeys";
 import type { ApiResponse } from "@/types/common";
 
 /** Fixed service fee applied to every rental (EUR). */
@@ -16,11 +15,11 @@ const INSURANCE_DAILY_RATE = 2.3;
 interface BookingCardProps {
   /** The item UUID, used to build the checkout URL. */
   itemId: string;
-  /** Human-readable listing title, stored with local product reports for admin review. */
+  /** Human-readable listing title. */
   itemTitle: string;
-  /** Name of the user filing a local product report. */
+  /** Name of the user viewing the listing. */
   reporterName: string;
-  /** User id of the customer filing a local product report. */
+  /** User id of the customer viewing the listing. */
   reporterId: string;
   /** Base rental price per day in EUR. */
   pricePerDay: number;
@@ -51,36 +50,14 @@ interface ConversationResponse {
   conversation_id: string;
 }
 
-type ProductIncidentType = "misleading" | "damaged" | "prohibited" | "unavailable" | "other";
-type ProductIncidentPriority = "low" | "medium" | "high";
-
-interface StoredProductReport {
-  report_id: string;
-  item_id: string;
-  item_title: string;
-  reporter_id: string;
-  reporter_name: string;
-  type: ProductIncidentType;
-  priority: ProductIncidentPriority;
-  description: string;
-  status: "open" | "reviewing" | "escalated" | "resolved";
-  reported_at: string;
-}
+type ProductIncidentType = "item_mismatch" | "damage" | "forbidden_item" | "not_available" | "other";
 
 const PRODUCT_INCIDENT_LABELS: Record<ProductIncidentType, string> = {
-  misleading: "Informacion incorrecta",
-  damaged: "Producto en mal estado",
-  prohibited: "Producto no permitido",
-  unavailable: "No disponible",
+  item_mismatch: "Informacion incorrecta",
+  damage: "Producto en mal estado",
+  forbidden_item: "Producto no permitido",
+  not_available: "No disponible",
   other: "Otra incidencia",
-};
-
-const PRODUCT_INCIDENT_PRIORITY: Record<ProductIncidentType, ProductIncidentPriority> = {
-  misleading: "low",
-  unavailable: "medium",
-  other: "medium",
-  damaged: "high",
-  prohibited: "high",
 };
 
 /** Formats a Date as "YYYY-MM-DD" (the value format required by input[type="date"]). */
@@ -178,49 +155,49 @@ async function startConversation(itemId: string): Promise<ConversationResponse> 
 
 interface ProductReportModalProps {
   itemId: string;
-  itemTitle: string;
-  reporterId: string;
-  reporterName: string;
   onClose: () => void;
   onSuccess: () => void;
 }
 
 function ProductReportModal({
   itemId,
-  itemTitle,
-  reporterId,
-  reporterName,
   onClose,
   onSuccess,
 }: ProductReportModalProps) {
-  const [incidentType, setIncidentType] = useState<ProductIncidentType>("misleading");
+  const [incidentType, setIncidentType] = useState<ProductIncidentType>("item_mismatch");
   const [description, setDescription] = useState("");
   const [error, setError] = useState("");
+  const [submitting, setSubmitting] = useState(false);
 
-  function handleSubmit(e: React.FormEvent) {
+  async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
-    const cleanReporterName = reporterName.trim() || "Usuario";
     if (description.trim().length < 10) {
       setError("Describe la incidencia con al menos 10 caracteres.");
       return;
     }
 
-    const report: StoredProductReport = {
-      report_id: crypto.randomUUID(),
-      item_id: itemId,
-      item_title: itemTitle,
-      reporter_id: reporterId,
-      reporter_name: cleanReporterName,
-      type: incidentType,
-      priority: PRODUCT_INCIDENT_PRIORITY[incidentType],
-      description: description.trim(),
-      status: "open",
-      reported_at: new Date().toISOString(),
-    };
-
-    const storedReports = JSON.parse(localStorage.getItem(PRODUCT_REPORTS_STORAGE_KEY) ?? "[]") as StoredProductReport[];
-    localStorage.setItem(PRODUCT_REPORTS_STORAGE_KEY, JSON.stringify([report, ...storedReports]));
-    onSuccess();
+    setSubmitting(true);
+    setError("");
+    try {
+      const res = await fetch(`/api/items/${itemId}/reports`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        credentials: "include",
+        body: JSON.stringify({
+          type: incidentType,
+          description: description.trim(),
+        }),
+      });
+      const json = (await res.json()) as ApiResponse<unknown>;
+      if (!res.ok || !json.success) {
+        throw new Error(json.error ?? "Error al guardar la incidencia");
+      }
+      onSuccess();
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Error al guardar la incidencia");
+    } finally {
+      setSubmitting(false);
+    }
   }
 
   return (
@@ -295,8 +272,9 @@ function ProductReportModal({
             <button
               type="submit"
               className="btn-booking flex-1"
+              disabled={submitting}
             >
-              Enviar reporte
+              {submitting ? "Enviando..." : "Enviar reporte"}
             </button>
             <button
               type="button"
@@ -332,9 +310,6 @@ function ProductReportModal({
  */
 function BookingCard({
   itemId,
-  itemTitle,
-  reporterId,
-  reporterName,
   pricePerDay,
   rating,
   reviewCount,
@@ -561,9 +536,6 @@ function BookingCard({
       {reportOpen && (
         <ProductReportModal
           itemId={itemId}
-          itemTitle={itemTitle}
-          reporterId={reporterId}
-          reporterName={reporterName}
           onClose={() => setReportOpen(false)}
           onSuccess={() => {
             setReportOpen(false);

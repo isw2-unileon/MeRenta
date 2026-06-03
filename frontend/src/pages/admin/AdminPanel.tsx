@@ -12,7 +12,6 @@ import {
 } from "lucide-react";
 
 import { useAuth } from "@/hooks/useAuth";
-import { PRODUCT_REPORTS_STORAGE_KEY } from "@/constants/storageKeys";
 import type { ApiResponse } from "@/types/common";
 import type { IncidentListResponse, IncidentStatus } from "@/types/incident";
 import { GREEN, MINT } from "@/pages/admin/components/adminTokens";
@@ -68,27 +67,6 @@ const VIEWS: Record<SectionId, React.ComponentType> = {
   verification: Verification,
   settings: SettingsView,
 };
-
-interface StoredProductReport {
-  status?: IncidentStatus;
-}
-
-function isStoredProductReport(value: unknown): value is StoredProductReport {
-  return typeof value === "object" && value !== null;
-}
-
-function getStoredProductReportCount(): number {
-  try {
-    const value = localStorage.getItem(PRODUCT_REPORTS_STORAGE_KEY);
-    if (!value) return 0;
-    const parsed: unknown = JSON.parse(value);
-    return Array.isArray(parsed)
-      ? parsed.filter((report) => isStoredProductReport(report) && report.status !== "resolved").length
-      : 0;
-  } catch {
-    return 0;
-  }
-}
 
 async function fetchIncidentTotal(status: IncidentStatus): Promise<number> {
   const params = new URLSearchParams({ page: "1", limit: "1" });
@@ -215,10 +193,9 @@ function AdminPanel() {
   const userEmail = user?.email ?? "";
 
   const refreshIncidentBadge = useCallback(() => {
-    const localCount = getStoredProductReportCount();
     fetchUnresolvedIncidentTotal()
-      .then((total) => setIncidentBadge(total + localCount))
-      .catch(() => setIncidentBadge(localCount));
+      .then((total) => setIncidentBadge(total))
+      .catch(() => setIncidentBadge(0));
   }, []);
   const refreshIncidentBadgeRef = useRef(refreshIncidentBadge);
 

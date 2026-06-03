@@ -2,9 +2,7 @@ import { useCallback, useEffect, useReducer, useRef, useState } from "react";
 import { AlertTriangle, Check, ChevronDown, Filter, Package, RotateCcw, Users } from "lucide-react";
 
 import type { ApiResponse } from "@/types/common";
-import type { IncidentListResponse, IncidentPriority, IncidentResponse, IncidentStatus } from "@/types/incident";
-import type { ItemResponse } from "@/types/item";
-import { PRODUCT_REPORTS_STORAGE_KEY } from "@/constants/storageKeys";
+import type { IncidentListResponse, IncidentResponse, IncidentStatus } from "@/types/incident";
 import { GREEN } from "@/pages/admin/components/adminTokens";
 import { Badge, Card } from "@/pages/admin/components/adminUi";
 
@@ -36,129 +34,12 @@ const PRIORITY_LABEL: Record<string, string> = {
   low: "baja",
 };
 
-interface StoredProductReport {
-  report_id?: string;
-  item_id: string;
-  item_title?: string;
-  reporter_id?: string;
-  reporter_name?: string;
-  type: string;
-  priority?: IncidentPriority;
-  description: string;
-  status?: IncidentStatus;
-  reported_at: string;
-}
-
-const PRODUCT_INCIDENT_PRIORITY: Record<string, IncidentPriority> = {
-  misleading: "low",
-  unavailable: "medium",
-  other: "medium",
-  damaged: "high",
-  prohibited: "high",
-};
-
 function fmtIncidentDate(iso: string): string {
   return new Date(iso).toLocaleDateString("es-ES", {
     day: "numeric",
     month: "short",
     year: "numeric",
   });
-}
-
-function isLocalProductIncident(id: string): boolean {
-  return id.startsWith("product-report-");
-}
-
-function isStoredProductReport(value: unknown): value is StoredProductReport {
-  if (typeof value !== "object" || value === null) return false;
-  const report = value as Partial<StoredProductReport>;
-  return (
-    typeof report.item_id === "string" &&
-    typeof report.description === "string" &&
-    typeof report.reported_at === "string"
-  );
-}
-
-function readStoredProductReports(): StoredProductReport[] {
-  try {
-    const value = localStorage.getItem(PRODUCT_REPORTS_STORAGE_KEY);
-    if (!value) return [];
-    const parsed: unknown = JSON.parse(value);
-    return Array.isArray(parsed) ? parsed.filter(isStoredProductReport) : [];
-  } catch {
-    return [];
-  }
-}
-
-async function fetchItemTitle(itemId: string): Promise<string | null> {
-  try {
-    const res = await fetch(`/api/items/${itemId}`, { credentials: "include" });
-    const json = (await res.json()) as ApiResponse<ItemResponse>;
-    if (!res.ok || !json.success || !json.data) return null;
-    return json.data.title;
-  } catch {
-    return null;
-  }
-}
-
-async function getEnrichedStoredProductReports(): Promise<StoredProductReport[]> {
-  const reports = readStoredProductReports();
-  const enrichedReports = await Promise.all(
-    reports.map(async (report) => {
-      if (report.item_title && report.item_title.trim() !== "") return report;
-      const itemTitle = await fetchItemTitle(report.item_id);
-      return itemTitle ? { ...report, item_title: itemTitle } : report;
-    })
-  );
-  localStorage.setItem(PRODUCT_REPORTS_STORAGE_KEY, JSON.stringify(enrichedReports));
-  return enrichedReports;
-}
-
-function storedReportToIncident(report: StoredProductReport, index: number): IncidentResponse {
-  const reportedAt = report.reported_at;
-  const id = report.report_id ?? `${report.item_id}-${reportedAt}-${index}`;
-
-  return {
-    incident_id: `product-report-${id}`,
-    rental_id: "",
-    reporter_id: report.reporter_id ?? "local-product-report",
-    reporter_name: report.reporter_name ?? "Usuario",
-    reported_id: report.item_id,
-    reported_name: report.item_title ?? "Producto reportado",
-    booking_id: "",
-    item_id: report.item_id,
-    item_title: report.item_title ?? "Producto reportado",
-    start_date: reportedAt,
-    end_date: reportedAt,
-    type: "product",
-    description: report.description,
-    status: report.status ?? "open",
-    priority: report.priority ?? PRODUCT_INCIDENT_PRIORITY[report.type] ?? "medium",
-    associated_cost: 0,
-    reported_at: reportedAt,
-  };
-}
-
-async function getStoredProductIncidents(typeFilter: string, statusFilter: string): Promise<IncidentResponse[]> {
-  if (typeFilter && typeFilter !== "product") return [];
-  const reports = await getEnrichedStoredProductReports();
-  return reports.reduce<IncidentResponse[]>((incidents, report, index) => {
-    const incident = storedReportToIncident(report, index);
-    if (!statusFilter || incident.status === statusFilter) {
-      incidents.push(incident);
-    }
-    return incidents;
-  }, []);
-}
-
-function updateStoredProductReportStatus(incidentId: string, status: IncidentStatus): void {
-  const reportId = incidentId.replace(/^product-report-/, "");
-  const reports = readStoredProductReports();
-  const nextReports = reports.map((report, index) => {
-    const fallbackId = `${report.item_id}-${report.reported_at}-${index}`;
-    return (report.report_id ?? fallbackId) === reportId ? { ...report, status } : report;
-  });
-  localStorage.setItem(PRODUCT_REPORTS_STORAGE_KEY, JSON.stringify(nextReports));
 }
 
 function notifyIncidentsChanged(): void {
@@ -173,13 +54,10 @@ async function loadIncidents(
   incidents: IncidentResponse[];
   total: number;
 }> {
-  const [data, storedIncidents] = await Promise.all([
-    fetchIncidents(typeFilter, statusFilter, page),
-    getStoredProductIncidents(typeFilter, statusFilter),
-  ]);
+  const data = await fetchIncidents(typeFilter, statusFilter, page);
   return {
-    incidents: [...storedIncidents, ...data.items],
-    total: data.total + storedIncidents.length,
+    incidents: data.items,
+    total: data.total,
   };
 }
 
@@ -270,8 +148,22 @@ async function patchStatus(id: string, status: IncidentStatus): Promise<void> {
 
 // ── Sub-components ────────────────────────────────────────────────────────────
 
+const INCIDENT_TYPE_LABELS: Record<string, string> = {
+  damage: "Producto danado",
+  late_return: "Devolucion tardia",
+  item_mismatch: "Producto no coincide",
+  not_delivered: "No entregado",
+  other: "Otra incidencia",
+  not_available: "No disponible",
+  forbidden_item: "Producto no permitido",
+};
+
+function isProductIncident(type: string): boolean {
+  return ["damage", "item_mismatch", "not_available", "forbidden_item"].includes(type);
+}
+
 function TypeIcon({ type }: { type: string }) {
-  const isProduct = type === "product";
+  const isProduct = isProductIncident(type);
   return (
     <div
       className={`flex h-10 w-10 items-center justify-center rounded-lg ${
@@ -367,7 +259,7 @@ function DetailPanel({ incident, onStatusUpdate }: DetailPanelProps) {
       </div>
       <h3 className="mt-1 text-lg leading-snug font-bold text-neutral-900">{incident.item_title}</h3>
       <p className="mt-0.5 text-sm text-neutral-500">
-        {incident.type === "product" ? "Incidencia de producto" : "Incidencia de usuario"}
+        {INCIDENT_TYPE_LABELS[incident.type] ?? "Incidencia"}
       </p>
 
       <div className="mt-4 grid grid-cols-2 gap-3 text-sm">
@@ -376,7 +268,7 @@ function DetailPanel({ incident, onStatusUpdate }: DetailPanelProps) {
           <p className="font-medium text-neutral-800">{incident.reporter_name}</p>
         </div>
         <div className="rounded-lg bg-neutral-50 p-3">
-          <p className="text-xs text-neutral-400">{incident.type === "product" ? "Producto reportado" : "Reportado"}</p>
+          <p className="text-xs text-neutral-400">{isProductIncident(incident.type) ? "Producto reportado" : "Reportado"}</p>
           <p className="font-medium text-neutral-800">{incident.reported_name}</p>
         </div>
         <div className="rounded-lg bg-neutral-50 p-3">
@@ -438,8 +330,13 @@ function DetailPanel({ incident, onStatusUpdate }: DetailPanelProps) {
 
 const TYPE_FILTERS = [
   { value: "", label: "Todas" },
-  { value: "product", label: "Producto" },
-  { value: "user", label: "Usuario" },
+  { value: "damage", label: "Producto danado" },
+  { value: "late_return", label: "Devolucion tardia" },
+  { value: "item_mismatch", label: "Producto no coincide" },
+  { value: "not_delivered", label: "No entregado" },
+  { value: "not_available", label: "No disponible" },
+  { value: "forbidden_item", label: "Producto no permitido" },
+  { value: "other", label: "Otra" },
 ];
 
 const STATUS_FILTERS = [
@@ -499,11 +396,7 @@ function Incidents() {
     async (id: string, status: IncidentStatus) => {
       dispatch({ type: "patch_status", id, status });
       try {
-        if (isLocalProductIncident(id)) {
-          updateStoredProductReportStatus(id, status);
-        } else {
-          await patchStatus(id, status);
-        }
+        await patchStatus(id, status);
         notifyIncidentsChanged();
         const data = await loadIncidents(typeFilter, statusFilter, page);
         dispatch({
