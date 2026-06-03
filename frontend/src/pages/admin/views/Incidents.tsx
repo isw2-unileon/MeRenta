@@ -258,9 +258,7 @@ function DetailPanel({ incident, onStatusUpdate }: DetailPanelProps) {
         <Badge color={STATUS_COLOR[incident.status]}>{STATUS_LABELS[incident.status]}</Badge>
       </div>
       <h3 className="mt-1 text-lg leading-snug font-bold text-neutral-900">{incident.item_title}</h3>
-      <p className="mt-0.5 text-sm text-neutral-500">
-        {INCIDENT_TYPE_LABELS[incident.type] ?? "Incidencia"}
-      </p>
+      <p className="mt-0.5 text-sm text-neutral-500">{INCIDENT_TYPE_LABELS[incident.type] ?? "Incidencia"}</p>
 
       <div className="mt-4 grid grid-cols-2 gap-3 text-sm">
         <div className="rounded-lg bg-neutral-50 p-3">
@@ -268,7 +266,9 @@ function DetailPanel({ incident, onStatusUpdate }: DetailPanelProps) {
           <p className="font-medium text-neutral-800">{incident.reporter_name}</p>
         </div>
         <div className="rounded-lg bg-neutral-50 p-3">
-          <p className="text-xs text-neutral-400">{isProductIncident(incident.type) ? "Producto reportado" : "Reportado"}</p>
+          <p className="text-xs text-neutral-400">
+            {isProductIncident(incident.type) ? "Producto reportado" : "Reportado"}
+          </p>
           <p className="font-medium text-neutral-800">{incident.reported_name}</p>
         </div>
         <div className="rounded-lg bg-neutral-50 p-3">

@@ -159,11 +159,7 @@ interface ProductReportModalProps {
   onSuccess: () => void;
 }
 
-function ProductReportModal({
-  itemId,
-  onClose,
-  onSuccess,
-}: ProductReportModalProps) {
+function ProductReportModal({ itemId, onClose, onSuccess }: ProductReportModalProps) {
   const [incidentType, setIncidentType] = useState<ProductIncidentType>("item_mismatch");
   const [description, setDescription] = useState("");
   const [error, setError] = useState("");

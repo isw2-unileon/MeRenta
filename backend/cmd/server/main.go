@@ -84,7 +84,6 @@ func main() {
 
 	bookingSvc, paymentH, bookingH := wirePaymentAndBooking(q, cfg.StripeSecretKey)
 	go startAutoExpireJob(ctx, bookingSvc)
-
 	adminH, incidentH := wireAdminHandlers(q)
 
 	r := router.Setup(authH, itemH, itemImgH, addrH, favH, chatH, reviewH, paymentH, bookingH, incidentH, adminH, jwtMgr, cfg.CORSAllowOrigin, pool.Ping)

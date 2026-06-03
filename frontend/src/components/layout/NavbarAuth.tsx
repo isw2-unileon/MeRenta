@@ -99,6 +99,7 @@ function NavbarAuth() {
             className="btn-icon"
             onClick={() => navigate("/favs")}
             aria-label="Favoritos"
+            title="Favoritos"
           >
             <Heart size={16} />
           </button>
@@ -108,6 +109,7 @@ function NavbarAuth() {
             className="btn-icon"
             onClick={() => navigate("/chat")}
             aria-label="Mensajes"
+            title="Mensajes"
           >
             <MessageSquare size={16} />
           </button>
@@ -116,6 +118,8 @@ function NavbarAuth() {
             type="button"
             className="flex cursor-pointer items-center gap-2 border-none bg-transparent p-0"
             onClick={() => navigate("/profile")}
+            aria-label="Ver perfil"
+            title="Ver perfil"
           >
             {user.avatar_url ? (
               <img
