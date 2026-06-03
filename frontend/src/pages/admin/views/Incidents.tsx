@@ -122,13 +122,9 @@ function incidentsReducer(state: IncidentsState, action: IncidentsAction): Incid
     case "patch_priority":
       return {
         ...state,
-        incidents: state.incidents.map((i) =>
-          i.incident_id === action.id ? { ...i, priority: action.priority } : i
-        ),
+        incidents: state.incidents.map((i) => (i.incident_id === action.id ? { ...i, priority: action.priority } : i)),
         selected:
-          state.selected?.incident_id === action.id
-            ? { ...state.selected, priority: action.priority }
-            : state.selected,
+          state.selected?.incident_id === action.id ? { ...state.selected, priority: action.priority } : state.selected,
       };
   }
 }
@@ -635,6 +631,3 @@ function Incidents() {
 }
 
 export { Incidents };
-
-
-

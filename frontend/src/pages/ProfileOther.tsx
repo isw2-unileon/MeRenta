@@ -667,7 +667,9 @@ function UserReportModal({
             />
           </label>
 
-          {error && <p className="border-report bg-error-danger text-report rounded-lg border p-3 text-[13px]">{error}</p>}
+          {error && (
+            <p className="border-report bg-error-danger text-report rounded-lg border p-3 text-[13px]">{error}</p>
+          )}
 
           <div className="flex flex-col-reverse gap-3 sm:flex-row sm:justify-end">
             <button
