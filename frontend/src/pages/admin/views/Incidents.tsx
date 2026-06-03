@@ -56,7 +56,6 @@ const PRODUCT_INCIDENT_PRIORITY: Record<string, IncidentPriority> = {
   prohibited: "high",
 };
 
-
 function fmtIncidentDate(iso: string): string {
   return new Date(iso).toLocaleDateString("es-ES", {
     day: "numeric",
@@ -142,9 +141,7 @@ function storedReportToIncident(report: StoredProductReport, index: number): Inc
 async function getStoredProductIncidents(typeFilter: string, statusFilter: string): Promise<IncidentResponse[]> {
   if (typeFilter && typeFilter !== "product") return [];
   const reports = await getEnrichedStoredProductReports();
-  return reports
-    .map(storedReportToIncident)
-    .filter((incident) => !statusFilter || incident.status === statusFilter);
+  return reports.map(storedReportToIncident).filter((incident) => !statusFilter || incident.status === statusFilter);
 }
 
 function updateStoredProductReportStatus(incidentId: string, status: IncidentStatus): void {
@@ -161,7 +158,11 @@ function notifyIncidentsChanged(): void {
   window.dispatchEvent(new Event("merenta:incidents-updated"));
 }
 
-async function loadIncidents(typeFilter: string, statusFilter: string, page: number): Promise<{
+async function loadIncidents(
+  typeFilter: string,
+  statusFilter: string,
+  page: number
+): Promise<{
   incidents: IncidentResponse[];
   total: number;
 }> {
@@ -368,9 +369,7 @@ function DetailPanel({ incident, onStatusUpdate }: DetailPanelProps) {
           <p className="font-medium text-neutral-800">{incident.reporter_name}</p>
         </div>
         <div className="rounded-lg bg-neutral-50 p-3">
-          <p className="text-xs text-neutral-400">
-            {incident.type === "product" ? "Producto reportado" : "Reportado"}
-          </p>
+          <p className="text-xs text-neutral-400">{incident.type === "product" ? "Producto reportado" : "Reportado"}</p>
           <p className="font-medium text-neutral-800">{incident.reported_name}</p>
         </div>
         <div className="rounded-lg bg-neutral-50 p-3">
@@ -427,7 +426,6 @@ function DetailPanel({ incident, onStatusUpdate }: DetailPanelProps) {
     </Card>
   );
 }
-
 
 // ── Main view ─────────────────────────────────────────────────────────────────
 
@@ -492,7 +490,7 @@ function Incidents() {
 
   const handleStatusUpdate = useCallback(
     async (id: string, status: IncidentStatus) => {
-      dispatch({ type: "patch_status", id, status }); 
+      dispatch({ type: "patch_status", id, status });
       try {
         if (isLocalProductIncident(id)) {
           updateStoredProductReportStatus(id, status);

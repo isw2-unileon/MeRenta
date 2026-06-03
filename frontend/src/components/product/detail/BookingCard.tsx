@@ -184,7 +184,14 @@ interface ProductReportModalProps {
   onSuccess: () => void;
 }
 
-function ProductReportModal({ itemId, itemTitle, reporterId, reporterName, onClose, onSuccess }: ProductReportModalProps) {
+function ProductReportModal({
+  itemId,
+  itemTitle,
+  reporterId,
+  reporterName,
+  onClose,
+  onSuccess,
+}: ProductReportModalProps) {
   const [incidentType, setIncidentType] = useState<ProductIncidentType>("misleading");
   const [description, setDescription] = useState("");
   const [error, setError] = useState("");
