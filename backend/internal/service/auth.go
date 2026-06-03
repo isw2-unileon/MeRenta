@@ -29,6 +29,8 @@ var (
 	ErrInvalidCredentials = errors.New("invalid credentials")
 	// ErrAccountNotActive indicates the account is not active.
 	ErrAccountNotActive = errors.New("account is not active")
+	// ErrAccountBanned indicates the account has been permanently banned.
+	ErrAccountBanned = errors.New("account banned")
 	// ErrCustomerNotFound indicates no customer exists with the given ID.
 	ErrCustomerNotFound = errors.New("customer not found")
 	// ErrEmailMismatch indicates the email confirmation does not match.
@@ -37,16 +39,36 @@ var (
 	ErrPasswordMismatch = errors.New("password confirmation does not match")
 )
 
+// ErrAccountSuspended is returned when the account is temporarily suspended.
+// It carries the optional suspension end time.
+type ErrAccountSuspended struct {
+	Until *time.Time
+}
+
+// Error implements the error interface.
+func (e *ErrAccountSuspended) Error() string {
+	if e.Until != nil {
+		return "account suspended until " + e.Until.Format(time.RFC3339)
+	}
+	return "account is suspended"
+}
+
+// authQuerier extends sqlcdb.Querier with hand-written customer ext queries.
+type authQuerier interface {
+	sqlcdb.Querier
+	GetCustomerSuspendedUntil(ctx context.Context, customerID uuid.UUID) (pgtype.Timestamptz, error)
+}
+
 // AuthService handles authentication use cases.
 type AuthService struct {
-	q      sqlcdb.Querier
+	q      authQuerier
 	jwt    *jwt.Manager
 	st     storage.Client
 	bucket string
 }
 
 // NewAuthService creates an AuthService with its dependencies.
-func NewAuthService(q sqlcdb.Querier, jwt *jwt.Manager, storageClient storage.Client, avatarBucket string) *AuthService {
+func NewAuthService(q authQuerier, jwt *jwt.Manager, storageClient storage.Client, avatarBucket string) *AuthService {
 	return &AuthService{q: q, jwt: jwt, st: storageClient, bucket: avatarBucket}
 }
 
@@ -112,7 +134,14 @@ func (s *AuthService) Login(ctx context.Context, req model.LoginRequest) (*model
 		return nil, ErrInvalidCredentials
 	}
 
-	if c.AccountStatus != sqlcdb.AccountStatusActive {
+	switch c.AccountStatus {
+	case sqlcdb.AccountStatusActive:
+		// allowed through
+	case sqlcdb.AccountStatusBanned:
+		return nil, ErrAccountBanned
+	case sqlcdb.AccountStatusSuspended:
+		return nil, s.buildSuspendedError(ctx, c.CustomerID)
+	default:
 		return nil, ErrAccountNotActive
 	}
 
@@ -153,6 +182,7 @@ func toCustomerResponse(c sqlcdb.CreateCustomerRow) model.CustomerResponse {
 }
 
 // GetCustomerByID fetches a customer profile by its ID.
+// For suspended accounts the response also includes SuspendedUntil.
 func (s *AuthService) GetCustomerByID(ctx context.Context, id uuid.UUID) (*model.CustomerResponse, error) {
 	c, err := s.q.GetCustomerByID(ctx, id)
 	if err != nil {
@@ -169,7 +199,21 @@ func (s *AuthService) GetCustomerByID(ctx context.Context, id uuid.UUID) (*model
 		AccountStatus:    string(c.AccountStatus),
 		UserRole:         string(c.UserRole),
 	}
+	if c.AccountStatus == sqlcdb.AccountStatusSuspended {
+		if t, tErr := s.q.GetCustomerSuspendedUntil(ctx, id); tErr == nil && t.Valid {
+			resp.SuspendedUntil = &t.Time
+		}
+	}
 	return &resp, nil
+}
+
+// buildSuspendedError fetches the suspension end date and wraps it in ErrAccountSuspended.
+func (s *AuthService) buildSuspendedError(ctx context.Context, id uuid.UUID) error {
+	suspErr := &ErrAccountSuspended{}
+	if t, err := s.q.GetCustomerSuspendedUntil(ctx, id); err == nil && t.Valid {
+		suspErr.Until = &t.Time
+	}
+	return suspErr
 }
 
 // UpdateProfile updates editable profile fields for a customer.

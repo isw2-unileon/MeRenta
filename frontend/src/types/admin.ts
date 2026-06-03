@@ -1,0 +1,40 @@
+import type { AccountStatus } from "@/types/customer";
+
+/**
+ * Roles as returned by the API (backend uses "user", not "customer").
+ */
+type AdminUserRole = "user" | "admin";
+
+/**
+ * A customer row as returned by the admin user-listing endpoint.
+ */
+interface AdminUser {
+  customer_id: string;
+  first_name: string;
+  last_name: string;
+  email: string;
+  phone: string;
+  registration_date: string;
+  account_status: AccountStatus;
+  user_role: AdminUserRole;
+}
+
+/**
+ * Paginated response from GET /api/admin/users.
+ */
+interface AdminUserListResponse {
+  users: AdminUser[];
+  total: number;
+  page: number;
+  limit: number;
+}
+
+/**
+ * Response from PATCH /api/admin/users/:id/status.
+ */
+interface AdminUpdateStatusResponse {
+  customer_id: string;
+  status: AccountStatus;
+}
+
+export type { AdminUser, AdminUserListResponse, AdminUpdateStatusResponse, AdminUserRole };

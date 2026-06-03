@@ -5,6 +5,7 @@ import { AppLayout } from "@/layouts/AppLayout.tsx";
 import { MinimalLayout } from "@/layouts/MinimalLayout.tsx";
 import { BlankLayout } from "@/layouts/BlankLayout.tsx";
 import { ProtectedRoute } from "@/router/ProtectedRoute.tsx";
+import { AdminRoute } from "@/router/AdminRoute.tsx";
 import { RootProvider } from "@/router/ProvideRouter.tsx";
 
 import { Auth } from "@/pages/Auth.tsx";
@@ -30,6 +31,9 @@ import { NotFound } from "@/pages/NotFound.tsx";
 import { Forbidden } from "@/pages/Forbidden.tsx";
 import { ServerError } from "@/pages/ServerError.tsx";
 import { Error } from "@/pages/Error.tsx";
+import { Banned } from "@/pages/Banned.tsx";
+import { Suspended } from "@/pages/Suspended.tsx";
+import { AdminPanel } from "@/pages/admin/AdminPanel.tsx";
 
 /**
  * Application route map and layout nesting for react-router.
@@ -53,6 +57,8 @@ const router = createBrowserRouter([
         children: [
           { path: "auth", element: <Auth /> },
           { path: "error", element: <Error /> },
+          { path: "banned", element: <Banned /> },
+          { path: "suspended", element: <Suspended /> },
           { path: "payment/success", element: <PaymentSuccess /> },
           { path: "payment/error", element: <PaymentError /> },
           { path: "not-found", element: <NotFound /> },
@@ -62,6 +68,12 @@ const router = createBrowserRouter([
       {
         element: <ProtectedRoute />,
         children: [
+          // Admin panel — full-page layout, requires admin role
+          {
+            element: <AdminRoute />,
+            children: [{ path: "admin", element: <AdminPanel /> }],
+          },
+
           {
             element: <MinimalLayout />,
             children: [

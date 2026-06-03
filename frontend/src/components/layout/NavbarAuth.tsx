@@ -1,6 +1,6 @@
 import { useNavigate } from "react-router-dom";
 import { useAuth } from "@/hooks/useAuth";
-import { Heart, MessageSquare, LogOut, CalendarDays } from "lucide-react";
+import { CalendarDays, Heart, LayoutDashboard, LogOut, MessageSquare } from "lucide-react";
 
 /**
  * Renders the authenticated navigation bar with profile shortcuts.
@@ -72,6 +72,18 @@ function NavbarAuth() {
         </div>
 
         <div className="flex items-center gap-4">
+          {user.user_role === "admin" && (
+            <button
+              type="button"
+              className="btn-icon"
+              onClick={() => navigate("/admin")}
+              aria-label="Panel de administración"
+              title="Panel de administración"
+            >
+              <LayoutDashboard size={16} />
+            </button>
+          )}
+
           <button
             type="button"
             className="btn-icon"

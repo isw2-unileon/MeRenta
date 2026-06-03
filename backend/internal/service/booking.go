@@ -53,6 +53,8 @@ type bookingQuerier interface {
 	UpdateItemAvailability(ctx context.Context, arg sqlcdb.UpdateItemAvailabilityParams) error
 	UpdateItemStatus(ctx context.Context, arg sqlcdb.UpdateItemStatusParams) (sqlcdb.UpdateItemStatusRow, error)
 	SyncAllItemAvailabilities(ctx context.Context) error
+	// GetOrCreateRentalForBooking creates a rental record when a booking is accepted.
+	GetOrCreateRentalForBooking(ctx context.Context, bookingID uuid.UUID) (uuid.UUID, error)
 }
 
 // BookingService handles business logic for bookings.
@@ -254,6 +256,14 @@ func (s *BookingService) updateStatus(
 	})
 	if err != nil {
 		return model.BookingResponse{}, fmt.Errorf("update booking status: %w", err)
+	}
+
+	// Create the rental record as soon as the booking is accepted.
+	// Best-effort: a failure here does not roll back the status change.
+	if next == sqlcdb.BookingStatusAccepted {
+		if _, rentalErr := s.q.GetOrCreateRentalForBooking(ctx, bookingID); rentalErr != nil {
+			slog.Warn("create rental on accept failed", "booking_id", bookingID, "error", rentalErr)
+		}
 	}
 
 	// Best-effort: keep item availability in sync (non-fatal if it fails)

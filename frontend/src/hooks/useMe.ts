@@ -1,6 +1,7 @@
 import { useCallback } from "react";
 import type { CustomerPublic } from "@/types/customer";
 import type { ApiResponse } from "@/types/common";
+import { BlockedAccountError } from "@/types/auth";
 
 const API_BASE_URL = "/api";
 
@@ -75,6 +76,13 @@ function useMe(accessToken: string | null) {
     });
 
     if (!response.ok) {
+      if (response.status === 403) {
+        const payload = (await response.json()) as ApiResponse<{ suspended_until?: string }>;
+        if (payload.error === "account_banned") throw new BlockedAccountError("banned");
+        if (payload.error === "account_suspended") {
+          throw new BlockedAccountError("suspended", payload.data?.suspended_until ?? undefined);
+        }
+      }
       throw new Error(await parseErrorMessage(response));
     }
 

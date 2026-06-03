@@ -35,6 +35,8 @@ func NewBookingHandler(svc *service.BookingService) *BookingHandler {
 
 // Create handles POST /api/bookings.
 // Creates a booking after a successful Stripe payment.
+//
+//nolint:dupl // structurally mirrors IncidentHandler.Create; intentional by design
 func (h *BookingHandler) Create(c *gin.Context) {
 	customerID, ok := getCustomerID(c)
 	if !ok {
