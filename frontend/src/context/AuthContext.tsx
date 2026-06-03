@@ -1,6 +1,7 @@
 import { createContext, useCallback, useEffect, useReducer } from "react";
 import * as React from "react";
 import type { CustomerPublic, LoginRequest, RegisterRequest } from "@/types/customer";
+import { BlockedAccountError } from "@/types/auth";
 import { useMe } from "@/hooks/useMe";
 
 /**
@@ -14,6 +15,9 @@ interface AuthContextType {
   register: (data: RegisterRequest) => Promise<void>;
   logout: () => Promise<void>;
   accessToken: string | null;
+  /** Set when the account is blocked. Drives redirect in ProtectedRoute. */
+  blockedReason: "banned" | "suspended" | null;
+  suspendedUntil: string | null;
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
@@ -78,12 +82,15 @@ interface AuthState {
   isLoading: boolean;
   user: CustomerPublic | null;
   accessToken: string | null;
+  blockedReason: "banned" | "suspended" | null;
+  suspendedUntil: string | null;
 }
 
 type AuthAction =
   | { type: "load_start" }
   | { type: "load_success"; user: CustomerPublic }
   | { type: "load_failure" }
+  | { type: "load_blocked"; reason: "banned" | "suspended"; suspendedUntil?: string }
   | { type: "login_success"; user: CustomerPublic; token: string }
   | { type: "login_failure" }
   | { type: "register_success"; user: CustomerPublic; token: string }
@@ -97,6 +104,8 @@ const initialState: AuthState = {
   isLoading: true,
   user: null,
   accessToken: readStoredAccessToken(),
+  blockedReason: null,
+  suspendedUntil: null,
 };
 
 function readStoredAccessToken(): string | null {
@@ -147,6 +156,17 @@ const authReducer = (state: AuthState, action: AuthAction): AuthState => {
         isAuthenticated: false,
         user: null,
         accessToken: null,
+        blockedReason: null,
+        suspendedUntil: null,
+      };
+    case "load_blocked":
+      return {
+        ...state,
+        isLoading: false,
+        isAuthenticated: false,
+        user: null,
+        blockedReason: action.reason,
+        suspendedUntil: action.suspendedUntil ?? null,
       };
     case "login_success":
     case "register_success":
@@ -199,7 +219,7 @@ const authReducer = (state: AuthState, action: AuthAction): AuthState => {
  */
 function AuthProvider({ children }: { children: React.ReactNode }) {
   const [state, dispatch] = useReducer(authReducer, initialState);
-  const { isAuthenticated, isLoading, user, accessToken } = state;
+  const { isAuthenticated, isLoading, user, accessToken, blockedReason, suspendedUntil } = state;
 
   const { getMe } = useMe(accessToken);
 
@@ -219,7 +239,11 @@ function AuthProvider({ children }: { children: React.ReactNode }) {
       try {
         const customer = await getMe();
         dispatch({ type: "load_success", user: customer });
-      } catch {
+      } catch (err) {
+        if (err instanceof BlockedAccountError) {
+          dispatch({ type: "load_blocked", reason: err.reason, suspendedUntil: err.suspendedUntil });
+          return;
+        }
         clearStoredAccessToken();
         dispatch({ type: "load_failure" });
       }
@@ -247,6 +271,13 @@ function AuthProvider({ children }: { children: React.ReactNode }) {
       });
 
       if (!response.ok) {
+        if (response.status === 403) {
+          const payload = (await response.json()) as { error?: string; data?: { suspended_until?: string } };
+          if (payload.error === "account_banned") throw new BlockedAccountError("banned");
+          if (payload.error === "account_suspended") {
+            throw new BlockedAccountError("suspended", payload.data?.suspended_until ?? undefined);
+          }
+        }
         throw new Error(await parseErrorMessage(response));
       }
 
@@ -331,6 +362,8 @@ function AuthProvider({ children }: { children: React.ReactNode }) {
     register,
     logout,
     accessToken,
+    blockedReason,
+    suspendedUntil,
   };
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;

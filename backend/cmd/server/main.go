@@ -85,7 +85,9 @@ func main() {
 	bookingSvc, paymentH, bookingH := wirePaymentAndBooking(q, cfg.StripeSecretKey)
 	go startAutoExpireJob(ctx, bookingSvc)
 
-	r := router.Setup(authH, itemH, itemImgH, addrH, favH, chatH, reviewH, paymentH, bookingH, jwtMgr, cfg.CORSAllowOrigin, pool.Ping)
+	adminH, incidentH := wireAdminHandlers(q)
+
+	r := router.Setup(authH, itemH, itemImgH, addrH, favH, chatH, reviewH, paymentH, bookingH, incidentH, adminH, jwtMgr, cfg.CORSAllowOrigin, pool.Ping)
 	portNum, err := strconv.Atoi(cfg.Port)
 	if err != nil || portNum < 1 || portNum > 65535 {
 		slog.Error("invalid port", "port", cfg.Port)
@@ -117,6 +119,12 @@ func main() {
 	}
 
 	gracefulShutdown(srv)
+}
+
+// wireAdminHandlers constructs the admin and incident handlers.
+func wireAdminHandlers(q *sqlcdb.Queries) (*handler.AdminHandler, *handler.IncidentHandler) {
+	return handler.NewAdminHandler(service.NewAdminService(q)),
+		handler.NewIncidentHandler(service.NewIncidentService(q))
 }
 
 // wirePaymentAndBooking constructs the payment and booking handlers.

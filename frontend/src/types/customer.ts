@@ -1,7 +1,7 @@
 /**
  * Allowed account lifecycle states.
  */
-type AccountStatus = "active" | "inactive" | "suspended" | "banned";
+type AccountStatus = "active" | "suspended" | "banned";
 /**
  * Roles supported by the platform.
  */
@@ -37,6 +37,8 @@ interface CustomerPublic {
   registration_date: string;
   account_status: AccountStatus;
   user_role: UserRole;
+  /** ISO-8601 date when suspension ends; only present for suspended accounts. */
+  suspended_until?: string | null;
 }
 
 /**

@@ -1,0 +1,25 @@
+package sqlcdb
+
+import (
+	"context"
+
+	"github.com/google/uuid"
+	"github.com/jackc/pgx/v5/pgtype"
+)
+
+// GetCustomerSuspendedUntil returns the suspended_until timestamp for a customer.
+// Returns a zero Timestamptz (Valid = false) when the column is NULL.
+func (q *Queries) GetCustomerSuspendedUntil(ctx context.Context, customerID uuid.UUID) (pgtype.Timestamptz, error) {
+	const query = `SELECT suspended_until FROM customer WHERE customer_id = $1`
+	var until pgtype.Timestamptz
+	err := q.db.QueryRow(ctx, query, customerID).Scan(&until)
+	return until, err
+}
+
+// SetCustomerSuspendedUntil writes (or clears) the suspended_until column.
+// Pass a Timestamptz with Valid = false to set the value to NULL.
+func (q *Queries) SetCustomerSuspendedUntil(ctx context.Context, customerID uuid.UUID, until pgtype.Timestamptz) error {
+	const query = `UPDATE customer SET suspended_until = $2 WHERE customer_id = $1`
+	_, err := q.db.Exec(ctx, query, customerID, until)
+	return err
+}

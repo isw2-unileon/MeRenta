@@ -24,6 +24,8 @@ func Setup(
 	reviewH *handler.ReviewHandler,
 	paymentH *handler.PaymentHandler,
 	bookingH *handler.BookingHandler,
+	incidentH *handler.IncidentHandler,
+	adminH *handler.AdminHandler,
 	jwtMgr *jwt.Manager,
 	corsAllowOrigin string,
 	readiness func(context.Context) error,
@@ -39,9 +41,9 @@ func Setup(
 
 	protected := api.Group("/")
 	protected.Use(middleware.JWTAuth(jwtMgr))
-	registerProtectedRoutes(protected, authH, itemH, itemImgH, addrH, favH, chatH, reviewH, paymentH, bookingH)
+	registerProtectedRoutes(protected, authH, itemH, itemImgH, addrH, favH, chatH, reviewH, paymentH, bookingH, incidentH)
 
-	registerAdminRoutes(api, jwtMgr)
+	registerAdminRoutes(api, adminH, incidentH, jwtMgr)
 
 	return r
 }
@@ -79,6 +81,7 @@ func registerProtectedRoutes(
 	reviewH *handler.ReviewHandler,
 	paymentH *handler.PaymentHandler,
 	bookingH *handler.BookingHandler,
+	incidentH *handler.IncidentHandler,
 ) {
 	protected.GET("/session", authH.Session)
 	protected.GET("/me", authH.Me)
@@ -134,9 +137,22 @@ func registerProtectedRoutes(
 	bookings.PATCH("/:id/accept", bookingH.Accept)
 	bookings.PATCH("/:id/reject", bookingH.Reject)
 	bookings.PATCH("/:id/cancel", bookingH.Cancel)
+
+	incidents := protected.Group("/incidents")
+	incidents.POST("", incidentH.Create)
+	incidents.GET("/mine", incidentH.ListMine)
 }
 
-func registerAdminRoutes(api *gin.RouterGroup, jwtMgr *jwt.Manager) {
+func registerAdminRoutes(api *gin.RouterGroup, adminH *handler.AdminHandler, incidentH *handler.IncidentHandler, jwtMgr *jwt.Manager) {
 	admin := api.Group("/admin")
 	admin.Use(middleware.JWTAuth(jwtMgr), middleware.RequireRole(sqlcdb.UserRoleAdmin))
+
+	users := admin.Group("/users")
+	users.GET("", adminH.ListUsers)
+	users.PATCH("/:id/status", adminH.UpdateUserStatus)
+
+	incidents := admin.Group("/incidents")
+	incidents.GET("", incidentH.AdminList)
+	incidents.GET("/:id", incidentH.AdminGet)
+	incidents.PATCH("/:id/status", incidentH.AdminUpdateStatus)
 }

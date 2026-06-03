@@ -62,14 +62,7 @@ func (h *AuthHandler) Login(c *gin.Context) {
 
 	res, err := h.svc.Login(c.Request.Context(), req)
 	if err != nil {
-		switch {
-		case errors.Is(err, service.ErrInvalidCredentials):
-			response.Error(c, http.StatusUnauthorized, err.Error())
-		case errors.Is(err, service.ErrAccountNotActive):
-			response.Error(c, http.StatusForbidden, err.Error())
-		default:
-			response.Error(c, http.StatusInternalServerError, "internal server error")
-		}
+		writeAuthBlockedOrError(c, err)
 		return
 	}
 	setAuthCookie(c, res.Token)
@@ -273,7 +266,40 @@ func respondWithCurrentCustomer(c *gin.Context, svc *service.AuthService) {
 		response.Error(c, http.StatusInternalServerError, "internal server error")
 		return
 	}
-	response.OK(c, http.StatusOK, res)
+	switch res.AccountStatus {
+	case "banned":
+		c.AbortWithStatusJSON(http.StatusForbidden, blockedPayload("account_banned", nil))
+	case "suspended":
+		c.AbortWithStatusJSON(http.StatusForbidden, blockedPayload("account_suspended", res.SuspendedUntil))
+	default:
+		response.OK(c, http.StatusOK, res)
+	}
+}
+
+// writeAuthBlockedOrError maps login service errors to the appropriate HTTP response.
+func writeAuthBlockedOrError(c *gin.Context, err error) {
+	var suspErr *service.ErrAccountSuspended
+	switch {
+	case errors.Is(err, service.ErrInvalidCredentials):
+		response.Error(c, http.StatusUnauthorized, err.Error())
+	case errors.Is(err, service.ErrAccountBanned):
+		c.AbortWithStatusJSON(http.StatusForbidden, blockedPayload("account_banned", nil))
+	case errors.As(err, &suspErr):
+		c.AbortWithStatusJSON(http.StatusForbidden, blockedPayload("account_suspended", suspErr.Until))
+	case errors.Is(err, service.ErrAccountNotActive):
+		response.Error(c, http.StatusForbidden, err.Error())
+	default:
+		response.Error(c, http.StatusInternalServerError, "internal server error")
+	}
+}
+
+// blockedPayload builds a consistent 403 body for banned/suspended accounts.
+func blockedPayload(errCode string, suspendedUntil interface{}) gin.H {
+	return gin.H{
+		"success": false,
+		"error":   errCode,
+		"data":    gin.H{"suspended_until": suspendedUntil},
+	}
 }
 
 func formatBindError(err error) string {
