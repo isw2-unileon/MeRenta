@@ -6,6 +6,9 @@
  * react-doctor/prefer-dynamic-import rule.
  */
 import { lazy, Suspense } from "react";
+// Type-only import: erased at build time, zero bundle impact.
+// Required so TypeScript can type-check the dynamic import() inside the lazy factory.
+import type * as RechartsTypes from "recharts";
 
 import { GREEN, PASTELS } from "@/pages/admin/components/adminTokens";
 import { Card } from "@/pages/admin/components/adminUi";
@@ -52,7 +55,7 @@ const CATEGORY_LABELS: Record<string, string> = {
 
 const ChartsImpl = lazy(async () => {
   const { Area, AreaChart, Bar, BarChart, CartesianGrid, Cell, ResponsiveContainer, Tooltip, XAxis, YAxis } =
-    await import("recharts");
+    (await import("recharts")) as typeof RechartsTypes;
 
   // Revenue tooltip — defined here so it closes over EUR_FULL
   function RevenueTooltip({
