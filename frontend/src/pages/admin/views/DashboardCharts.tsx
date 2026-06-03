@@ -54,8 +54,8 @@ const CATEGORY_LABELS: Record<string, string> = {
 // Suspense boundary is first rendered, keeping it out of the critical path.
 
 const ChartsImpl = lazy(async () => {
-  const { Area, AreaChart, Bar, BarChart, CartesianGrid, Cell, ResponsiveContainer, Tooltip, XAxis, YAxis } =
-    (await import("recharts")) as typeof RechartsTypes;
+  const Recharts: typeof RechartsTypes = await import("recharts");
+  const { Area, AreaChart, Bar, BarChart, CartesianGrid, Cell, ResponsiveContainer, Tooltip, XAxis, YAxis } = Recharts;
 
   // Revenue tooltip — defined here so it closes over EUR_FULL
   function RevenueTooltip({
