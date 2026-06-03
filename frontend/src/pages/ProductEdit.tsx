@@ -328,12 +328,7 @@ interface DeleteProductConfirmModalProps {
   onConfirm: () => void;
 }
 
-function DeleteProductConfirmModal({
-  deleting,
-  productTitle,
-  onClose,
-  onConfirm,
-}: DeleteProductConfirmModalProps) {
+function DeleteProductConfirmModal({ deleting, productTitle, onClose, onConfirm }: DeleteProductConfirmModalProps) {
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 px-4">
       <div className="border-border-main w-full max-w-md rounded-xl border bg-white p-6 shadow-xl">
