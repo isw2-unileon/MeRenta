@@ -46,6 +46,8 @@ func (h *IncidentHandler) Create(c *gin.Context) {
 }
 
 // CreateProductReport handles POST /api/items/:id/reports.
+//
+//nolint:dupl // mirrors CreateUserReport while binding a different request/service method.
 func (h *IncidentHandler) CreateProductReport(c *gin.Context) {
 	reporterID, ok := getCustomerID(c)
 	if !ok {
@@ -63,6 +65,33 @@ func (h *IncidentHandler) CreateProductReport(c *gin.Context) {
 	}
 
 	res, err := h.svc.CreateProductReport(c.Request.Context(), reporterID, itemID, req)
+	if err != nil {
+		response.Error(c, incidentErrStatus(err), err.Error())
+		return
+	}
+	response.OK(c, http.StatusCreated, res)
+}
+
+// CreateUserReport handles POST /api/customers/:id/reports.
+//
+//nolint:dupl // mirrors CreateProductReport while binding a different request/service method.
+func (h *IncidentHandler) CreateUserReport(c *gin.Context) {
+	reporterID, ok := getCustomerID(c)
+	if !ok {
+		return
+	}
+	reportedID, ok := parseUUIDParam(c)
+	if !ok {
+		return
+	}
+
+	var req model.CreateUserReportRequest
+	if err := c.ShouldBindJSON(&req); err != nil {
+		response.Error(c, http.StatusBadRequest, formatBindError(err))
+		return
+	}
+
+	res, err := h.svc.CreateUserReport(c.Request.Context(), reporterID, reportedID, req)
 	if err != nil {
 		response.Error(c, incidentErrStatus(err), err.Error())
 		return
@@ -128,12 +157,33 @@ func (h *IncidentHandler) AdminUpdateStatus(c *gin.Context) {
 	}
 
 	res, err := h.svc.UpdateStatus(c.Request.Context(), id, req.Status)
+	respondIncidentMutation(c, res, err, service.ErrIncidentInvalidStatus)
+}
+
+// AdminUpdatePriority handles PATCH /api/admin/incidents/:id/priority.
+func (h *IncidentHandler) AdminUpdatePriority(c *gin.Context) {
+	id, ok := parseUUIDParam(c)
+	if !ok {
+		return
+	}
+
+	var req model.UpdateIncidentPriorityRequest
+	if err := c.ShouldBindJSON(&req); err != nil {
+		response.Error(c, http.StatusBadRequest, "priority is required")
+		return
+	}
+
+	res, err := h.svc.UpdatePriority(c.Request.Context(), id, req.Priority)
+	respondIncidentMutation(c, res, err, service.ErrIncidentInvalidPriority)
+}
+
+func respondIncidentMutation(c *gin.Context, res *model.IncidentResponse, err error, invalidErr error) {
 	switch {
 	case err == nil:
 		response.OK(c, http.StatusOK, res)
 	case errors.Is(err, service.ErrIncidentNotFound):
 		response.Error(c, http.StatusNotFound, err.Error())
-	case errors.Is(err, service.ErrIncidentInvalidStatus):
+	case errors.Is(err, invalidErr):
 		response.Error(c, http.StatusBadRequest, err.Error())
 	default:
 		response.Error(c, http.StatusInternalServerError, "internal server error")
@@ -149,7 +199,8 @@ func incidentErrStatus(err error) int {
 	case errors.Is(err, service.ErrIncidentInvalidState),
 		errors.Is(err, service.ErrIncidentInvalidType),
 		errors.Is(err, service.ErrIncidentRentalUnavailable),
-		errors.Is(err, service.ErrProductReportInvalidType):
+		errors.Is(err, service.ErrProductReportInvalidType),
+		errors.Is(err, service.ErrIncidentInvalidPriority):
 		return http.StatusUnprocessableEntity
 	default:
 		return http.StatusInternalServerError

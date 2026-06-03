@@ -2,7 +2,7 @@ import { useCallback, useEffect, useReducer, useRef, useState } from "react";
 import { AlertTriangle, Check, ChevronDown, Filter, Package, RotateCcw, Users } from "lucide-react";
 
 import type { ApiResponse } from "@/types/common";
-import type { IncidentListResponse, IncidentResponse, IncidentStatus } from "@/types/incident";
+import type { IncidentListResponse, IncidentPriority, IncidentResponse, IncidentStatus } from "@/types/incident";
 import { GREEN } from "@/pages/admin/components/adminTokens";
 import { Badge, Card } from "@/pages/admin/components/adminUi";
 
@@ -10,25 +10,25 @@ import { Badge, Card } from "@/pages/admin/components/adminUi";
 
 const STATUS_COLOR: Record<IncidentStatus, "amber" | "blue" | "red" | "green"> = {
   open: "amber",
-  reviewing: "blue",
-  escalated: "red",
+  under_review: "blue",
   resolved: "green",
+  closed: "red",
 };
 
 const STATUS_LABELS: Record<IncidentStatus, string> = {
   open: "abierta",
-  reviewing: "en revisión",
-  escalated: "escalada",
+  under_review: "en revisión",
+  closed: "cerrada",
   resolved: "resuelta",
 };
 
-const PRIORITY_COLOR: Record<string, string> = {
+const PRIORITY_COLOR: Record<IncidentPriority, string> = {
   high: "text-red-600",
   medium: "text-amber-600",
   low: "text-neutral-400",
 };
 
-const PRIORITY_LABEL: Record<string, string> = {
+const PRIORITY_LABEL: Record<IncidentPriority, string> = {
   high: "alta",
   medium: "media",
   low: "baja",
@@ -77,7 +77,8 @@ type IncidentsAction =
   | { type: "fetch_error"; error: string }
   | { type: "select"; incident: IncidentResponse }
   | { type: "clear_selection" }
-  | { type: "patch_status"; id: string; status: IncidentStatus };
+  | { type: "patch_status"; id: string; status: IncidentStatus }
+  | { type: "patch_priority"; id: string; priority: IncidentPriority };
 
 const initialState: IncidentsState = {
   incidents: [],
@@ -118,6 +119,17 @@ function incidentsReducer(state: IncidentsState, action: IncidentsAction): Incid
         selected:
           state.selected?.incident_id === action.id ? { ...state.selected, status: action.status } : state.selected,
       };
+    case "patch_priority":
+      return {
+        ...state,
+        incidents: state.incidents.map((i) =>
+          i.incident_id === action.id ? { ...i, priority: action.priority } : i
+        ),
+        selected:
+          state.selected?.incident_id === action.id
+            ? { ...state.selected, priority: action.priority }
+            : state.selected,
+      };
   }
 }
 
@@ -146,11 +158,22 @@ async function patchStatus(id: string, status: IncidentStatus): Promise<void> {
   if (!res.ok || !json.success) throw new Error(json.error ?? "Error");
 }
 
+async function patchPriority(id: string, priority: IncidentPriority): Promise<void> {
+  const res = await fetch(`/api/admin/incidents/${id}/priority`, {
+    method: "PATCH",
+    credentials: "include",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ priority }),
+  });
+  const json = (await res.json()) as ApiResponse<unknown>;
+  if (!res.ok || !json.success) throw new Error(json.error ?? "Error");
+}
+
 // ── Sub-components ────────────────────────────────────────────────────────────
 
 const INCIDENT_TYPE_LABELS: Record<string, string> = {
-  damage: "Producto danado",
-  late_return: "Devolucion tardia",
+  damage: "Producto dañado",
+  late_return: "Devolución tardía",
   item_mismatch: "Producto no coincide",
   not_delivered: "No entregado",
   other: "Otra incidencia",
@@ -175,26 +198,31 @@ function TypeIcon({ type }: { type: string }) {
   );
 }
 
-const NEXT_STATUSES: Record<IncidentStatus, IncidentStatus[]> = {
-  open: ["reviewing", "escalated", "resolved"],
-  reviewing: ["escalated", "resolved"],
-  escalated: ["reviewing", "resolved"],
-  resolved: [],
+const STATUS_OPTIONS: IncidentStatus[] = ["open", "under_review", "resolved", "closed"];
+const PRIORITY_OPTIONS: IncidentPriority[] = ["low", "medium", "high"];
+
+const PRIORITY_ACTION_LABELS: Record<IncidentPriority, string> = {
+  low: "Baja",
+  medium: "Media",
+  high: "Alta",
 };
 
 const STATUS_ACTION_LABELS: Record<IncidentStatus, string> = {
   open: "Reabrir",
-  reviewing: "Poner en revisión",
-  escalated: "Escalar",
+  under_review: "Poner en revision",
   resolved: "Resolver",
+  closed: "Cerrar",
 };
 
-interface StatusDropdownProps {
-  incident: IncidentResponse;
-  onUpdate: (id: string, status: IncidentStatus) => void;
+interface AdminDropdownProps<T extends string> {
+  label: string;
+  value: T;
+  options: T[];
+  labels: Record<T, string>;
+  onUpdate: (value: T) => void;
 }
 
-function StatusDropdown({ incident, onUpdate }: StatusDropdownProps) {
+function AdminDropdown<T extends string>({ label, value, options, labels, onUpdate }: AdminDropdownProps<T>) {
   const [open, setOpen] = useState(false);
   const ref = useRef<HTMLDivElement>(null);
 
@@ -207,9 +235,6 @@ function StatusDropdown({ incident, onUpdate }: StatusDropdownProps) {
     return () => document.removeEventListener("mousedown", onClick);
   }, [open]);
 
-  const options = NEXT_STATUSES[incident.status];
-  if (options.length === 0) return null;
-
   return (
     <div
       className="relative"
@@ -220,21 +245,22 @@ function StatusDropdown({ incident, onUpdate }: StatusDropdownProps) {
         onClick={() => setOpen((v) => !v)}
         className="inline-flex items-center gap-1.5 rounded-lg border border-neutral-200 px-3 py-2 text-sm font-medium text-neutral-700 hover:bg-neutral-50"
       >
-        Cambiar estado <ChevronDown size={14} />
+        {label}: {labels[value]} <ChevronDown size={14} />
       </button>
       {open && (
         <div className="absolute right-0 z-10 mt-1 w-44 rounded-lg border border-neutral-200 bg-white py-1 shadow-md">
-          {options.map((s) => (
+          {options.map((option) => (
             <button
-              key={s}
+              key={option}
               type="button"
               onClick={() => {
-                onUpdate(incident.incident_id, s);
+                onUpdate(option);
                 setOpen(false);
               }}
               className="flex w-full items-center gap-2 px-3 py-2 text-left text-sm text-neutral-700 hover:bg-neutral-50"
             >
-              {STATUS_ACTION_LABELS[s]}
+              {option === value && <Check size={14} />}
+              <span className={option === value ? "font-semibold" : ""}>{labels[option]}</span>
             </button>
           ))}
         </div>
@@ -243,14 +269,14 @@ function StatusDropdown({ incident, onUpdate }: StatusDropdownProps) {
   );
 }
 
-// ── Detail panel ──────────────────────────────────────────────────────────────
-
+// Detail panel
 interface DetailPanelProps {
   incident: IncidentResponse;
   onStatusUpdate: (id: string, status: IncidentStatus) => void;
+  onPriorityUpdate: (id: string, priority: IncidentPriority) => void;
 }
 
-function DetailPanel({ incident, onStatusUpdate }: DetailPanelProps) {
+function DetailPanel({ incident, onStatusUpdate, onPriorityUpdate }: DetailPanelProps) {
   return (
     <Card className="sticky top-4 p-5">
       <div className="mb-1 flex items-center justify-between">
@@ -280,7 +306,7 @@ function DetailPanel({ incident, onStatusUpdate }: DetailPanelProps) {
         <div className="rounded-lg bg-neutral-50 p-3">
           <p className="text-xs text-neutral-400">Prioridad</p>
           <p className={`font-medium capitalize ${PRIORITY_COLOR[incident.priority]}`}>
-            {PRIORITY_LABEL[incident.priority] ?? incident.priority}
+            {PRIORITY_LABEL[incident.priority]}
           </p>
         </div>
       </div>
@@ -297,11 +323,23 @@ function DetailPanel({ incident, onStatusUpdate }: DetailPanelProps) {
       )}
 
       <div className="mt-5 space-y-2 border-t border-neutral-100 pt-4">
-        <StatusDropdown
-          incident={incident}
-          onUpdate={onStatusUpdate}
-        />
-        {incident.status !== "resolved" && (
+        <div className="flex flex-wrap gap-2">
+          <AdminDropdown
+            label="Prioridad"
+            value={incident.priority}
+            options={PRIORITY_OPTIONS}
+            labels={PRIORITY_ACTION_LABELS}
+            onUpdate={(priority) => onPriorityUpdate(incident.incident_id, priority)}
+          />
+          <AdminDropdown
+            label="Estado"
+            value={incident.status}
+            options={STATUS_OPTIONS}
+            labels={STATUS_ACTION_LABELS}
+            onUpdate={(status) => onStatusUpdate(incident.incident_id, status)}
+          />
+        </div>
+        {incident.status !== "resolved" && incident.status !== "closed" && (
           <>
             <button
               type="button"
@@ -330,8 +368,8 @@ function DetailPanel({ incident, onStatusUpdate }: DetailPanelProps) {
 
 const TYPE_FILTERS = [
   { value: "", label: "Todas" },
-  { value: "damage", label: "Producto danado" },
-  { value: "late_return", label: "Devolucion tardia" },
+  { value: "damage", label: "Producto dañado" },
+  { value: "late_return", label: "Devolución tardía" },
   { value: "item_mismatch", label: "Producto no coincide" },
   { value: "not_delivered", label: "No entregado" },
   { value: "not_available", label: "No disponible" },
@@ -342,9 +380,9 @@ const TYPE_FILTERS = [
 const STATUS_FILTERS = [
   { value: "", label: "Todas" },
   { value: "open", label: "Abiertas" },
-  { value: "reviewing", label: "En revisión" },
-  { value: "escalated", label: "Escaladas" },
+  { value: "under_review", label: "En revision" },
   { value: "resolved", label: "Resueltas" },
+  { value: "closed", label: "Cerradas" },
 ];
 
 /**
@@ -406,6 +444,33 @@ function Incidents() {
         });
       } catch {
         // Re-fetch to restore correct state on failure
+        loadIncidents(typeFilter, statusFilter, page)
+          .then((data) => {
+            dispatch({
+              type: "fetch_success",
+              incidents: data.incidents,
+              total: data.total,
+            });
+          })
+          .catch(() => undefined);
+      }
+    },
+    [typeFilter, statusFilter, page]
+  );
+
+  const handlePriorityUpdate = useCallback(
+    async (id: string, priority: IncidentPriority) => {
+      dispatch({ type: "patch_priority", id, priority });
+      try {
+        await patchPriority(id, priority);
+        notifyIncidentsChanged();
+        const data = await loadIncidents(typeFilter, statusFilter, page);
+        dispatch({
+          type: "fetch_success",
+          incidents: data.incidents,
+          total: data.total,
+        });
+      } catch {
         loadIncidents(typeFilter, statusFilter, page)
           .then((data) => {
             dispatch({
@@ -505,7 +570,7 @@ function Incidents() {
                         {inc.incident_id.slice(0, 8).toUpperCase()}
                       </span>
                       <span className={`text-xs font-semibold ${PRIORITY_COLOR[inc.priority]}`}>
-                        ▲ {PRIORITY_LABEL[inc.priority] ?? inc.priority}
+                        ▲ {PRIORITY_LABEL[inc.priority]}
                       </span>
                     </div>
                     <p className="truncate text-sm font-medium text-neutral-900">{inc.item_title}</p>
@@ -560,6 +625,7 @@ function Incidents() {
             <DetailPanel
               incident={selected}
               onStatusUpdate={handleStatusUpdate}
+              onPriorityUpdate={handlePriorityUpdate}
             />
           </div>
         )}
@@ -569,3 +635,6 @@ function Incidents() {
 }
 
 export { Incidents };
+
+
+

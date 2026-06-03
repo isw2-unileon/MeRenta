@@ -9,7 +9,7 @@ export type IncidentType =
   | "forbidden_item";
 
 /** Lifecycle state of an incident. */
-export type IncidentStatus = "open" | "reviewing" | "escalated" | "resolved";
+export type IncidentStatus = "open" | "under_review" | "resolved" | "closed";
 
 /** Priority level used for admin triage. */
 export type IncidentPriority = "low" | "medium" | "high";
