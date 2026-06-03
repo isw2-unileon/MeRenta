@@ -17,6 +17,22 @@ type CreateItemRequest struct {
 	MaxDays     *int     `json:"max_days"      binding:"omitempty,gte=1"`
 }
 
+// UpdateItemRequest defines the payload for updating an existing item listing.
+type UpdateItemRequest struct {
+	AddressID   string   `json:"address_id"    binding:"required,uuid"`
+	Category    string   `json:"category"      binding:"required"`
+	Title       string   `json:"title"         binding:"required,min=1,max=200"`
+	Description string   `json:"description"   binding:"omitempty,max=2000"`
+	UsageRules  string   `json:"usage_rules"   binding:"omitempty,max=2000"`
+	Condition   string   `json:"condition"     binding:"required"`
+	PricePerDay float64  `json:"price_per_day" binding:"required,gt=0"`
+	Deposit     *float64 `json:"deposit"       binding:"omitempty,gte=0"`
+	MinDays     int      `json:"min_days"      binding:"omitempty,gte=1"`
+	MaxDays     *int     `json:"max_days"      binding:"omitempty,gte=1"`
+	IsAvailable *bool    `json:"is_available"  binding:"required"`
+	ItemStatus  string   `json:"item_status"   binding:"required"`
+}
+
 // ItemResponse is the API representation of an item listing.
 type ItemResponse struct {
 	ItemID      string    `json:"item_id"`

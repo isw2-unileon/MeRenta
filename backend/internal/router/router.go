@@ -96,8 +96,11 @@ func registerProtectedRoutes(
 	items.POST("", itemH.Create)
 	items.GET("/mine", itemH.ListMine)
 	items.GET("/:id", itemH.Get)
+	items.PATCH("/:id", itemH.Update)
+	items.DELETE("/:id", itemH.Delete)
 	items.GET("/:id/images", itemImgH.ListImages)
 	items.POST("/:id/images", itemImgH.AddImages)
+	items.DELETE("/:id/images/:imageId", itemImgH.DeleteImage)
 	items.GET("/:id/images/:imageId/content", itemImgH.ProxyImage)
 	items.GET("/:id/unavailable-dates", bookingH.UnavailableDates)
 

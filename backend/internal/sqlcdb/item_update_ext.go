@@ -1,0 +1,127 @@
+package sqlcdb
+
+import (
+	"context"
+
+	"github.com/google/uuid"
+	"github.com/jackc/pgx/v5/pgtype"
+)
+
+const updateItemForOwner = `
+WITH updated AS (
+UPDATE item
+SET
+    address_id      = $3,
+    category        = $4,
+    title           = $5,
+    description     = $6,
+    usage_rules     = $7,
+    item_condition  = $8,
+    price_per_day   = $9,
+    deposit         = $10,
+    min_days        = $11,
+    max_days        = $12,
+    is_available    = $13,
+    item_status     = $14
+WHERE item_id = $1
+  AND owner_id = $2
+RETURNING
+    item_id,
+    owner_id,
+    address_id,
+    category,
+    title,
+    description,
+    usage_rules,
+    item_condition,
+    item_status,
+    price_per_day,
+    deposit,
+    min_days,
+    max_days,
+    is_available,
+    published_at
+)
+SELECT
+    u.item_id,
+    u.owner_id,
+    u.address_id,
+    u.category,
+    u.title,
+    u.description,
+    u.usage_rules,
+    u.item_condition,
+    u.item_status,
+    u.price_per_day,
+    u.deposit,
+    u.min_days,
+    u.max_days,
+    u.is_available,
+    u.published_at,
+    a.city,
+    a.province,
+    a.postal_code
+FROM updated u
+JOIN address a ON a.address_id = u.address_id
+`
+
+// UpdateItemForOwnerParams contains editable item fields plus ownership scope.
+type UpdateItemForOwnerParams struct {
+	ItemID        uuid.UUID
+	OwnerID       uuid.UUID
+	AddressID     uuid.UUID
+	Category      CategoryEnum
+	Title         string
+	Description   pgtype.Text
+	UsageRules    pgtype.Text
+	ItemCondition ItemCondition
+	PricePerDay   pgtype.Numeric
+	Deposit       pgtype.Numeric
+	MinDays       int32
+	MaxDays       pgtype.Int4
+	IsAvailable   bool
+	ItemStatus    ItemStatus
+}
+
+// UpdateItemForOwner updates an item only when it belongs to the given owner.
+func (q *Queries) UpdateItemForOwner(ctx context.Context, arg UpdateItemForOwnerParams) (GetItemByIDRow, error) {
+	row := q.db.QueryRow(ctx, updateItemForOwner,
+		arg.ItemID,
+		arg.OwnerID,
+		arg.AddressID,
+		arg.Category,
+		arg.Title,
+		arg.Description,
+		arg.UsageRules,
+		arg.ItemCondition,
+		arg.PricePerDay,
+		arg.Deposit,
+		arg.MinDays,
+		arg.MaxDays,
+		arg.IsAvailable,
+		arg.ItemStatus,
+	)
+
+	var i GetItemByIDRow
+	err := row.Scan(
+		&i.ItemID,
+		&i.OwnerID,
+		&i.AddressID,
+		&i.Category,
+		&i.Title,
+		&i.Description,
+		&i.UsageRules,
+		&i.ItemCondition,
+		&i.ItemStatus,
+		&i.PricePerDay,
+		&i.Deposit,
+		&i.MinDays,
+		&i.MaxDays,
+		&i.IsAvailable,
+		&i.PublishedAt,
+		&i.City,
+		&i.Province,
+		&i.PostalCode,
+	)
+	return i, err
+}

@@ -23,6 +23,7 @@ function PreviewPanel({ formData }: PreviewPanelProps) {
 
   const cityLabel = useMemo(() => {
     if (!city) return "";
+    if (!city.includes("-")) return city;
     // Extract city name before the dash separator
     return city
       .split("-")
@@ -35,7 +36,11 @@ function PreviewPanel({ formData }: PreviewPanelProps) {
   const previewDeposit = deposit ? parseFloat(deposit) : null;
   const minDays = minRentalPeriod ? parseInt(minRentalPeriod, 10) : 1;
 
-  const firstPhoto = photos[0] ? URL.createObjectURL(photos[0]) : null;
+  const firstPhoto = useMemo(() => {
+    const photo = photos[0];
+    if (!photo) return null;
+    return photo instanceof File ? URL.createObjectURL(photo) : photo.image_url;
+  }, [photos]);
 
   const hasContent = title || categoryLabel || conditionLabel || previewPrice;
 

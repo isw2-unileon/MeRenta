@@ -9,7 +9,7 @@ import { PreviewPanel } from "@/components/product/PreviewPanel";
 import { PriceSection } from "@/components/product/PriceSection";
 import type { ApiResponse } from "@/types/common";
 import type { AddressResponse, CreateAddressRequest } from "@/types/address";
-import type { CreateItemRequest, ItemImageResponse, ItemResponse, ProductFormData } from "@/types/item";
+import type { CreateItemRequest, ItemImageResponse, ItemResponse, ProductFormData, ProductPhoto } from "@/types/item";
 
 const INITIAL_FORM: ProductFormData = {
   title: "",
@@ -94,6 +94,10 @@ function formReducer(state: FormState, action: FormAction): FormState {
     default:
       return state;
   }
+}
+
+function isNewPhoto(photo: ProductPhoto): photo is File {
+  return photo instanceof File;
 }
 
 /**
@@ -287,9 +291,10 @@ function ProductCreate() {
           max_days: state.data.maxRentalPeriod === "0" ? undefined : Number.parseInt(state.data.maxRentalPeriod, 10),
         });
 
-        if (!asDraft && state.data.photos.length > 0) {
+        const newPhotos = state.data.photos.filter(isNewPhoto);
+        if (!asDraft && newPhotos.length > 0) {
           dispatch({ type: "set-submit-step", step: "uploading" });
-          await uploadItemImages(item.item_id, state.data.photos);
+          await uploadItemImages(item.item_id, newPhotos);
         }
 
         dispatch({ type: "set-submit-step", step: "done" });
