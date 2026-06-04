@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useReducer, useState } from "react";
-import { useNavigate } from "react-router-dom";
+import { Link, useNavigate } from "react-router-dom";
 import { Heart, Star } from "lucide-react";
 
 import type { ApiResponse } from "@/types/common";
@@ -173,7 +173,7 @@ function ActionButton({ item, onRent }: ActionButtonProps) {
     return (
       <button
         type="button"
-        className="btn--sm min-w-23 cursor-default rounded-lg bg-[#f3f4f6] px-4 py-2 text-[13px] font-medium text-[#9ca3af]"
+        className="btn--sm relative z-20 min-w-23 cursor-default rounded-lg bg-[#f3f4f6] px-4 py-2 text-[13px] font-medium text-[#9ca3af]"
         disabled
       >
         Reservado
@@ -184,7 +184,7 @@ function ActionButton({ item, onRent }: ActionButtonProps) {
     return (
       <button
         type="button"
-        className="btn--sm min-w-23 cursor-default rounded-lg bg-[#f3f4f6] px-4 py-2 text-[13px] font-medium text-[#9ca3af]"
+        className="btn--sm relative z-20 min-w-23 cursor-default rounded-lg bg-[#f3f4f6] px-4 py-2 text-[13px] font-medium text-[#9ca3af]"
         disabled
       >
         No disponible
@@ -194,7 +194,7 @@ function ActionButton({ item, onRent }: ActionButtonProps) {
   return (
     <button
       type="button"
-      className="btn-primary btn--sm min-w-23"
+      className="btn-primary btn--sm relative z-20 min-w-23"
       onClick={onRent}
     >
       Alquilar
@@ -217,16 +217,6 @@ function FavCard({ item, onRemove }: FavCardProps) {
     void navigate(`/product/${item.item_id}`);
   }
 
-  function handleOpen() {
-    void navigate(`/product/${item.item_id}`);
-  }
-
-  function handleKeyDown(event: React.KeyboardEvent<HTMLElement>) {
-    if (event.key !== "Enter" && event.key !== " ") return;
-    event.preventDefault();
-    handleOpen();
-  }
-
   function handleRemove(e: React.MouseEvent) {
     e.stopPropagation();
     onRemove(item.item_id);
@@ -234,13 +224,13 @@ function FavCard({ item, onRemove }: FavCardProps) {
 
   return (
     <article
-      className="border-border-main bg-page cursor-pointer overflow-hidden rounded-xl border transition-shadow hover:shadow-md"
-      role="link"
-      tabIndex={0}
-      onClick={handleOpen}
-      onKeyDown={handleKeyDown}
-      aria-label={`Abrir ${item.title}`}
+      className="border-border-main bg-page relative overflow-hidden rounded-xl border transition-shadow hover:shadow-md"
     >
+      <Link
+        to={`/product/${item.item_id}`}
+        className="absolute inset-0 z-10 rounded-xl"
+        aria-label={`Abrir ${item.title}`}
+      />
       <div className="bg-primary-light relative h-42 overflow-hidden">
         {item.primary_image_url ? (
           <img
@@ -261,7 +251,7 @@ function FavCard({ item, onRemove }: FavCardProps) {
 
         <button
           type="button"
-          className="text-heart-active absolute top-3 right-3 flex size-8 items-center justify-center rounded-full bg-white p-0 shadow-sm"
+          className="text-heart-active absolute top-3 right-3 z-20 flex size-8 items-center justify-center rounded-full bg-white p-0 shadow-sm"
           aria-label="Quitar de favoritos"
           onClick={handleRemove}
         >
