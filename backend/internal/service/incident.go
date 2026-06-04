@@ -204,8 +204,8 @@ func (s *IncidentService) ListMine(
 	reporterID uuid.UUID,
 	page, limit int,
 ) (*model.IncidentListResponse, error) {
-	offset := int32((page - 1) * limit)
-	rows, err := s.q.ListIncidentsByReporter(ctx, reporterID, int32(limit), offset)
+	offset := toInt32((page - 1) * limit)
+	rows, err := s.q.ListIncidentsByReporter(ctx, reporterID, toInt32(limit), offset)
 	if err != nil {
 		return nil, err
 	}
@@ -218,11 +218,11 @@ func (s *IncidentService) ListAdmin(
 	statusFilter, typeFilter string,
 	page, limit int,
 ) (*model.IncidentListResponse, error) {
-	offset := int32((page - 1) * limit)
+	offset := toInt32((page - 1) * limit)
 	rows, err := s.q.ListIncidentsAdmin(ctx, sqlcdb.ListIncidentsAdminParams{
 		Status: nullText(statusFilter),
 		Type:   nullText(typeFilter),
-		Limit:  int32(limit),
+		Limit:  toInt32(limit),
 		Offset: offset,
 	})
 	if err != nil {

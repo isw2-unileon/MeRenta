@@ -3,8 +3,8 @@ import { ExternalLink, ImageIcon, MoreHorizontal, Search } from "lucide-react";
 
 import type { ApiResponse } from "@/types/common";
 import type { BookingDetailResponse, BookingListResponse, BookingStatus } from "@/types/booking";
-import { GREEN } from "@/pages/admin/components/adminTokens";
-import { Badge, Card, ConfirmModal, SectionTitle } from "@/pages/admin/components/adminUi";
+import { GREEN } from "@/components/admin/adminTokens";
+import { Badge, Card, ConfirmModal, SectionTitle } from "@/components/admin/adminUi";
 
 // ── Constants ─────────────────────────────────────────────────────────────────
 

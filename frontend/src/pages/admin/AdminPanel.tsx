@@ -16,8 +16,8 @@ import type { ApiResponse } from "@/types/common";
 import type { AdminVerificationListResponse } from "@/types/admin";
 import type { IncidentListResponse, IncidentStatus } from "@/types/incident";
 import type { SearchItemsResponse } from "@/types/item";
-import { GREEN, MINT } from "@/pages/admin/components/adminTokens";
-import { Avatar } from "@/pages/admin/components/adminUi";
+import { GREEN, MINT } from "@/components/admin/adminTokens";
+import { Avatar } from "@/components/admin/adminUi";
 import { Dashboard } from "@/pages/admin/views/Dashboard";
 import { Incidents } from "@/pages/admin/views/Incidents";
 import { Operations } from "@/pages/admin/views/Operations";
@@ -129,7 +129,7 @@ function Sidebar({ active, navItems, onSelect, userEmail, userName }: SidebarPro
       <div className="flex h-16 items-center border-b border-neutral-100 px-5">
         <a
           href="/"
-          aria-label="Ir a la pagina principal"
+          aria-label="Ir a la página principal"
           className="text-xl font-light text-neutral-900"
           style={{ fontFamily: "Inter, ui-sans-serif, system-ui, sans-serif" }}
         >

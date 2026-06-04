@@ -4,8 +4,8 @@ import { Check, MoreHorizontal, Search, X } from "lucide-react";
 import type { ApiResponse } from "@/types/common";
 import type { AccountStatus } from "@/types/customer";
 import type { AdminUser, AdminUserListResponse } from "@/types/admin";
-import { GREEN } from "@/pages/admin/components/adminTokens";
-import { Avatar, Badge, Card, SectionTitle } from "@/pages/admin/components/adminUi";
+import { GREEN } from "@/components/admin/adminTokens";
+import { Avatar, Badge, Card, SectionTitle } from "@/components/admin/adminUi";
 
 // ── Constants ─────────────────────────────────────────────────────────────────
 

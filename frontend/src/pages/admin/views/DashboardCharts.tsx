@@ -10,8 +10,8 @@ import { lazy, Suspense } from "react";
 // Required so TypeScript can type-check the dynamic import() inside the lazy factory.
 import type * as RechartsTypes from "recharts";
 
-import { GREEN, PASTELS } from "@/pages/admin/components/adminTokens";
-import { Card } from "@/pages/admin/components/adminUi";
+import { GREEN, PASTELS } from "@/components/admin/adminTokens";
+import { Card } from "@/components/admin/adminUi";
 
 // ── Shared types ──────────────────────────────────────────────────────────────
 

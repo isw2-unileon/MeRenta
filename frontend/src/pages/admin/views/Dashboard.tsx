@@ -13,8 +13,8 @@ import {
 
 import type { ApiResponse } from "@/types/common";
 import DashboardCharts, { type MonthlyPoint, type CategoryPoint } from "@/pages/admin/views/DashboardCharts";
-import { GREEN, MINT } from "@/pages/admin/components/adminTokens";
-import { Badge, Card } from "@/pages/admin/components/adminUi";
+import { GREEN, MINT } from "@/components/admin/adminTokens";
+import { Badge, Card } from "@/components/admin/adminUi";
 
 // ── Types ─────────────────────────────────────────────────────────────────────
 

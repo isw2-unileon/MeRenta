@@ -116,13 +116,7 @@ func registerProtectedRoutes(
 	favs.DELETE("/:id", favH.Remove)
 	favs.GET("/:id/check", favH.Check)
 
-	conversations := protected.Group("/conversations")
-	conversations.GET("", chatH.ListConversations)
-	conversations.POST("", chatH.StartConversation)
-	conversations.DELETE("/:id", chatH.DeleteConversation)
-	conversations.POST("/:id/read", chatH.MarkMessagesRead)
-	conversations.GET("/:id/messages", chatH.ListMessages)
-	conversations.POST("/:id/messages", chatH.SendMessage)
+	registerConversationRoutes(protected, chatH)
 
 	reviews := protected.Group("/reviews")
 	reviews.POST("", reviewH.Create)
@@ -135,6 +129,24 @@ func registerProtectedRoutes(
 	payment := protected.Group("/payment")
 	payment.POST("/intent", paymentH.CreateIntent)
 
+	registerBookingRoutes(protected, bookingH)
+
+	incidents := protected.Group("/incidents")
+	incidents.POST("", incidentH.Create)
+	incidents.GET("/mine", incidentH.ListMine)
+}
+
+func registerConversationRoutes(protected *gin.RouterGroup, chatH *handler.ChatHandler) {
+	conversations := protected.Group("/conversations")
+	conversations.GET("", chatH.ListConversations)
+	conversations.POST("", chatH.StartConversation)
+	conversations.DELETE("/:id", chatH.DeleteConversation)
+	conversations.POST("/:id/read", chatH.MarkMessagesRead)
+	conversations.GET("/:id/messages", chatH.ListMessages)
+	conversations.POST("/:id/messages", chatH.SendMessage)
+}
+
+func registerBookingRoutes(protected *gin.RouterGroup, bookingH *handler.BookingHandler) {
 	bookings := protected.Group("/bookings")
 	bookings.POST("", bookingH.Create)
 	bookings.GET("/mine", bookingH.ListMine)
@@ -143,10 +155,6 @@ func registerProtectedRoutes(
 	bookings.PATCH("/:id/reject", bookingH.Reject)
 	bookings.PATCH("/:id/cancel", bookingH.Cancel)
 	bookings.PATCH("/:id/complete", bookingH.Complete)
-
-	incidents := protected.Group("/incidents")
-	incidents.POST("", incidentH.Create)
-	incidents.GET("/mine", incidentH.ListMine)
 }
 
 func registerAdminRoutes(api *gin.RouterGroup, adminH *handler.AdminHandler, incidentH *handler.IncidentHandler, jwtMgr *jwt.Manager) {

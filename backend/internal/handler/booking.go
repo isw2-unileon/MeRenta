@@ -35,27 +35,8 @@ func NewBookingHandler(svc *service.BookingService) *BookingHandler {
 
 // Create handles POST /api/bookings.
 // Creates a booking after a successful Stripe payment.
-//
-// structurally mirrors IncidentHandler.Create; intentional by design
 func (h *BookingHandler) Create(c *gin.Context) {
-	customerID, ok := getCustomerID(c)
-	if !ok {
-		return
-	}
-
-	var req model.CreateBookingRequest
-	if err := c.ShouldBindJSON(&req); err != nil {
-		response.Error(c, http.StatusBadRequest, formatBindError(err))
-		return
-	}
-
-	res, err := h.svc.Create(c.Request.Context(), customerID, req)
-	if err != nil {
-		response.Error(c, bookingErrStatus(err), err.Error())
-		return
-	}
-
-	response.OK(c, http.StatusCreated, res)
+	bindAndCreate(c, h.svc.Create, bookingErrStatus)
 }
 
 // ListMine handles GET /api/bookings/mine.

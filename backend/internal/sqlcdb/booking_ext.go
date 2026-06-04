@@ -320,7 +320,15 @@ func (q *Queries) CreateBooking(ctx context.Context, arg CreateBookingParams) (B
 
 // GetBookingByID fetches a single booking with joined item and renter data.
 func (q *Queries) GetBookingByID(ctx context.Context, bookingID uuid.UUID) (BookingDetailRow, error) {
-	return scanBookingDetailRow(q.db.QueryRow(ctx, getBookingByID, bookingID))
+	var b BookingDetailRow
+	err := q.db.QueryRow(ctx, getBookingByID, bookingID).Scan(
+		&b.BookingID, &b.ItemID, &b.ItemTitle, &b.ItemImageURL,
+		&b.RenterID, &b.RenterFirstName, &b.RenterLastName, &b.RenterVerificationStatus, &b.OwnerID,
+		&b.StartDate, &b.EndDate, &b.RequestedAt, &b.BookingStatus,
+		&b.EstimatedTotal, &b.Notes, &b.PaymentIntentID, &b.ExpiresAt,
+		&b.TotalCount,
+	)
+	return b, err
 }
 
 // ListBookingsByRenter returns paginated bookings where the customer is the renter.
@@ -398,18 +406,6 @@ func scanBookingRow(row pgx.Row) (BookingRow, error) {
 		&b.StartDate, &b.EndDate, &b.RequestedAt,
 		&b.BookingStatus, &b.EstimatedTotal, &b.Notes,
 		&b.PaymentIntentID, &b.ExpiresAt,
-	)
-	return b, err
-}
-
-func scanBookingDetailRow(row pgx.Row) (BookingDetailRow, error) {
-	var b BookingDetailRow
-	err := row.Scan(
-		&b.BookingID, &b.ItemID, &b.ItemTitle, &b.ItemImageURL,
-		&b.RenterID, &b.RenterFirstName, &b.RenterLastName, &b.RenterVerificationStatus, &b.OwnerID,
-		&b.StartDate, &b.EndDate, &b.RequestedAt, &b.BookingStatus,
-		&b.EstimatedTotal, &b.Notes, &b.PaymentIntentID, &b.ExpiresAt,
-		&b.TotalCount,
 	)
 	return b, err
 }

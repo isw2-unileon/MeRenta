@@ -1,7 +1,7 @@
 import { Star } from "lucide-react";
 import type { ReactNode } from "react";
 
-import { AMBER, GREEN, MINT, PASTELS } from "@/pages/admin/components/adminTokens";
+import { AMBER, GREEN, MINT, PASTELS } from "@/components/admin/adminTokens";
 
 // ── Types ─────────────────────────────────────────────────────────────────────
 type BadgeColor = "gray" | "green" | "amber" | "red" | "blue" | "purple";

@@ -4,8 +4,8 @@ import { Check, X } from "lucide-react";
 import type { ApiResponse } from "@/types/common";
 import type { VerificationStatus } from "@/types/customer";
 import type { AdminVerificationListResponse, AdminVerificationRequest } from "@/types/admin";
-import { GREEN } from "@/pages/admin/components/adminTokens";
-import { Avatar, Badge, Card, ConfirmModal, SectionTitle } from "@/pages/admin/components/adminUi";
+import { GREEN } from "@/components/admin/adminTokens";
+import { Avatar, Badge, Card, ConfirmModal, SectionTitle } from "@/components/admin/adminUi";
 
 const LIMIT = 20;
 
@@ -81,7 +81,7 @@ async function fetchVerification(status: QueueStatus, page: number): Promise<Adm
   const res = await fetch(`/api/admin/verification?${params.toString()}`, { credentials: "include" });
   const json = (await res.json()) as ApiResponse<AdminVerificationListResponse>;
   if (!res.ok || !json.success || !json.data) {
-    throw new Error(json.error ?? "Error al cargar la cola de verificacion");
+    throw new Error(json.error ?? "Error al cargar la cola de verificación");
   }
   return json.data;
 }
@@ -95,7 +95,7 @@ async function updateVerification(customerId: string, status: DecisionStatus): P
   });
   const json = (await res.json()) as ApiResponse<unknown>;
   if (!res.ok || !json.success) {
-    throw new Error(json.error ?? "Error al actualizar la verificacion");
+    throw new Error(json.error ?? "Error al actualizar la verificación");
   }
 }
 
@@ -105,8 +105,8 @@ function CheckMark({ ok }: { ok: boolean }) {
       className={`inline-flex size-6 items-center justify-center rounded-full ${
         ok ? "bg-emerald-50 text-emerald-600" : "bg-neutral-100 text-neutral-300"
       }`}
-      aria-label={ok ? "Si" : "No"}
-      title={ok ? "Si" : "No"}
+      aria-label={ok ? "Sí" : "No"}
+      title={ok ? "Sí" : "No"}
     >
       {ok ? <Check size={14} /> : <X size={14} />}
     </span>
@@ -160,7 +160,7 @@ function Verification() {
     } catch (err) {
       dispatch({
         type: "fetch_error",
-        error: err instanceof Error ? err.message : "Error al actualizar la verificacion",
+        error: err instanceof Error ? err.message : "Error al actualizar la verificación",
       });
       load();
     }
@@ -192,7 +192,7 @@ function Verification() {
       <Card className="overflow-hidden">
         <div className="border-b border-neutral-100 px-5 py-4">
           <SectionTitle
-            title="Verificacion de perfil"
+            title="Verificación de perfil"
             sub={loading ? "Cargando..." : `${total.toLocaleString("es-ES")} solicitudes`}
           />
         </div>
@@ -204,9 +204,9 @@ function Verification() {
             <thead>
               <tr className="border-b border-neutral-100 text-left text-xs text-neutral-400">
                 <th className="px-5 py-3 font-medium">Usuario</th>
-                <th className="px-5 py-3 font-medium">Telefono</th>
+                <th className="px-5 py-3 font-medium">Teléfono</th>
                 <th className="px-5 py-3 font-medium">Foto</th>
-                <th className="px-5 py-3 font-medium">Direccion</th>
+                <th className="px-5 py-3 font-medium">Dirección</th>
                 <th className="hidden px-5 py-3 font-medium lg:table-cell">Solicitud</th>
                 <th className="px-5 py-3 font-medium">Estado</th>
                 <th className="px-5 py-3">
@@ -334,7 +334,7 @@ function Verification() {
                 type="button"
                 disabled={filters.page <= 1}
                 onClick={() => handlePage(filters.page - 1)}
-                aria-label="Pagina anterior"
+                aria-label="Página anterior"
                 className="rounded px-2 py-1 hover:bg-neutral-50 disabled:opacity-40"
               >
                 Anterior
@@ -343,7 +343,7 @@ function Verification() {
                 type="button"
                 disabled={filters.page >= totalPages}
                 onClick={() => handlePage(filters.page + 1)}
-                aria-label="Pagina siguiente"
+                aria-label="Página siguiente"
                 className="rounded px-2 py-1 hover:bg-neutral-50 disabled:opacity-40"
               >
                 Siguiente
@@ -355,7 +355,7 @@ function Verification() {
 
       {pending && (
         <ConfirmModal
-          message={`Quieres ${pending.status === "verified" ? "aprobar" : "rechazar"} el badge verificado de ${pending.userName}?`}
+          message={`¿Quieres ${pending.status === "verified" ? "aprobar" : "rechazar"} el badge verificado de ${pending.userName}?`}
           confirmLabel={pending.status === "verified" ? "Aprobar" : "Rechazar"}
           dangerous={pending.status === "rejected"}
           onConfirm={confirmDecision}

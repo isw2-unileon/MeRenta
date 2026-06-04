@@ -15,7 +15,7 @@ import {
   productsReducer,
   uniqueProductCities,
   type ReceivedReviewsResponseBase,
-} from "@/pages/profile/profileShared";
+} from "@/components/profile/profileShared";
 
 const emptyReviewSummary: ReviewSummary = {
   average_rating: 0,

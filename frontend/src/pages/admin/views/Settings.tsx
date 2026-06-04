@@ -3,8 +3,8 @@ import { CalendarCheck, ClipboardList, UserRound } from "lucide-react";
 
 import type { ApiResponse } from "@/types/common";
 import type { AuditEntry, AuditLogListResponse } from "@/types/audit";
-import { GREEN, MINT } from "@/pages/admin/components/adminTokens";
-import { Badge, Card, SectionTitle } from "@/pages/admin/components/adminUi";
+import { GREEN, MINT } from "@/components/admin/adminTokens";
+import { Badge, Card, SectionTitle } from "@/components/admin/adminUi";
 
 // ── Types ─────────────────────────────────────────────────────────────────────
 
@@ -197,7 +197,7 @@ function ChangeCell({ entry }: { entry: AuditEntry }) {
       {entry.old_value ? (
         <Badge color={badgeColor(entry.old_value)}>{entry.old_value}</Badge>
       ) : (
-        <span className="text-neutral-300">—</span>
+        <span className="text-neutral-300">-</span>
       )}
       <span className="text-neutral-300">→</span>
       <Badge color={badgeColor(entry.new_value)}>{entry.new_value}</Badge>
@@ -212,15 +212,17 @@ interface ToggleProps {
   disabled?: boolean;
   onChange: (value: boolean) => void;
   id: string;
+  ariaLabel: string;
 }
 
-function Toggle({ checked, disabled = false, onChange, id }: ToggleProps) {
+function Toggle({ checked, disabled = false, onChange, id, ariaLabel }: ToggleProps) {
   return (
     <button
       id={id}
       type="button"
       role="switch"
       aria-checked={checked}
+      aria-label={ariaLabel}
       disabled={disabled}
       onClick={() => onChange(!checked)}
       className="relative inline-flex h-6 w-11 shrink-0 cursor-pointer items-center rounded-full border-2 border-transparent transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-emerald-500 disabled:cursor-not-allowed disabled:opacity-50"
@@ -228,7 +230,7 @@ function Toggle({ checked, disabled = false, onChange, id }: ToggleProps) {
     >
       <span
         aria-hidden="true"
-        className="pointer-events-none inline-block h-5 w-5 rounded-full bg-white shadow-sm transition-transform"
+        className="pointer-events-none inline-block size-5 rounded-full bg-white shadow-sm transition-transform"
         style={{ transform: checked ? "translateX(20px)" : "translateX(0)" }}
       />
     </button>
@@ -239,7 +241,7 @@ function Toggle({ checked, disabled = false, onChange, id }: ToggleProps) {
 
 function ReadOnlyRow({ label, value }: { label: string; value: string }) {
   return (
-    <div className="flex items-center justify-between py-3">
+    <div className="flex items-center justify-between py-3.5">
       <span className="text-sm text-neutral-600">{label}</span>
       <span className="rounded bg-neutral-100 px-2 py-1 font-mono text-sm text-neutral-700">{value}</span>
     </div>
@@ -264,15 +266,21 @@ function ConfigPanel({ state, onToggle }: ConfigPanelProps) {
         {[1, 2, 3].map((k) => (
           <Card
             key={k}
-            className="p-5"
+            className="overflow-hidden"
           >
-            <div className="h-4 w-40 animate-pulse rounded bg-neutral-100" />
-            <div className="mt-3 space-y-2">
+            <div className="border-b border-neutral-100 px-5 py-4">
+              <div className="h-4 w-40 animate-pulse rounded bg-neutral-100" />
+              <div className="mt-1.5 h-3 w-60 animate-pulse rounded bg-neutral-100" />
+            </div>
+            <div className="divide-y divide-neutral-100 px-5">
               {[1, 2].map((j) => (
                 <div
                   key={j}
-                  className="h-10 animate-pulse rounded bg-neutral-100"
-                />
+                  className="flex items-center justify-between py-3.5"
+                >
+                  <div className="h-4 w-48 animate-pulse rounded bg-neutral-100" />
+                  <div className="h-6 w-24 animate-pulse rounded bg-neutral-100" />
+                </div>
               ))}
             </div>
           </Card>
@@ -290,55 +298,63 @@ function ConfigPanel({ state, onToggle }: ConfigPanelProps) {
       {error && <p className="text-sm text-red-600">{error}</p>}
 
       {/* ── Acceso a la plataforma ── */}
-      <Card className="p-5">
-        <h2 className="mb-1 text-sm font-semibold text-neutral-800">🔒 Acceso a la plataforma</h2>
-        <p className="mb-4 text-xs text-neutral-400">Controla si los usuarios pueden crear nuevas cuentas.</p>
-
-        <div className="flex items-center justify-between rounded-lg border border-neutral-200 px-4 py-3">
-          <div>
-            <label
-              htmlFor="toggle-registrations"
-              className="cursor-pointer text-sm font-medium text-neutral-800"
-            >
-              Nuevos registros
-            </label>
-            <p className="text-xs text-neutral-400">
-              {config.allow_new_registrations
-                ? "Los nuevos usuarios pueden registrarse."
-                : "El registro está desactivado. Los nuevos usuarios recibirán un error 403."}
-            </p>
-          </div>
-          <div className="flex items-center gap-3">
-            <span
-              className="text-xs font-medium"
-              style={{ color: config.allow_new_registrations ? GREEN : "#9ca3af" }}
-            >
-              {config.allow_new_registrations ? "Activado" : "Desactivado"}
-            </span>
-            <Toggle
-              id="toggle-registrations"
-              checked={config.allow_new_registrations}
-              disabled={saving}
-              onChange={onToggle}
-            />
-          </div>
+      <Card className="overflow-hidden">
+        <div className="border-b border-neutral-100 px-5 py-4">
+          <h2 className="text-sm font-semibold text-neutral-800">🔒 Acceso a la plataforma</h2>
+          <p className="mt-0.5 text-xs text-neutral-400">Controla si los usuarios pueden crear nuevas cuentas.</p>
         </div>
 
-        {config.updated_by_email && (
-          <p className="mt-3 text-xs text-neutral-400">
-            Última modificación por <span className="font-medium text-neutral-600">{config.updated_by_email}</span>
-            {config.updated_at ? ` · ${fmtDateTime(config.updated_at)}` : ""}
-          </p>
-        )}
+        <div className="px-5 py-4">
+          <div className="flex items-center justify-between">
+            <div>
+              <label
+                htmlFor="toggle-registrations"
+                className="cursor-pointer text-sm font-medium text-neutral-800"
+              >
+                Nuevos registros
+              </label>
+              <p className="mt-0.5 text-xs text-neutral-400">
+                {config.allow_new_registrations
+                  ? "Los nuevos usuarios pueden registrarse."
+                  : "El registro está desactivado. Los nuevos usuarios recibirán un error 403."}
+              </p>
+            </div>
+            <div className="flex items-center gap-3">
+              <span
+                className="text-xs font-medium"
+                style={{ color: config.allow_new_registrations ? GREEN : "#9ca3af" }}
+              >
+                {config.allow_new_registrations ? "Activado" : "Desactivado"}
+              </span>
+              <Toggle
+                id="toggle-registrations"
+                ariaLabel="Nuevos registros"
+                checked={config.allow_new_registrations}
+                disabled={saving}
+                onChange={onToggle}
+              />
+            </div>
+          </div>
+
+          {config.updated_by_email && (
+            <p className="mt-4 border-t border-neutral-100 pt-3 text-xs text-neutral-400">
+              Última modificación por{" "}
+              <span className="font-medium text-neutral-600">{config.updated_by_email}</span>
+              {config.updated_at ? ` · ${fmtDateTime(config.updated_at)}` : ""}
+            </p>
+          )}
+        </div>
       </Card>
 
       {/* ── Precios (solo lectura) ── */}
-      <Card className="p-5">
-        <h2 className="mb-1 text-sm font-semibold text-neutral-800">💰 Precios y tarifas</h2>
-        <p className="mb-3 text-xs text-neutral-400">
-          Constantes definidas en el código fuente. Contacta con desarrollo para modificarlas.
-        </p>
-        <div className="divide-y divide-neutral-100">
+      <Card className="overflow-hidden">
+        <div className="border-b border-neutral-100 px-5 py-4">
+          <h2 className="text-sm font-semibold text-neutral-800">💰 Precios y tarifas</h2>
+          <p className="mt-0.5 text-xs text-neutral-400">
+            Constantes definidas en el código fuente. Contacta con desarrollo para modificarlas.
+          </p>
+        </div>
+        <div className="divide-y divide-neutral-100 px-5">
           <ReadOnlyRow
             label="Cuota de servicio por reserva"
             value={EUR.format(config.service_fee_eur)}
@@ -351,10 +367,12 @@ function ConfigPanel({ state, onToggle }: ConfigPanelProps) {
       </Card>
 
       {/* ── Reservas (solo lectura) ── */}
-      <Card className="p-5">
-        <h2 className="mb-1 text-sm font-semibold text-neutral-800">⏱ Reservas</h2>
-        <p className="mb-3 text-xs text-neutral-400">Parámetros del ciclo de vida de las reservas. Solo lectura.</p>
-        <div className="divide-y divide-neutral-100">
+      <Card className="overflow-hidden">
+        <div className="border-b border-neutral-100 px-5 py-4">
+          <h2 className="text-sm font-semibold text-neutral-800">⏱ Reservas</h2>
+          <p className="mt-0.5 text-xs text-neutral-400">Parámetros del ciclo de vida de las reservas. Solo lectura.</p>
+        </div>
+        <div className="divide-y divide-neutral-100 px-5">
           <ReadOnlyRow
             label="Expiración de reservas pendientes"
             value={`${config.booking_expiry_days} días sin pago`}

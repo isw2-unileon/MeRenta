@@ -3,8 +3,8 @@ import { AlertTriangle, Check, ChevronDown, Filter, Package, RotateCcw, Users } 
 
 import type { ApiResponse } from "@/types/common";
 import type { IncidentListResponse, IncidentPriority, IncidentResponse, IncidentStatus } from "@/types/incident";
-import { GREEN } from "@/pages/admin/components/adminTokens";
-import { Badge, Card } from "@/pages/admin/components/adminUi";
+import { GREEN } from "@/components/admin/adminTokens";
+import { Badge, Card } from "@/components/admin/adminUi";
 
 // ── Constants ─────────────────────────────────────────────────────────────────
 
@@ -205,7 +205,7 @@ const PRIORITY_ACTION_LABELS: Record<IncidentPriority, string> = {
 
 const STATUS_ACTION_LABELS: Record<IncidentStatus, string> = {
   open: "Reabrir",
-  under_review: "Poner en revision",
+  under_review: "Poner en revisión",
   resolved: "Resolver",
   closed: "Cerrar",
 };
@@ -384,7 +384,7 @@ const TYPE_FILTERS = [
 const STATUS_FILTERS = [
   { value: "", label: "Todas" },
   { value: "open", label: "Abiertas" },
-  { value: "under_review", label: "En revision" },
+  { value: "under_review", label: "En revisión" },
   { value: "resolved", label: "Resueltas" },
   { value: "closed", label: "Cerradas" },
 ];

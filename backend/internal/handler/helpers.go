@@ -2,6 +2,7 @@
 package handler
 
 import (
+	"context"
 	"log/slog"
 	"net/http"
 
@@ -53,6 +54,58 @@ func getCustomerID(c *gin.Context) (uuid.UUID, bool) {
 		return uuid.UUID{}, false
 	}
 	return id, true
+}
+
+// bindAndCreate handles the common POST handler pattern: authenticate → bind JSON →
+// call a service method that takes (ctx, actorID, req) → respond 201.
+func bindAndCreate[Req any, Res any](
+	c *gin.Context,
+	svcFn func(context.Context, uuid.UUID, Req) (Res, error),
+	errStatusFn func(error) int,
+) {
+	customerID, ok := getCustomerID(c)
+	if !ok {
+		return
+	}
+	var req Req
+	if err := c.ShouldBindJSON(&req); err != nil {
+		response.Error(c, http.StatusBadRequest, formatBindError(err))
+		return
+	}
+	res, err := svcFn(c.Request.Context(), customerID, req)
+	if err != nil {
+		response.Error(c, errStatusFn(err), err.Error())
+		return
+	}
+	response.OK(c, http.StatusCreated, res)
+}
+
+// bindAndCreateForTarget handles POST handlers that need both an actor ID and a
+// target resource UUID: authenticate → parse :id → bind JSON → call service → 201.
+func bindAndCreateForTarget[Req any, Res any](
+	c *gin.Context,
+	svcFn func(context.Context, uuid.UUID, uuid.UUID, Req) (Res, error),
+	errStatusFn func(error) int,
+) {
+	actorID, ok := getCustomerID(c)
+	if !ok {
+		return
+	}
+	targetID, ok := parseUUIDParam(c)
+	if !ok {
+		return
+	}
+	var req Req
+	if err := c.ShouldBindJSON(&req); err != nil {
+		response.Error(c, http.StatusBadRequest, formatBindError(err))
+		return
+	}
+	res, err := svcFn(c.Request.Context(), actorID, targetID, req)
+	if err != nil {
+		response.Error(c, errStatusFn(err), err.Error())
+		return
+	}
+	response.OK(c, http.StatusCreated, res)
 }
 
 func respondWithPaginated(

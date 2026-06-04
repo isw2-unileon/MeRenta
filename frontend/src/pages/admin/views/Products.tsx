@@ -3,7 +3,7 @@ import { ExternalLink, ImageIcon, Search } from "lucide-react";
 
 import type { ApiResponse } from "@/types/common";
 import type { SearchItemResponse, SearchItemsResponse } from "@/types/item";
-import { Badge, Card, SectionTitle } from "@/pages/admin/components/adminUi";
+import { Badge, Card, SectionTitle } from "@/components/admin/adminUi";
 
 const LIMIT = 20;
 

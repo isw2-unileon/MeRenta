@@ -134,8 +134,8 @@ func (s *AdminService) ListUsers(
 	query, status string,
 	page, limit int,
 ) (AdminUserListResponse, error) {
-	offset := int32((page - 1) * limit)
-	lim := int32(limit)
+	offset := toInt32((page - 1) * limit)
+	lim := toInt32(limit)
 
 	switch {
 	case query != "":
@@ -153,8 +153,8 @@ func (s *AdminService) ListVerification(
 	status string,
 	page, limit int,
 ) (AdminVerificationListResponse, error) {
-	offset := int32((page - 1) * limit)
-	lim := int32(limit)
+	offset := toInt32((page - 1) * limit)
+	lim := toInt32(limit)
 	verificationStatus := sqlcdb.VerificationStatus(status)
 
 	if err := s.q.EnsureCustomerVerificationSchema(ctx); err != nil {
@@ -260,8 +260,8 @@ func (s *AdminService) LogAuditEntry(
 
 // ListAuditLog returns audit entries, newest first.
 func (s *AdminService) ListAuditLog(ctx context.Context, action string, page, limit int) (AuditLogListResponse, error) {
-	offset := int32((page - 1) * limit)
-	lim := int32(limit)
+	offset := toInt32((page - 1) * limit)
+	lim := toInt32(limit)
 
 	total, err := s.q.CountAuditLog(ctx, action, uuid.Nil, true)
 	if err != nil {

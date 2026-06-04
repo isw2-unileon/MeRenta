@@ -17,7 +17,7 @@ import {
   uniqueProductCities,
   type ReceivedReviewsResponseBase,
   type ReviewsSummary,
-} from "@/pages/profile/profileShared";
+} from "@/components/profile/profileShared";
 
 const PRODUCT_TONES: Record<string, string> = {
   sports: "bg-cat-deporte",
