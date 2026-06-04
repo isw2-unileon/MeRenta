@@ -1,4 +1,4 @@
-import { useReducer, useState } from "react";
+import React, { useReducer, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { AlertTriangle, X } from "lucide-react";
 
@@ -205,7 +205,7 @@ function ProductReportModal({ itemId, onClose, onSuccess }: ProductReportModalPr
       <div className="w-full max-w-md rounded-xl border border-neutral-200 bg-white p-6 shadow-xl">
         <div className="mb-4 flex items-center justify-between gap-3">
           <div>
-            <p className="text-[12px] font-semibold tracking-wide text-amber-700 uppercase">Incidencia</p>
+            <p className="text-card-loc font-semibold tracking-wide text-amber-700 uppercase">Incidencia</p>
             <h2 className="text-base font-bold text-neutral-900">Reportar producto</h2>
           </div>
           <button
@@ -305,6 +305,7 @@ function ProductReportModal({ itemId, onClose, onSuccess }: ProductReportModalPr
  * @param minDays Minimum rental days configured for the listing.
  * @param maxDay Maximum rental days configured for the listing. Null means unlimited.
  * @param isOwner Whether the authenticated user owns this listing. If true, owner-only actions are hidden.
+ * @param occupiedDates Set of "YYYY-MM-DD" strings representing dates already booked for this listing. Used to prevent double-booking.
  * @param onDateChange Callback fired when the user changes a date from the booking card inputs. Receives the new start and end dates (either may be null).
  * @returns Booking card JSX.
  */

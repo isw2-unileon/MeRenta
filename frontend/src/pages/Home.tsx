@@ -333,7 +333,7 @@ function HomeProductCard({ item, isFavorite, reviewSummary, onToggleFavorite, ba
         <div className="mt-5 flex items-center justify-between gap-3">
           <p className="text-primary text-[17px] font-bold">{Math.round(item.price_per_day)} EUR/dia</p>
           {!isAvailable && (
-            <span className="rounded-lg bg-[#f3f4f6] px-3 py-2 text-[12px] font-medium text-[#9ca3af]">
+            <span className="text-card-loc rounded-lg bg-[#f3f4f6] px-3 py-2 font-medium text-[#9ca3af]">
               No disponible
             </span>
           )}
@@ -568,7 +568,7 @@ function SearchHero({ firstName, categories }: SearchHeroProps) {
               <button
                 key={category.value}
                 type="button"
-                className="border-border-main text-body-color rounded-full border bg-white px-4 py-1.5 text-[12px] shadow-sm"
+                className="border-border-main text-body-color text-card-loc rounded-full border bg-white px-4 py-1.5 shadow-sm"
                 onClick={() => void navigate(`/search?category=${encodeURIComponent(category.value)}`)}
               >
                 {category.label}
@@ -644,7 +644,7 @@ function CategoryGrid({ categories }: CategoryGridProps) {
       </div>
       <div
         id="home-category-carousel"
-        className="flex snap-x [scrollbar-width:none] gap-4 overflow-x-auto scroll-smooth pb-2 [-ms-overflow-style:none] [&::-webkit-scrollbar]:hidden"
+        className="flex snap-x scrollbar-none gap-4 overflow-x-auto scroll-smooth pb-2 [-ms-overflow-style:none] [&::-webkit-scrollbar]:hidden"
       >
         {categories.map((category) => (
           <Link

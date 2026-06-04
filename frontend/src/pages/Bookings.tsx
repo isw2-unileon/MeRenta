@@ -1,4 +1,4 @@
-import { useEffect, useReducer, useState } from "react";
+import React, { useEffect, useReducer, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { AlertTriangle, ArrowRight, BadgeCheck, CalendarDays, Package, X } from "lucide-react";
 
@@ -306,7 +306,7 @@ function BookingCard({
       {/* Image */}
       <button
         type="button"
-        className="size-20 flex-shrink-0 overflow-hidden rounded-lg p-0"
+        className="size-20 shrink-0 overflow-hidden rounded-lg p-0"
         onClick={() => navigate(`/product/${booking.item_id}`)}
         aria-label={`Abrir ${booking.item_title}`}
       >
@@ -363,7 +363,7 @@ function BookingCard({
           <p className="text-primary mt-1 text-[14px] font-bold">{fmtPrice(booking.estimated_total)} EUR</p>
         )}
 
-        {booking.notes && <p className="text-subtle mt-1 line-clamp-1 text-[12px] italic">"{booking.notes}"</p>}
+        {booking.notes && <p className="text-subtle text-card-loc mt-1 line-clamp-1 italic">"{booking.notes}"</p>}
 
         {/* Actions */}
         <div className="mt-3 flex flex-wrap gap-2">

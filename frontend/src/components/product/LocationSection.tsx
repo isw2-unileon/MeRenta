@@ -96,7 +96,7 @@ function NewAddressForm({ value, errors, saving, onChange, onCancel, onSave }: N
           <div>
             <label
               htmlFor="new-street"
-              className="text-[12px]"
+              className="text-card-loc"
             >
               Calle / Avenida
             </label>
@@ -115,7 +115,7 @@ function NewAddressForm({ value, errors, saving, onChange, onCancel, onSave }: N
           <div>
             <label
               htmlFor="new-number"
-              className="text-[12px]"
+              className="text-card-loc"
             >
               Número
             </label>
@@ -136,7 +136,7 @@ function NewAddressForm({ value, errors, saving, onChange, onCancel, onSave }: N
         <div>
           <label
             htmlFor="new-floor"
-            className="text-[12px]"
+            className="text-card-loc"
           >
             Piso / Puerta <span className="text-subtle">(opcional)</span>
           </label>
@@ -154,7 +154,7 @@ function NewAddressForm({ value, errors, saving, onChange, onCancel, onSave }: N
         <div>
           <label
             htmlFor="new-postal"
-            className="text-[12px]"
+            className="text-card-loc"
           >
             Código postal
           </label>
@@ -174,7 +174,7 @@ function NewAddressForm({ value, errors, saving, onChange, onCancel, onSave }: N
         <div>
           <label
             htmlFor="new-city"
-            className="text-[12px]"
+            className="text-card-loc"
           >
             Ciudad
           </label>
@@ -194,7 +194,7 @@ function NewAddressForm({ value, errors, saving, onChange, onCancel, onSave }: N
         <div>
           <label
             htmlFor="new-province"
-            className="text-[12px]"
+            className="text-card-loc"
           >
             Provincia
           </label>

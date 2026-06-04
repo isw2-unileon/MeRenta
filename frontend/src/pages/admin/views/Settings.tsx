@@ -338,8 +338,7 @@ function ConfigPanel({ state, onToggle }: ConfigPanelProps) {
 
           {config.updated_by_email && (
             <p className="mt-4 border-t border-neutral-100 pt-3 text-xs text-neutral-400">
-              Última modificación por{" "}
-              <span className="font-medium text-neutral-600">{config.updated_by_email}</span>
+              Última modificación por <span className="font-medium text-neutral-600">{config.updated_by_email}</span>
               {config.updated_at ? ` · ${fmtDateTime(config.updated_at)}` : ""}
             </p>
           )}

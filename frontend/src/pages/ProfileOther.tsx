@@ -615,7 +615,7 @@ function UserReportModal({
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 px-4 py-8">
-      <div className="bg-page w-full max-w-[35rem] rounded-lg p-5 shadow-xl">
+      <div className="bg-page w-full max-w-140 rounded-lg p-5 shadow-xl">
         <div className="flex items-start justify-between gap-4">
           <div>
             <h2 className="heading-panel--sm">Reportar usuario</h2>
@@ -778,14 +778,14 @@ function ProfileHero({
           </button>
           <button
             type="button"
-            className="text-report h-auto p-0 text-[12px]"
+            className="text-report text-card-loc h-auto p-0"
             onClick={onReportUser}
             disabled={isOwnProfile}
           >
             Reportar usuario
           </button>
-          {reportSuccess && <p className="text-primary max-w-60 text-center text-[12px]">Incidencia enviada.</p>}
-          {messageError && <p className="text-report max-w-60 text-center text-[12px]">{messageError}</p>}
+          {reportSuccess && <p className="text-primary text-card-loc max-w-60 text-center">Incidencia enviada.</p>}
+          {messageError && <p className="text-report text-card-loc max-w-60 text-center">{messageError}</p>}
         </div>
       </div>
     </section>
@@ -880,7 +880,7 @@ function ProfileSidebar({
           ].map(([label, value]) => (
             <div
               key={label}
-              className="flex items-center justify-between gap-4 py-3 text-[12px]"
+              className="text-card-loc flex items-center justify-between gap-4 py-3"
             >
               <span className="text-subtle">{label}</span>
               <span className="text-ink text-right font-bold">{value}</span>
@@ -896,16 +896,16 @@ function ProfileSidebar({
         >
           <Mail size={15} /> {openingMessage ? "Abriendo..." : "Enviar mensaje"}
         </button>
-        {messageError && <p className="text-report mt-3 text-center text-[12px]">{messageError}</p>}
+        {messageError && <p className="text-report text-card-loc mt-3 text-center">{messageError}</p>}
         <button
           type="button"
-          className="text-report mt-4 h-auto w-full p-0 text-[12px]"
+          className="text-report text-card-loc mt-4 h-auto w-full p-0"
           onClick={onReportUser}
           disabled={isOwnProfile}
         >
           Reportar a este usuario
         </button>
-        {reportSuccess && <p className="text-primary mt-3 text-center text-[12px]">Incidencia enviada.</p>}
+        {reportSuccess && <p className="text-primary text-card-loc mt-3 text-center">Incidencia enviada.</p>}
       </div>
     </aside>
   );
@@ -948,7 +948,7 @@ function ProfileProductsSection({
             <button
               key={filter.value}
               type="button"
-              className={`h-7 rounded-full border px-5 text-[12px] ${
+              className={`text-card-loc h-7 rounded-full border px-5 ${
                 selectedCategory === filter.value
                   ? "bg-primary text-white"
                   : "border-border-input bg-page text-subtle hover:border-primary hover:text-primary"
@@ -1301,7 +1301,7 @@ function ProfileOther() {
 
       <ProfileStatsStrip stats={stats} />
 
-      <main className="mx-auto grid max-w-340 grid-cols-1 gap-9 px-6 pt-9 pb-18 md:px-10 lg:grid-cols-[minmax(0,1fr)_360px]">
+      <main className="pb-error-icon mx-auto grid max-w-340 grid-cols-1 gap-9 px-6 pt-9 md:px-10 lg:grid-cols-[minmax(0,1fr)_360px]">
         <div className="min-w-0">
           <section className="profile-info-panel px-5 py-4">
             <p className="profile-about-heading">Resumen del perfil</p>

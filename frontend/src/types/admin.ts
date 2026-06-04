@@ -28,15 +28,6 @@ interface AdminUserListResponse {
   page: number;
   limit: number;
 }
-
-/**
- * Response from PATCH /api/admin/users/:id/status.
- */
-interface AdminUpdateStatusResponse {
-  customer_id: string;
-  status: AccountStatus;
-}
-
 interface AdminVerificationRequest {
   customer_id: string;
   first_name: string;
@@ -60,7 +51,6 @@ interface AdminVerificationListResponse {
 export type {
   AdminUser,
   AdminUserListResponse,
-  AdminUpdateStatusResponse,
   AdminUserRole,
   AdminVerificationListResponse,
   AdminVerificationRequest,

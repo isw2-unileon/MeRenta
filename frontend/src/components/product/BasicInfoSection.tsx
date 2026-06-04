@@ -235,7 +235,7 @@ function BasicInfoSection({ data, errors, onChange }: BasicInfoSectionProps) {
             aria-label="Descripción completa"
             value={data.description}
             onChange={updateBasicInfoField}
-            className={`min-h-[128px] ${errors.description ? "input-error" : ""}`}
+            className={`min-h-32 ${errors.description ? "input-error" : ""}`}
           />
           <div className="mt-1 flex items-start justify-between gap-4">
             {errors.description ? (

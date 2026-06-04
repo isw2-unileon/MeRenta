@@ -161,18 +161,10 @@ interface FavoritesResponse {
   total: number;
 }
 
-/**
- * Response envelope for GET /api/favorites/:id/check.
- */
-interface FavoriteCheckResponse {
-  is_favorite: boolean;
-}
-
 export type {
   CategoryOption,
   CreateItemRequest,
   ExistingProductPhoto,
-  FavoriteCheckResponse,
   FavoriteItemResponse,
   FavoritesResponse,
   ItemImageResponse,

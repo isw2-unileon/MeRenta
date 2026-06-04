@@ -1,7 +1,6 @@
-import { Star } from "lucide-react";
 import type { ReactNode } from "react";
 
-import { AMBER, GREEN, MINT, PASTELS } from "@/components/admin/adminTokens";
+import { GREEN, MINT, PASTELS } from "@/components/admin/adminTokens";
 
 // ── Types ─────────────────────────────────────────────────────────────────────
 type BadgeColor = "gray" | "green" | "amber" | "red" | "blue" | "purple";
@@ -104,52 +103,7 @@ function SectionTitle({ title, sub, action }: SectionTitleProps) {
 }
 
 // ── Stars ─────────────────────────────────────────────────────────────────────
-
-interface StarsProps {
-  value: number;
-}
-
-/**
- * Star rating display.
- */
-function Stars({ value }: StarsProps) {
-  if (!value) {
-    return <span className="text-xs text-neutral-400">Sin valorar</span>;
-  }
-  return (
-    <span
-      className="inline-flex items-center gap-1 text-sm font-medium"
-      style={{ color: AMBER }}
-    >
-      <Star
-        size={13}
-        fill={AMBER}
-        stroke={AMBER}
-      />
-      {value.toFixed(1)}
-    </span>
-  );
-}
-
 // ── ComingSoon stub ────────────────────────────────────────────────────────────
-
-interface ComingSoonProps {
-  title: string;
-  description?: string;
-}
-
-/**
- * Placeholder card for sections not yet implemented.
- */
-function ComingSoon({ title, description }: ComingSoonProps) {
-  return (
-    <Card className="p-10 text-center">
-      <h2 className="text-lg font-bold text-neutral-800">{title}</h2>
-      {description && <p className="mt-1 text-sm text-neutral-500">{description}</p>}
-    </Card>
-  );
-}
-
 // ── ConfirmModal ──────────────────────────────────────────────────────────────
 
 interface ConfirmModalProps {
@@ -198,4 +152,4 @@ function ConfirmModal({
   );
 }
 
-export { Card, Badge, Avatar, SectionTitle, Stars, ComingSoon, ConfirmModal };
+export { Card, Badge, Avatar, SectionTitle, ConfirmModal };

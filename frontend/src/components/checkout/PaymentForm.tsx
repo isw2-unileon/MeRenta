@@ -104,6 +104,7 @@ function fmtTotal(value: number): string {
  * Must be mounted inside a Stripe `<Elements>` provider.
  *
  * @param totalEUR Total amount in EUR to display on the pay button.
+ * @param clientSecret Stripe PaymentIntent client secret for confirming the payment.
  * @param onSuccess Callback for a successful payment.
  * @param onError Callback for a declined / failed payment.
  * @returns Payment form JSX.
@@ -201,12 +202,12 @@ function PaymentForm({ totalEUR, clientSecret, onSuccess, onError }: PaymentForm
       <div className="mb-4">
         <label
           htmlFor="stripe-card-number"
-          className="checkout-label mb-1.5 block text-[13px] font-medium text-[var(--color-form)]"
+          className="checkout-label text-form mb-1.5 block text-[13px] font-medium"
         >
           Numero de tarjeta
         </label>
         <div
-          className="relative flex items-center rounded-[var(--radius-md)] border border-[var(--color-border-input)] bg-[var(--color-section-alt)] px-4 focus-within:border-[1.5px] focus-within:border-[var(--color-checkout-focus)]"
+          className="bg-section-alt relative flex items-center rounded-md border border-(--color-border-input) px-4 focus-within:border-[1.5px] focus-within:border-(--color-checkout-focus)"
           style={{ height: "var(--spacing-input-checkout)" }}
         >
           <CardNumberElement
@@ -216,7 +217,7 @@ function PaymentForm({ totalEUR, clientSecret, onSuccess, onError }: PaymentForm
             onChange={handleCardNumberChange}
           />
           {/* Brand badge */}
-          <span className="card-brand-badge ml-2 flex-shrink-0">{brandLabel}</span>
+          <span className="card-brand-badge ml-2 shrink-0">{brandLabel}</span>
         </div>
         <p className="checkout-hint mt-1">
           Este campo es gestionado por Stripe Elements y se inyecta en tiempo de ejecucion
@@ -228,12 +229,12 @@ function PaymentForm({ totalEUR, clientSecret, onSuccess, onError }: PaymentForm
         <div className="flex-1">
           <label
             htmlFor="stripe-card-expiry"
-            className="checkout-label mb-1.5 block text-[13px] font-medium text-[var(--color-form)]"
+            className="checkout-label text-form mb-1.5 block text-[13px] font-medium"
           >
             Fecha de caducidad
           </label>
           <div
-            className="flex items-center rounded-[var(--radius-md)] border border-[var(--color-border-input)] bg-[var(--color-section-alt)] px-4 focus-within:border-[1.5px] focus-within:border-[var(--color-checkout-focus)]"
+            className="border-border-input bg-section-alt flex items-center rounded-md border px-4 focus-within:border-[1.5px] focus-within:border-(--color-checkout-focus)"
             style={{ height: "var(--spacing-input-checkout)" }}
           >
             <CardExpiryElement
@@ -247,12 +248,12 @@ function PaymentForm({ totalEUR, clientSecret, onSuccess, onError }: PaymentForm
         <div className="flex-1">
           <label
             htmlFor="stripe-card-cvc"
-            className="checkout-label mb-1.5 block text-[13px] font-medium text-[var(--color-form)]"
+            className="checkout-label text-form mb-1.5 block text-[13px] font-medium"
           >
             CVC / CVV
           </label>
           <div
-            className="flex items-center gap-2 rounded-[var(--radius-md)] border border-[var(--color-border-input)] bg-[var(--color-section-alt)] px-4 focus-within:border-[1.5px] focus-within:border-[var(--color-checkout-focus)]"
+            className="border-border-input bg-section-alt focus-within:border-checkout-focus flex items-center gap-2 rounded-md border px-4 focus-within:border-[1.5px]"
             style={{ height: "var(--spacing-input-checkout)" }}
           >
             <CardCvcElement
@@ -261,7 +262,7 @@ function PaymentForm({ totalEUR, clientSecret, onSuccess, onError }: PaymentForm
               options={{ style: STRIPE_META_STYLE }}
             />
             <span
-              className="cvc-hint flex-shrink-0"
+              className="cvc-hint shrink-0"
               title="Los 3 dígitos en el reverso de tu tarjeta (4 para Amex)"
               aria-label="Ayuda CVC"
             >
@@ -278,7 +279,7 @@ function PaymentForm({ totalEUR, clientSecret, onSuccess, onError }: PaymentForm
       <div className="mb-5">
         <label
           htmlFor="card-holder-name"
-          className="checkout-label mb-1.5 block text-[13px] font-medium text-[var(--color-form)]"
+          className="checkout-label text-form mb-1.5 block text-[13px] font-medium"
         >
           Nombre en la tarjeta
         </label>

@@ -11,7 +11,7 @@ function Categories() {
   return (
     <section
       id="categorias"
-      className="px-layout-margin pt-18 pb-[56px]"
+      className="px-layout-margin pt-error-icon pb-[56px]"
     >
       <div className="max-w-alert-width mx-auto">
         <span className="eyebrow">EXPLORA POR CATEGORIA</span>
