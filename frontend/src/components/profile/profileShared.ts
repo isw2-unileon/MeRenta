@@ -113,14 +113,55 @@ function uniqueProductCities(products: SearchItemResponse[]) {
   return Array.from(new Set(products.flatMap((product) => (product.city ? [product.city] : []))));
 }
 
+interface ReceivedReview {
+  review_id: string;
+  reviewer_id: string;
+  reviewer_first_name: string;
+  reviewer_last_name: string;
+  reviewer_avatar_url?: string;
+  rating: number;
+  comment: string;
+  reviewed_at: string;
+}
+
+function reviewerInitials(review: ReceivedReview) {
+  return getInitials(review.reviewer_first_name, review.reviewer_last_name);
+}
+
+function reviewerDisplayName(review: ReceivedReview) {
+  const lastInitial = review.reviewer_last_name[0] ? `${review.reviewer_last_name[0]}.` : "";
+  return `${review.reviewer_first_name} ${lastInitial}`.trim();
+}
+
+function formatRelativeDate(value: string) {
+  const created = new Date(value);
+  if (Number.isNaN(created.getTime())) return "";
+
+  const diffDays = Math.floor((Date.now() - created.getTime()) / 86_400_000);
+  if (diffDays <= 0) return "Hoy";
+  if (diffDays === 1) return "Hace 1 dia";
+  if (diffDays < 7) return `Hace ${diffDays} días`;
+
+  const weeks = Math.floor(diffDays / 7);
+  if (weeks === 1) return "Hace 1 semana";
+  if (weeks < 5) return `Hace ${weeks} semanas`;
+
+  const months = Math.floor(diffDays / 30);
+  if (months <= 1) return "Hace 1 mes";
+  return `Hace ${months} meses`;
+}
+
 export {
   fetchMyItems,
   fetchReceivedReviews,
   formatMemberSince,
+  formatRelativeDate,
   getInitials,
   initialProductsState,
   productsReducer,
+  reviewerDisplayName,
+  reviewerInitials,
   uniqueProductCities,
 };
 
-export type { ProductsAction, ProductsState, ReceivedReviewsResponseBase, ReviewsSummary };
+export type { ProductsAction, ProductsState, ReceivedReview, ReceivedReviewsResponseBase, ReviewsSummary };

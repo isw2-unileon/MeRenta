@@ -1,6 +1,6 @@
 import { useNavigate } from "react-router-dom";
 import { useAuth } from "@/hooks/useAuth";
-import { Heart, MessageSquare, LogOut, CalendarDays } from "lucide-react";
+import { BadgeCheck, CalendarDays, Heart, LayoutDashboard, LogOut, MessageSquare } from "lucide-react";
 
 /**
  * Renders the authenticated navigation bar with profile shortcuts.
@@ -43,10 +43,11 @@ function NavbarAuth() {
         <div className="flex items-center gap-8">
           <button
             type="button"
-            className="text-logo text-ink cursor-pointer border-none bg-transparent p-0 font-bold"
+            className="text-logo text-ink inline-flex cursor-pointer items-baseline gap-0 border-none bg-transparent p-0 font-bold tracking-normal whitespace-nowrap"
             onClick={() => navigate("/home")}
           >
-            Me<span className="text-primary">Renta</span>
+            <span>Me</span>
+            <span className="text-primary">Renta</span>
           </button>
 
           <ul className="nav-list">
@@ -72,6 +73,18 @@ function NavbarAuth() {
         </div>
 
         <div className="flex items-center gap-4">
+          {user.user_role === "admin" && (
+            <button
+              type="button"
+              className="btn-icon"
+              onClick={() => navigate("/admin")}
+              aria-label="Panel de administración"
+              title="Panel de administración"
+            >
+              <LayoutDashboard size={16} />
+            </button>
+          )}
+
           <button
             type="button"
             className="btn-icon"
@@ -87,6 +100,7 @@ function NavbarAuth() {
             className="btn-icon"
             onClick={() => navigate("/favs")}
             aria-label="Favoritos"
+            title="Favoritos"
           >
             <Heart size={16} />
           </button>
@@ -96,6 +110,7 @@ function NavbarAuth() {
             className="btn-icon"
             onClick={() => navigate("/chat")}
             aria-label="Mensajes"
+            title="Mensajes"
           >
             <MessageSquare size={16} />
           </button>
@@ -104,6 +119,8 @@ function NavbarAuth() {
             type="button"
             className="flex cursor-pointer items-center gap-2 border-none bg-transparent p-0"
             onClick={() => navigate("/profile")}
+            aria-label="Ver perfil"
+            title="Ver perfil"
           >
             {user.avatar_url ? (
               <img
@@ -115,7 +132,16 @@ function NavbarAuth() {
               <div className="avatar-initials">{initials}</div>
             )}
 
-            <span className="text-body text-ink font-medium">{displayName}</span>
+            <span className="flex items-center gap-1">
+              <span className="text-body text-ink font-medium">{displayName}</span>
+              {user.verification_status === "verified" && (
+                <BadgeCheck
+                  size={16}
+                  className="text-primary shrink-0"
+                  aria-label="Perfil verificado"
+                />
+              )}
+            </span>
           </button>
 
           <button

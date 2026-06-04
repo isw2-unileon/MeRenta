@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useMemo, useReducer, useRef, useState, type FormEvent } from "react";
 import { useNavigate, useParams } from "react-router-dom";
-import { ArrowRight, CheckCheck, Search, SendHorizontal, Trash2, X } from "lucide-react";
+import { ArrowRight, BadgeCheck, CheckCheck, Search, SendHorizontal, Trash2, X } from "lucide-react";
 
 import type { ApiResponse } from "@/types/common";
 import { useAuth } from "@/hooks/useAuth";
@@ -14,6 +14,7 @@ interface ConversationResponse {
   other_user_id: string;
   other_user_name: string;
   other_avatar_url?: string;
+  other_user_verification_status: string;
   last_message?: string;
   last_message_at?: string;
   updated_at: string;
@@ -389,19 +390,18 @@ async function markConversationRead(conversationID: string): Promise<void> {
   });
 }
 
-function buildWebSocketURL(conversationID: string, accessToken?: string | null): string {
+function buildWebSocketURL(conversationID: string): string {
   // In dev the Vite proxy (ws: true) forwards /api/* to the backend, so we connect
   // to the dev server origin and let the proxy handle the upgrade. This keeps the
   // connection same-origin and avoids a CSP violation for ws://localhost:8080.
-  // In production we use VITE_API_BASE_URL directly (cross-origin backend).
+  // In production, we use VITE_API_BASE_URL directly (cross-origin backend).
+  // Authentication is handled via the HttpOnly cookie, which the browser sends
+  // automatically on WebSocket connections — no token query-param needed.
   const apiBaseURL = import.meta.env.DEV
     ? window.location.origin
     : import.meta.env.VITE_API_BASE_URL.trim() || window.location.origin;
   const url = new URL(`/api/conversations/${conversationID}/ws`, apiBaseURL);
   url.protocol = url.protocol === "https:" ? "wss:" : "ws:";
-  if (accessToken) {
-    url.searchParams.set("access_token", accessToken);
-  }
   return url.toString();
 }
 
@@ -473,7 +473,16 @@ function ConversationRow({
           image={conversation.other_avatar_url}
         />
         <span className="min-w-0">
-          <span className="text-ink block truncate text-[15px] font-bold">{conversation.other_user_name}</span>
+          <span className="flex items-center gap-1">
+            <span className="text-ink block truncate text-[15px] font-bold">{conversation.other_user_name}</span>
+            {conversation.other_user_verification_status === "verified" && (
+              <BadgeCheck
+                size={14}
+                className="text-primary shrink-0"
+                aria-label="Perfil verificado"
+              />
+            )}
+          </span>
           <span className="text-primary block truncate text-[11px] font-medium">{conversation.item_title}</span>
           <span className={`${unread ? "text-ink font-medium" : "text-subtle"} text-card-loc block truncate`}>
             {conversation.last_message ?? "Sin mensajes todavía"}
@@ -655,7 +664,16 @@ function ChatHeader({
           image={conversation.other_avatar_url}
         />
         <div>
-          <h2 className="text-[17px] font-semibold">{conversation.other_user_name}</h2>
+          <div className="flex items-center gap-1.5">
+            <h2 className="text-[17px] font-semibold">{conversation.other_user_name}</h2>
+            {conversation.other_user_verification_status === "verified" && (
+              <BadgeCheck
+                size={18}
+                className="text-primary shrink-0"
+                aria-label="Perfil verificado"
+              />
+            )}
+          </div>
           <p className="bg-primary-light text-primary inline-flex max-w-90 truncate rounded-full px-2.5 py-0.5 text-[10px] font-medium">
             {conversation.item_title} · {Math.round(conversation.item_price)} EUR/dia
           </p>
@@ -821,7 +839,7 @@ function DeleteConversationDialog({
 // ── Chat page hook — keeps all state, effects and handlers out of the render ──
 function useChatPage(conversationId: string | undefined) {
   const navigate = useNavigate();
-  const { user, accessToken } = useAuth();
+  const { user } = useAuth();
   const [state, dispatch] = useReducer(chatReducer, initialState);
   const [selectingConversations, setSelectingConversations] = useState(false);
   const [selectedConversationIDs, setSelectedConversationIDs] = useState<Set<string>>(new Set());
@@ -934,7 +952,7 @@ function useChatPage(conversationId: string | undefined) {
     // that closes as soon as auth finishes and currentUserID becomes available.
     if (!activeConversationID || !currentUserID) return undefined;
 
-    const socket = new WebSocket(buildWebSocketURL(activeConversationID, accessToken));
+    const socket = new WebSocket(buildWebSocketURL(activeConversationID));
     socketRef.current = socket;
 
     socket.onmessage = (event) => {
@@ -966,7 +984,7 @@ function useChatPage(conversationId: string | undefined) {
       socket.close();
       if (socketRef.current === socket) socketRef.current = null;
     };
-  }, [accessToken, activeConversationID, currentUserID]);
+  }, [activeConversationID, currentUserID]);
 
   const handleSubmit = async (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault();

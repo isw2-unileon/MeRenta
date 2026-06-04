@@ -21,6 +21,8 @@ interface ProductImageGalleryProps {
   isAvailable: boolean;
   /** Whether the current user has this item saved as a favourite. */
   isFavorite: boolean;
+  /** Whether the favourite toggle should be shown. */
+  canToggleFavorite?: boolean;
   /** Callback fired when the user toggles the favourite button. */
   onToggleFavorite: () => void;
 }
@@ -39,7 +41,14 @@ interface ProductImageGalleryProps {
  * @param onToggleFavorite Called when the user clicks the heart button.
  * @returns Gallery JSX.
  */
-function ProductImageGallery({ images, title, isAvailable, isFavorite, onToggleFavorite }: ProductImageGalleryProps) {
+function ProductImageGallery({
+  images,
+  title,
+  isAvailable,
+  isFavorite,
+  canToggleFavorite = true,
+  onToggleFavorite,
+}: ProductImageGalleryProps) {
   const [activeIndex, setActiveIndex] = useState(0);
   const [lightboxOpen, setLightboxOpen] = useState(false);
   const dialogRef = useRef<HTMLDialogElement | null>(null);
@@ -117,20 +126,22 @@ function ProductImageGallery({ images, title, isAvailable, isFavorite, onToggleF
           </div>
 
           {/* Favourite button */}
-          <button
-            type="button"
-            className={`absolute top-4 right-4 flex size-8 items-center justify-center rounded-full bg-white p-0 shadow-sm transition-colors ${
-              isFavorite ? "text-heart-active" : "text-subtle hover:text-heart-active"
-            }`}
-            aria-pressed={isFavorite}
-            aria-label={isFavorite ? "Quitar de favoritos" : "Añadir a favoritos"}
-            onClick={onToggleFavorite}
-          >
-            <Heart
-              size={17}
-              fill={isFavorite ? "currentColor" : "none"}
-            />
-          </button>
+          {canToggleFavorite && (
+            <button
+              type="button"
+              className={`absolute top-4 right-4 flex size-8 items-center justify-center rounded-full bg-white p-0 shadow-sm transition-colors ${
+                isFavorite ? "text-heart-active" : "text-subtle hover:text-heart-active"
+              }`}
+              aria-pressed={isFavorite}
+              aria-label={isFavorite ? "Quitar de favoritos" : "Añadir a favoritos"}
+              onClick={onToggleFavorite}
+            >
+              <Heart
+                size={17}
+                fill={isFavorite ? "currentColor" : "none"}
+              />
+            </button>
+          )}
         </div>
 
         {/* ── Thumbnails ── */}

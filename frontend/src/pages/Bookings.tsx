@@ -1,10 +1,11 @@
-import { useEffect, useReducer, useState } from "react";
+import React, { useEffect, useReducer, useState } from "react";
 import { useNavigate } from "react-router-dom";
-import { CalendarDays, Package, ArrowRight } from "lucide-react";
+import { AlertTriangle, ArrowRight, BadgeCheck, CalendarDays, Package, X } from "lucide-react";
 
 import { useAuth } from "@/hooks/useAuth";
 import type { ApiResponse } from "@/types/common";
 import type { BookingDetailResponse, BookingListResponse, BookingStatus } from "@/types/booking";
+import type { IncidentType } from "@/types/incident";
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
 
@@ -59,7 +60,10 @@ async function openConversation(itemId: string, withUserId?: string): Promise<st
   return json.data.conversation_id;
 }
 
-async function patchBookingStatus(bookingId: string, action: "accept" | "reject" | "cancel"): Promise<void> {
+async function patchBookingStatus(
+  bookingId: string,
+  action: "accept" | "reject" | "cancel" | "complete"
+): Promise<void> {
   const res = await fetch(`/api/bookings/${bookingId}/${action}`, {
     method: "PATCH",
     credentials: "include",
@@ -68,6 +72,156 @@ async function patchBookingStatus(bookingId: string, action: "accept" | "reject"
   if (!res.ok || !json.success) {
     throw new Error(json.error ?? "Error al actualizar la reserva");
   }
+}
+
+// ── Incident helpers ──────────────────────────────────────────────────────────
+
+const INCIDENT_TYPE_LABELS: Record<IncidentType, string> = {
+  damage: "Producto dañado",
+  late_return: "Devolución tardía",
+  item_mismatch: "Producto no coincide",
+  not_delivered: "No entregado",
+  other: "Otra incidencia",
+  not_available: "No disponible",
+  forbidden_item: "Producto no permitido",
+};
+
+const BOOKING_INCIDENT_TYPES: IncidentType[] = ["damage", "late_return", "item_mismatch", "not_delivered", "other"];
+
+async function submitIncident(bookingId: string, type: IncidentType, description: string): Promise<void> {
+  const res = await fetch("/api/incidents", {
+    method: "POST",
+    credentials: "include",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ booking_id: bookingId, type, description }),
+  });
+  const json = (await res.json()) as ApiResponse<unknown>;
+  if (!res.ok || !json.success) {
+    throw new Error(json.error ?? "Error al enviar la incidencia");
+  }
+}
+
+// ── Incident modal ────────────────────────────────────────────────────────────
+
+interface IncidentModalProps {
+  booking: BookingDetailResponse;
+  onClose: () => void;
+  onSuccess: () => void;
+}
+
+function IncidentModal({ booking, onClose, onSuccess }: IncidentModalProps) {
+  const [type, setType] = useState<IncidentType>("damage");
+  const [description, setDescription] = useState("");
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState("");
+
+  async function handleSubmit(e: React.FormEvent) {
+    e.preventDefault();
+    if (description.trim().length < 10) {
+      setError("La descripción debe tener al menos 10 caracteres.");
+      return;
+    }
+    setLoading(true);
+    setError("");
+    try {
+      await submitIncident(booking.booking_id, type, description.trim());
+      onSuccess();
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Error desconocido");
+    } finally {
+      setLoading(false);
+    }
+  }
+
+  return (
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/30 px-4">
+      <div className="w-full max-w-md rounded-xl border border-neutral-200 bg-white p-6 shadow-xl">
+        <div className="mb-4 flex items-center justify-between">
+          <h2 className="text-base font-bold text-neutral-900">Reportar incidencia</h2>
+          <button
+            type="button"
+            onClick={onClose}
+            aria-label="Cerrar"
+            className="text-neutral-400 hover:text-neutral-700"
+          >
+            <X size={18} />
+          </button>
+        </div>
+
+        <p className="mb-4 text-sm text-neutral-500">
+          Reserva: <span className="font-medium text-neutral-800">{booking.item_title}</span>
+        </p>
+
+        <form
+          onSubmit={(e) => void handleSubmit(e)}
+          className="space-y-4"
+        >
+          {/* Type */}
+          <div>
+            <p className="mb-1.5 text-sm font-medium text-neutral-700">Tipo de incidencia</p>
+            <div className="grid grid-cols-1 gap-2 sm:grid-cols-2">
+              {BOOKING_INCIDENT_TYPES.map((t) => (
+                <button
+                  key={t}
+                  type="button"
+                  onClick={() => setType(t)}
+                  className="rounded-lg border px-3 py-2.5 text-left text-sm font-medium transition"
+                  style={
+                    type === t
+                      ? { borderColor: "#15734f", backgroundColor: "#e6f2ec", color: "#15734f" }
+                      : { borderColor: "#e5e7eb", color: "#525252" }
+                  }
+                >
+                  {INCIDENT_TYPE_LABELS[t]}
+                </button>
+              ))}
+            </div>
+          </div>
+
+          {/* Description */}
+          <div>
+            <label
+              htmlFor="incident-description"
+              className="mb-1.5 block text-sm font-medium text-neutral-700"
+            >
+              Descripción del problema
+            </label>
+            <textarea
+              id="incident-description"
+              value={description}
+              onChange={(e) => setDescription(e.target.value)}
+              rows={4}
+              placeholder="Describe con detalle qué ocurrió…"
+              className="w-full resize-none rounded-lg border border-neutral-200 px-3 py-2.5 text-sm outline-none focus:border-emerald-500"
+            />
+            <p className="mt-1 text-xs text-neutral-400">{description.length}/2000 caracteres</p>
+          </div>
+
+          {error && (
+            <p className="rounded-lg border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-600">{error}</p>
+          )}
+
+          <div className="flex gap-2 pt-1">
+            <button
+              type="submit"
+              disabled={loading}
+              className="flex-1 rounded-lg py-2.5 text-sm font-semibold text-white disabled:opacity-50"
+              style={{ backgroundColor: "#15734f" }}
+            >
+              {loading ? "Enviando…" : "Enviar incidencia"}
+            </button>
+            <button
+              type="button"
+              onClick={onClose}
+              className="flex-1 rounded-lg border border-neutral-200 py-2.5 text-sm text-neutral-600"
+            >
+              Cancelar
+            </button>
+          </div>
+        </form>
+      </div>
+    </div>
+  );
 }
 
 // ── State ─────────────────────────────────────────────────────────────────────
@@ -115,16 +269,35 @@ interface BookingCardProps {
   onAccept?: (id: string) => void;
   onReject?: (id: string) => void;
   onCancel?: (id: string) => void;
+  onComplete?: (id: string) => void;
   /** Called with itemId and, for owner view, the renter's userId. */
   onMessage?: (itemId: string, withUserId?: string) => void;
+  onReport?: (booking: BookingDetailResponse) => void;
   actionLoading: string | null;
 }
 
-function BookingCard({ booking, viewMode, onAccept, onReject, onCancel, onMessage, actionLoading }: BookingCardProps) {
+function BookingCard({
+  booking,
+  viewMode,
+  onAccept,
+  onReject,
+  onCancel,
+  onComplete,
+  onMessage,
+  onReport,
+  actionLoading,
+}: BookingCardProps) {
   const navigate = useNavigate();
   const isPending = booking.booking_status === "pending";
   const isActive = booking.booking_status === "accepted";
   const isBusy = actionLoading === booking.booking_id;
+
+  // Complete is available on or after the end date for accepted bookings.
+  const today = new Date();
+  today.setHours(0, 0, 0, 0);
+  const endDate = new Date(booking.end_date);
+  endDate.setHours(0, 0, 0, 0);
+  const canComplete = isActive && today >= endDate;
 
   const renterName = `${booking.renter_first_name} ${booking.renter_last_name}`.trim();
 
@@ -133,7 +306,7 @@ function BookingCard({ booking, viewMode, onAccept, onReject, onCancel, onMessag
       {/* Image */}
       <button
         type="button"
-        className="size-20 flex-shrink-0 overflow-hidden rounded-lg p-0"
+        className="size-20 shrink-0 overflow-hidden rounded-lg p-0"
         onClick={() => navigate(`/product/${booking.item_id}`)}
         aria-label={`Abrir ${booking.item_title}`}
       >
@@ -166,8 +339,16 @@ function BookingCard({ booking, viewMode, onAccept, onReject, onCancel, onMessag
         </div>
 
         {viewMode === "owner" && (
-          <p className="text-subtle mb-1 text-[13px]">
-            Solicitante: <span className="text-ink font-medium">{renterName}</span>
+          <p className="text-subtle mb-1 flex items-center gap-1 text-[13px]">
+            Solicitante:&nbsp;
+            <span className="text-ink font-medium">{renterName}</span>
+            {booking.renter_verification_status === "verified" && (
+              <BadgeCheck
+                size={14}
+                className="text-primary shrink-0"
+                aria-label="Perfil verificado"
+              />
+            )}
           </p>
         )}
 
@@ -182,7 +363,7 @@ function BookingCard({ booking, viewMode, onAccept, onReject, onCancel, onMessag
           <p className="text-primary mt-1 text-[14px] font-bold">{fmtPrice(booking.estimated_total)} EUR</p>
         )}
 
-        {booking.notes && <p className="text-subtle mt-1 line-clamp-1 text-[12px] italic">"{booking.notes}"</p>}
+        {booking.notes && <p className="text-subtle text-card-loc mt-1 line-clamp-1 italic">"{booking.notes}"</p>}
 
         {/* Actions */}
         <div className="mt-3 flex flex-wrap gap-2">
@@ -216,6 +397,17 @@ function BookingCard({ booking, viewMode, onAccept, onReject, onCancel, onMessag
               {isBusy ? "..." : "Cancelar solicitud"}
             </button>
           )}
+          {canComplete && (
+            <button
+              type="button"
+              className="btn-secondary btn--sm"
+              style={{ borderColor: "#15734f", color: "#15734f" }}
+              onClick={() => onComplete?.(booking.booking_id)}
+              disabled={isBusy}
+            >
+              {isBusy ? "..." : "Completar alquiler"}
+            </button>
+          )}
           <button
             type="button"
             className="btn-secondary btn--sm"
@@ -223,6 +415,15 @@ function BookingCard({ booking, viewMode, onAccept, onReject, onCancel, onMessag
           >
             Enviar mensaje
           </button>
+          {onReport && (
+            <button
+              type="button"
+              className="btn-secondary btn--sm flex items-center gap-1.5 border-amber-200 text-amber-700 hover:bg-amber-50"
+              onClick={() => onReport(booking)}
+            >
+              <AlertTriangle size={13} /> Reportar
+            </button>
+          )}
         </div>
       </div>
     </article>
@@ -241,8 +442,14 @@ function TabPanel({ viewMode, state, dispatch }: TabPanelProps) {
   const navigate = useNavigate();
   const [actionLoading, setActionLoading] = useState<string | null>(null);
   const [actionError, setActionError] = useState("");
+  const [reportingBooking, setReportingBooking] = useState<BookingDetailResponse | null>(null);
+  const [reportSuccess, setReportSuccess] = useState(false);
 
-  async function handleAction(bookingId: string, action: "accept" | "reject" | "cancel", nextStatus: BookingStatus) {
+  async function handleAction(
+    bookingId: string,
+    action: "accept" | "reject" | "cancel" | "complete",
+    nextStatus: BookingStatus
+  ) {
     setActionLoading(bookingId);
     setActionError("");
     try {
@@ -295,6 +502,11 @@ function TabPanel({ viewMode, state, dispatch }: TabPanelProps) {
       {actionError && (
         <p className="border-report bg-error-danger text-report rounded-lg border p-3 text-[13px]">{actionError}</p>
       )}
+      {reportSuccess && (
+        <p className="rounded-lg border border-green-200 bg-green-50 px-3 py-2 text-sm text-green-700">
+          Incidencia enviada correctamente. El equipo la revisará pronto.
+        </p>
+      )}
       {state.items.map((booking) => (
         <BookingCard
           key={booking.booking_id}
@@ -304,6 +516,11 @@ function TabPanel({ viewMode, state, dispatch }: TabPanelProps) {
           onAccept={(id) => void handleAction(id, "accept", "accepted")}
           onReject={(id) => void handleAction(id, "reject", "rejected")}
           onCancel={(id) => void handleAction(id, "cancel", "cancelled")}
+          onComplete={(id) => void handleAction(id, "complete", "completed")}
+          onReport={(b) => {
+            setReportingBooking(b);
+            setReportSuccess(false);
+          }}
           onMessage={(itemId, withUserId) => {
             openConversation(itemId, withUserId)
               .then((convId) => navigate(`/chat/${convId}`))
@@ -313,6 +530,17 @@ function TabPanel({ viewMode, state, dispatch }: TabPanelProps) {
           }}
         />
       ))}
+
+      {reportingBooking && (
+        <IncidentModal
+          booking={reportingBooking}
+          onClose={() => setReportingBooking(null)}
+          onSuccess={() => {
+            setReportingBooking(null);
+            setReportSuccess(true);
+          }}
+        />
+      )}
     </div>
   );
 }

@@ -16,7 +16,7 @@ type FavoriteItemResponse struct {
 	SavedAt         time.Time `json:"saved_at"`
 }
 
-// FavoritesResponse wraps the list of favorited items.
+// FavoritesResponse wraps the list of favorite items.
 type FavoritesResponse struct {
 	Items []FavoriteItemResponse `json:"items"`
 	Total int                    `json:"total"`

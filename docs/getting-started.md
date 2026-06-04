@@ -108,12 +108,12 @@ make e2e             # Run Playwright E2E tests
 
 The template includes four GitHub Actions workflows:
 
-| Workflow | Trigger | What it does |
-|----------|---------|--------------|
-| `backend.yml` | Push/PR changing `backend/` or `go.mod` | `go vet` + `go test -race` + `go build` |
-| `frontend.yml` | Push/PR changing `frontend/` | ESLint + TypeScript check + Vite build |
-| `e2e.yml` | Manual dispatch | Playwright tests across browsers |
-| `codeql.yml` | Weekly + push/PR | Security analysis for Go and JS/TS |
+| Workflow       | Trigger                                 | What it does                            |
+|----------------|-----------------------------------------|-----------------------------------------|
+| `backend.yml`  | Push/PR changing `backend/` or `go.mod` | `go vet` + `go test -race` + `go build` |
+| `frontend.yml` | Push/PR changing `frontend/`            | ESLint + TypeScript check + Vite build  |
+| `e2e.yml`      | Manual dispatch                         | Playwright tests across browsers        |
+| `codeql.yml`   | Weekly + push/PR                        | Security analysis for Go and JS/TS      |
 
 ## 9. Record Decisions
 

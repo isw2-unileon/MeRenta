@@ -24,6 +24,8 @@ func Setup(
 	reviewH *handler.ReviewHandler,
 	paymentH *handler.PaymentHandler,
 	bookingH *handler.BookingHandler,
+	incidentH *handler.IncidentHandler,
+	adminH *handler.AdminHandler,
 	jwtMgr *jwt.Manager,
 	corsAllowOrigin string,
 	readiness func(context.Context) error,
@@ -39,9 +41,9 @@ func Setup(
 
 	protected := api.Group("/")
 	protected.Use(middleware.JWTAuth(jwtMgr))
-	registerProtectedRoutes(protected, authH, itemH, itemImgH, addrH, favH, chatH, reviewH, paymentH, bookingH)
+	registerProtectedRoutes(protected, authH, itemH, itemImgH, addrH, favH, chatH, reviewH, paymentH, bookingH, incidentH)
 
-	registerAdminRoutes(api, jwtMgr)
+	registerAdminRoutes(api, adminH, incidentH, jwtMgr)
 
 	return r
 }
@@ -68,6 +70,7 @@ func registerPublicRoutes(api *gin.RouterGroup, authH *handler.AuthHandler) {
 	auth.POST("/logout", authH.Logout)
 }
 
+// centralizes protected API wiring for readability.
 func registerProtectedRoutes(
 	protected *gin.RouterGroup,
 	authH *handler.AuthHandler,
@@ -79,9 +82,11 @@ func registerProtectedRoutes(
 	reviewH *handler.ReviewHandler,
 	paymentH *handler.PaymentHandler,
 	bookingH *handler.BookingHandler,
+	incidentH *handler.IncidentHandler,
 ) {
 	protected.GET("/session", authH.Session)
 	protected.GET("/me", authH.Me)
+	protected.POST("/me/verification-request", authH.RequestVerification)
 
 	addresses := protected.Group("/addresses")
 	addresses.GET("", addrH.List)
@@ -90,14 +95,18 @@ func registerProtectedRoutes(
 	customers := protected.Group("/customers")
 	customers.GET("/:id/profile", authH.ProfileByID)
 	customers.GET("/:id/items", itemH.ListByOwner)
+	customers.POST("/:id/reports", incidentH.CreateUserReport)
 
 	items := protected.Group("/items")
 	items.GET("", itemH.List)
 	items.POST("", itemH.Create)
 	items.GET("/mine", itemH.ListMine)
 	items.GET("/:id", itemH.Get)
+	items.PATCH("/:id", itemH.Update)
+	items.DELETE("/:id", itemH.Delete)
 	items.GET("/:id/images", itemImgH.ListImages)
 	items.POST("/:id/images", itemImgH.AddImages)
+	items.DELETE("/:id/images/:imageId", itemImgH.DeleteImage)
 	items.GET("/:id/images/:imageId/content", itemImgH.ProxyImage)
 	items.GET("/:id/unavailable-dates", bookingH.UnavailableDates)
 
@@ -107,13 +116,7 @@ func registerProtectedRoutes(
 	favs.DELETE("/:id", favH.Remove)
 	favs.GET("/:id/check", favH.Check)
 
-	conversations := protected.Group("/conversations")
-	conversations.GET("", chatH.ListConversations)
-	conversations.POST("", chatH.StartConversation)
-	conversations.DELETE("/:id", chatH.DeleteConversation)
-	conversations.POST("/:id/read", chatH.MarkMessagesRead)
-	conversations.GET("/:id/messages", chatH.ListMessages)
-	conversations.POST("/:id/messages", chatH.SendMessage)
+	registerConversationRoutes(protected, chatH)
 
 	reviews := protected.Group("/reviews")
 	reviews.POST("", reviewH.Create)
@@ -121,9 +124,29 @@ func registerProtectedRoutes(
 	reviews.GET("/received/:id", reviewH.ListReceivedByCustomer)
 	reviews.GET("/summary/:id", reviewH.SummaryByCustomer)
 
+	protected.POST("/items/:id/reports", incidentH.CreateProductReport)
+
 	payment := protected.Group("/payment")
 	payment.POST("/intent", paymentH.CreateIntent)
 
+	registerBookingRoutes(protected, bookingH)
+
+	incidents := protected.Group("/incidents")
+	incidents.POST("", incidentH.Create)
+	incidents.GET("/mine", incidentH.ListMine)
+}
+
+func registerConversationRoutes(protected *gin.RouterGroup, chatH *handler.ChatHandler) {
+	conversations := protected.Group("/conversations")
+	conversations.GET("", chatH.ListConversations)
+	conversations.POST("", chatH.StartConversation)
+	conversations.DELETE("/:id", chatH.DeleteConversation)
+	conversations.POST("/:id/read", chatH.MarkMessagesRead)
+	conversations.GET("/:id/messages", chatH.ListMessages)
+	conversations.POST("/:id/messages", chatH.SendMessage)
+}
+
+func registerBookingRoutes(protected *gin.RouterGroup, bookingH *handler.BookingHandler) {
 	bookings := protected.Group("/bookings")
 	bookings.POST("", bookingH.Create)
 	bookings.GET("/mine", bookingH.ListMine)
@@ -131,9 +154,38 @@ func registerProtectedRoutes(
 	bookings.PATCH("/:id/accept", bookingH.Accept)
 	bookings.PATCH("/:id/reject", bookingH.Reject)
 	bookings.PATCH("/:id/cancel", bookingH.Cancel)
+	bookings.PATCH("/:id/complete", bookingH.Complete)
 }
 
-func registerAdminRoutes(api *gin.RouterGroup, jwtMgr *jwt.Manager) {
+func registerAdminRoutes(api *gin.RouterGroup, adminH *handler.AdminHandler, incidentH *handler.IncidentHandler, jwtMgr *jwt.Manager) {
 	admin := api.Group("/admin")
 	admin.Use(middleware.JWTAuth(jwtMgr), middleware.RequireRole(sqlcdb.UserRoleAdmin))
+
+	users := admin.Group("/users")
+	users.GET("", adminH.ListUsers)
+	users.PATCH("/:id/status", adminH.UpdateUserStatus)
+
+	verification := admin.Group("/verification")
+	verification.GET("", adminH.ListVerification)
+	verification.PATCH("/:id", adminH.UpdateVerification)
+
+	items := admin.Group("/items")
+	items.GET("", adminH.ListProducts)
+	items.DELETE("/:id", adminH.DeleteProduct)
+
+	bookings := admin.Group("/bookings")
+	bookings.GET("", adminH.ListBookings)
+	bookings.PATCH("/:id/status", adminH.AdminUpdateBookingStatus)
+
+	admin.GET("/payments", adminH.ListPayments)
+	admin.GET("/stats", adminH.GetStats)
+	admin.GET("/audit", adminH.ListAuditLog)
+	admin.GET("/config", adminH.GetPlatformConfig)
+	admin.PATCH("/config", adminH.UpdatePlatformConfig)
+
+	incidents := admin.Group("/incidents")
+	incidents.GET("", incidentH.AdminList)
+	incidents.GET("/:id", incidentH.AdminGet)
+	incidents.PATCH("/:id/status", incidentH.AdminUpdateStatus)
+	incidents.PATCH("/:id/priority", incidentH.AdminUpdatePriority)
 }

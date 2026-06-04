@@ -82,10 +82,11 @@ func main() {
 	reviewSvc := service.NewReviewService(q)
 	reviewH := handler.NewReviewHandler(reviewSvc)
 
-	bookingSvc, paymentH, bookingH := wirePaymentAndBooking(q, cfg.StripeSecretKey)
+	paymentSvc, bookingSvc, paymentH, bookingH := wirePaymentAndBooking(q, cfg.StripeSecretKey)
 	go startAutoExpireJob(ctx, bookingSvc)
+	adminH, incidentH := wireAdminHandlers(q, paymentSvc)
 
-	r := router.Setup(authH, itemH, itemImgH, addrH, favH, chatH, reviewH, paymentH, bookingH, jwtMgr, cfg.CORSAllowOrigin, pool.Ping)
+	r := router.Setup(authH, itemH, itemImgH, addrH, favH, chatH, reviewH, paymentH, bookingH, incidentH, adminH, jwtMgr, cfg.CORSAllowOrigin, pool.Ping)
 	portNum, err := strconv.Atoi(cfg.Port)
 	if err != nil || portNum < 1 || portNum > 65535 {
 		slog.Error("invalid port", "port", cfg.Port)
@@ -119,19 +120,27 @@ func main() {
 	gracefulShutdown(srv)
 }
 
+// wireAdminHandlers constructs the admin and incident handlers.
+// refunder is passed so that admin-triggered cancellations issue Stripe refunds.
+func wireAdminHandlers(q *sqlcdb.Queries, refunder service.PaymentRefunder) (*handler.AdminHandler, *handler.IncidentHandler) {
+	return handler.NewAdminHandler(service.NewAdminService(q, refunder)),
+		handler.NewIncidentHandler(service.NewIncidentService(q))
+}
+
 // wirePaymentAndBooking constructs the payment and booking handlers.
+// It also returns the PaymentService so it can be wired into the admin handler.
 func wirePaymentAndBooking(
 	q *sqlcdb.Queries,
 	stripeKey string,
-) (*service.BookingService, *handler.PaymentHandler, *handler.BookingHandler) {
+) (*service.PaymentService, *service.BookingService, *handler.PaymentHandler, *handler.BookingHandler) {
 	paymentSvc := service.NewPaymentService(stripeKey)
 	bookingSvc := service.NewBookingService(q, paymentSvc)
-	return bookingSvc, handler.NewPaymentHandler(paymentSvc), handler.NewBookingHandler(bookingSvc)
+	return paymentSvc, bookingSvc, handler.NewPaymentHandler(paymentSvc), handler.NewBookingHandler(bookingSvc)
 }
 
-// startAutoExpireJob runs in a goroutine. On startup it reconciles item
+// startAutoExpireJob runs in a goroutine. On startup, it reconciles item
 // availability for all existing bookings. Every hour it auto-cancels pending
-// bookings whose 5-day window has elapsed and resynchronises availability.
+// bookings whose 5-day window has elapsed and resynchronizes availability.
 func startAutoExpireJob(ctx context.Context, svc *service.BookingService) {
 	if err := svc.SyncAllAvailabilities(ctx); err != nil {
 		slog.Error("startup availability sync failed", "error", err)
@@ -145,6 +154,9 @@ func startAutoExpireJob(ctx context.Context, svc *service.BookingService) {
 		case <-ticker.C:
 			if err := svc.ExpireOldBookings(ctx); err != nil {
 				slog.Error("auto-expire bookings failed", "error", err)
+			}
+			if err := svc.AutoCompleteExpiredBookings(ctx); err != nil {
+				slog.Error("auto-complete bookings failed", "error", err)
 			}
 			if err := svc.SyncAllAvailabilities(ctx); err != nil {
 				slog.Error("availability sync failed", "error", err)

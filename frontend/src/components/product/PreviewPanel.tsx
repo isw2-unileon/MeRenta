@@ -23,6 +23,7 @@ function PreviewPanel({ formData }: PreviewPanelProps) {
 
   const cityLabel = useMemo(() => {
     if (!city) return "";
+    if (!city.includes("-")) return city;
     // Extract city name before the dash separator
     return city
       .split("-")
@@ -35,7 +36,11 @@ function PreviewPanel({ formData }: PreviewPanelProps) {
   const previewDeposit = deposit ? parseFloat(deposit) : null;
   const minDays = minRentalPeriod ? parseInt(minRentalPeriod, 10) : 1;
 
-  const firstPhoto = photos[0] ? URL.createObjectURL(photos[0]) : null;
+  const firstPhoto = useMemo(() => {
+    const photo = photos[0];
+    if (!photo) return null;
+    return photo instanceof File ? URL.createObjectURL(photo) : photo.image_url;
+  }, [photos]);
 
   const hasContent = title || categoryLabel || conditionLabel || previewPrice;
 
@@ -82,7 +87,7 @@ function PreviewPanel({ formData }: PreviewPanelProps) {
           {(categoryLabel || conditionLabel) && (
             <div className="mt-2.5 flex flex-wrap gap-1.5">
               {categoryLabel && (
-                <span className="bg-primary-bg text-primary inline-flex h-[22px] items-center rounded-full px-2.5 text-[11px] font-medium">
+                <span className="bg-primary-bg text-primary inline-flex h-5.5 items-center rounded-full px-2.5 text-[11px] font-medium">
                   {categoryLabel}
                 </span>
               )}
@@ -103,7 +108,7 @@ function PreviewPanel({ formData }: PreviewPanelProps) {
               </p>
             )}
 
-            <div className="text-subtle mt-1 flex items-center gap-2 text-[12px]">
+            <div className="text-subtle text-card-loc mt-1 flex items-center gap-2">
               {previewDeposit !== null && previewDeposit > 0 && <span>Depósito: {previewDeposit.toFixed(0)} EUR</span>}
               {previewDeposit !== null && previewDeposit > 0 && <span className="text-border-main">·</span>}
               <span>
@@ -129,7 +134,7 @@ function PreviewPanel({ formData }: PreviewPanelProps) {
       </p>
 
       {!hasContent && (
-        <p className="border-border-main bg-surface text-subtle rounded-lg border p-3 text-center text-[12px]">
+        <p className="border-border-main bg-surface text-subtle text-card-loc rounded-lg border p-3 text-center">
           Completa el formulario para ver la vista previa
         </p>
       )}

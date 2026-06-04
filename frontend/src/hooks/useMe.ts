@@ -1,6 +1,7 @@
 import { useCallback } from "react";
 import type { CustomerPublic } from "@/types/customer";
 import type { ApiResponse } from "@/types/common";
+import { BlockedAccountError } from "@/types/auth";
 
 const API_BASE_URL = "/api";
 
@@ -53,13 +54,13 @@ const parseMeResponse = async (response: Response): Promise<CustomerPublic> => {
 };
 
 /**
- * Builds API helpers for fetching the current user using an optional access token.
- * @param accessToken Optional bearer token for authenticated calls.
- * @returns Helper functions for auth-aware API calls.
+ * Builds an API helper for fetching the current authenticated user.
+ * Authentication relies solely on the HttpOnly cookie set by the backend.
+ * @returns Helper function for auth-aware API calls.
  */
-function useMe(accessToken: string | null) {
+function useMe() {
   /**
-   * Fetches the current authenticated customer.
+   * Fetches the current authenticated customer using the HttpOnly session cookie.
    * @returns The current customer payload.
    * @throws Error when the request fails.
    */
@@ -67,19 +68,21 @@ function useMe(accessToken: string | null) {
     const response = await fetch(`${API_BASE_URL}/me`, {
       method: "GET",
       credentials: "include",
-      headers: accessToken
-        ? {
-            Authorization: `Bearer ${accessToken}`,
-          }
-        : undefined,
     });
 
     if (!response.ok) {
+      if (response.status === 403) {
+        const payload = (await response.json()) as ApiResponse<{ suspended_until?: string }>;
+        if (payload.error === "account_banned") throw new BlockedAccountError("banned");
+        if (payload.error === "account_suspended") {
+          throw new BlockedAccountError("suspended", payload.data?.suspended_until ?? undefined);
+        }
+      }
       throw new Error(await parseErrorMessage(response));
     }
 
     return parseMeResponse(response);
-  }, [accessToken]);
+  }, []);
 
   return { getMe };
 }

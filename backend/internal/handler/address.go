@@ -27,7 +27,7 @@ func NewAddressHandler(svc *service.AddressService) *AddressHandler {
 //
 // Response 200: []model.AddressResponse
 func (h *AddressHandler) List(c *gin.Context) {
-	ownerID, ok := extractCustomerID(c)
+	ownerID, ok := getCustomerID(c)
 	if !ok {
 		return
 	}
@@ -47,7 +47,7 @@ func (h *AddressHandler) List(c *gin.Context) {
 // Response 201: model.AddressResponse
 // Response 400: invalid body
 func (h *AddressHandler) Create(c *gin.Context) {
-	ownerID, ok := extractCustomerID(c)
+	ownerID, ok := getCustomerID(c)
 	if !ok {
 		return
 	}
@@ -69,7 +69,7 @@ func (h *AddressHandler) Create(c *gin.Context) {
 
 // Update handles PATCH /api/addresses/:id for the authenticated user's address.
 func (h *AddressHandler) Update(c *gin.Context) {
-	ownerID, ok := extractCustomerID(c)
+	ownerID, ok := getCustomerID(c)
 	if !ok {
 		return
 	}
@@ -101,7 +101,7 @@ func (h *AddressHandler) Update(c *gin.Context) {
 
 // Delete handles DELETE /api/addresses/:id for the authenticated user's address.
 func (h *AddressHandler) Delete(c *gin.Context) {
-	ownerID, ok := extractCustomerID(c)
+	ownerID, ok := getCustomerID(c)
 	if !ok {
 		return
 	}
@@ -123,22 +123,4 @@ func (h *AddressHandler) Delete(c *gin.Context) {
 	default:
 		response.Error(c, http.StatusConflict, "An address used by a product cannot be deleted")
 	}
-}
-
-// extractCustomerID pulls the customer_id UUID from the Gin context (set by JWTAuth).
-// It writes a 401 response and returns false when the value is absent or malformed.
-func extractCustomerID(c *gin.Context) (uuid.UUID, bool) {
-	raw, ok := c.Get("customer_id")
-	if !ok {
-		response.Error(c, http.StatusUnauthorized, "missing auth context")
-		return uuid.UUID{}, false
-	}
-
-	id, ok := raw.(uuid.UUID)
-	if !ok {
-		response.Error(c, http.StatusUnauthorized, "invalid auth context")
-		return uuid.UUID{}, false
-	}
-
-	return id, true
 }

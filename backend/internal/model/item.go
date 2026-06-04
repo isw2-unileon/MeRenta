@@ -17,6 +17,22 @@ type CreateItemRequest struct {
 	MaxDays     *int     `json:"max_days"      binding:"omitempty,gte=1"`
 }
 
+// UpdateItemRequest defines the payload for updating an existing item listing.
+type UpdateItemRequest struct {
+	AddressID   string   `json:"address_id"    binding:"required,uuid"`
+	Category    string   `json:"category"      binding:"required"`
+	Title       string   `json:"title"         binding:"required,min=1,max=200"`
+	Description string   `json:"description"   binding:"omitempty,max=2000"`
+	UsageRules  string   `json:"usage_rules"   binding:"omitempty,max=2000"`
+	Condition   string   `json:"condition"     binding:"required"`
+	PricePerDay float64  `json:"price_per_day" binding:"required,gt=0"`
+	Deposit     *float64 `json:"deposit"       binding:"omitempty,gte=0"`
+	MinDays     int      `json:"min_days"      binding:"omitempty,gte=1"`
+	MaxDays     *int     `json:"max_days"      binding:"omitempty,gte=1"`
+	IsAvailable *bool    `json:"is_available"  binding:"required"`
+	ItemStatus  string   `json:"item_status"   binding:"required"`
+}
+
 // ItemResponse is the API representation of an item listing.
 type ItemResponse struct {
 	ItemID      string    `json:"item_id"`
@@ -41,21 +57,22 @@ type ItemResponse struct {
 
 // SearchItemResponse is the compact item shape used by the search results UI.
 type SearchItemResponse struct {
-	ItemID          string    `json:"item_id"`
-	OwnerID         string    `json:"owner_id"`
-	AddressID       string    `json:"address_id"`
-	Category        string    `json:"category"`
-	Title           string    `json:"title"`
-	ItemStatus      string    `json:"item_status"`
-	PricePerDay     float64   `json:"price_per_day"`
-	IsAvailable     bool      `json:"is_available"`
-	PublishedAt     time.Time `json:"published_at"`
-	City            string    `json:"city"`
-	PostalCode      string    `json:"postal_code"`
-	PrimaryImageURL string    `json:"primary_image_url,omitempty"`
-	OwnerFirstName  string    `json:"owner_first_name"`
-	OwnerLastName   string    `json:"owner_last_name"`
-	OwnerAvatarURL  string    `json:"owner_avatar_url,omitempty"`
+	ItemID                  string    `json:"item_id"`
+	OwnerID                 string    `json:"owner_id"`
+	AddressID               string    `json:"address_id"`
+	Category                string    `json:"category"`
+	Title                   string    `json:"title"`
+	ItemStatus              string    `json:"item_status"`
+	PricePerDay             float64   `json:"price_per_day"`
+	IsAvailable             bool      `json:"is_available"`
+	PublishedAt             time.Time `json:"published_at"`
+	City                    string    `json:"city"`
+	PostalCode              string    `json:"postal_code"`
+	PrimaryImageURL         string    `json:"primary_image_url,omitempty"`
+	OwnerFirstName          string    `json:"owner_first_name"`
+	OwnerLastName           string    `json:"owner_last_name"`
+	OwnerAvatarURL          string    `json:"owner_avatar_url,omitempty"`
+	OwnerVerificationStatus string    `json:"owner_verification_status"`
 }
 
 // SearchItemsResponse wraps paginated search results.

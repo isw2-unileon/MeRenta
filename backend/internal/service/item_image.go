@@ -12,6 +12,7 @@ import (
 	"time"
 
 	"github.com/google/uuid"
+	"github.com/jackc/pgx/v5"
 
 	"github.com/isw2-unileon/MeRenta/backend/internal/model"
 	"github.com/isw2-unileon/MeRenta/backend/internal/sqlcdb"
@@ -28,8 +29,8 @@ var (
 )
 
 // signedURLTTL is how long (in seconds) a signed URL remains valid.
-// ~10 years — effectively permanent for item images.
 const signedURLTTL = 315_360_000
+const maxItemImageCount = 10
 
 // itemImageQuerier is the minimal DB interface required by ItemImageService.
 type itemImageQuerier interface {
@@ -37,6 +38,8 @@ type itemImageQuerier interface {
 	CreateItemImage(ctx context.Context, arg sqlcdb.CreateItemImageParams) (sqlcdb.ItemImage, error)
 	GetItemImages(ctx context.Context, itemID uuid.UUID) ([]sqlcdb.ItemImage, error)
 	DeleteItemImages(ctx context.Context, itemID uuid.UUID) error
+	CountItemImages(ctx context.Context, itemID uuid.UUID) (int64, error)
+	DeleteItemImageForOwner(ctx context.Context, imageID, itemID, ownerID uuid.UUID) error
 }
 
 // ItemImageService handles item-image use cases.
@@ -51,11 +54,7 @@ func NewItemImageService(q itemImageQuerier, storageClient storage.Client, bucke
 	return &ItemImageService{q: q, storage: storageClient, bucket: bucket}
 }
 
-// AddItemImages replaces all images for an item with the uploaded files,
-// after verifying that ownerID is the item's owner.
-//
-// Each file is uploaded to private Supabase Storage; a long-lived signed URL
-// is generated and stored in the item_image table.
+// AddItemImages appends uploaded files to an item after verifying ownership.
 func (s *ItemImageService) AddItemImages(
 	ctx context.Context,
 	ownerID uuid.UUID,
@@ -71,15 +70,22 @@ func (s *ItemImageService) AddItemImages(
 		return nil, ErrForbidden
 	}
 
-	// Replace existing images (idempotent — safe to call multiple times).
-	if err := s.q.DeleteItemImages(ctx, itemID); err != nil {
+	existingCount, err := s.q.CountItemImages(ctx, itemID)
+	if err != nil {
 		return nil, err
+	}
+	if existingCount+int64(len(files)) > maxItemImageCount {
+		return nil, fmt.Errorf("a maximum of %d images is allowed", maxItemImageCount)
 	}
 
 	results := make([]model.ItemImageResponse, 0, len(files))
-
 	for i, fh := range files {
-		signedURL, err := s.uploadAndSign(ctx, itemID, i+1, fh)
+		displayOrder := int(existingCount) + i + 1
+		signedURL, err := s.uploadAndSign(ctx, itemID, displayOrder, fh)
+		if err != nil {
+			return nil, err
+		}
+		displayOrderInt32, err := displayOrderToInt32(displayOrder)
 		if err != nil {
 			return nil, err
 		}
@@ -87,7 +93,7 @@ func (s *ItemImageService) AddItemImages(
 		img, err := s.q.CreateItemImage(ctx, sqlcdb.CreateItemImageParams{
 			ItemID:       itemID,
 			ImageUrl:     signedURL,
-			DisplayOrder: int32(i + 1),
+			DisplayOrder: displayOrderInt32,
 		})
 		if err != nil {
 			return nil, err
@@ -104,8 +110,27 @@ func (s *ItemImageService) AddItemImages(
 	return results, nil
 }
 
+// DeleteImage removes one image from an item after verifying ownership.
+func (s *ItemImageService) DeleteImage(ctx context.Context, ownerID, itemID, imageID uuid.UUID) error {
+	if err := s.q.DeleteItemImageForOwner(ctx, imageID, itemID, ownerID); err != nil {
+		if errors.Is(err, pgx.ErrNoRows) {
+			return ErrImageNotFound
+		}
+		return err
+	}
+
+	return nil
+}
+
+func displayOrderToInt32(displayOrder int) (int32, error) {
+	if displayOrder < 1 || displayOrder > maxItemImageCount {
+		return 0, fmt.Errorf("invalid image display order %d", displayOrder)
+	}
+
+	return int32(displayOrder), nil
+}
+
 // GetImages returns all images for an item ordered by display_order.
-// Returns an empty slice when the item has no images yet.
 func (s *ItemImageService) GetImages(ctx context.Context, itemID uuid.UUID) ([]model.ItemImageResponse, error) {
 	rows, err := s.q.GetItemImages(ctx, itemID)
 	if err != nil {
@@ -126,14 +151,6 @@ func (s *ItemImageService) GetImages(ctx context.Context, itemID uuid.UUID) ([]m
 }
 
 // GetImageURL returns the Supabase signed URL for the given image.
-// It is intentionally not exposed in the API response; callers should proxy
-// the image through the backend rather than giving the URL directly to clients.
-//
-// Older records may have been stored with a missing /storage/v1 path segment
-// (a bug in the original SignURL implementation). normalizeStorageURL fixes
-// those on the fly so no DB migration is required.
-//
-// It loads all images for the item (max 10) and scans for the matching ID.
 func (s *ItemImageService) GetImageURL(ctx context.Context, itemID, imageID uuid.UUID) (string, error) {
 	rows, err := s.q.GetItemImages(ctx, itemID)
 	if err != nil {
@@ -149,14 +166,7 @@ func (s *ItemImageService) GetImageURL(ctx context.Context, itemID, imageID uuid
 	return "", ErrImageNotFound
 }
 
-// normalizeStorageURL ensures the URL contains the /storage/v1 path segment
-// that Supabase requires. Older URLs stored in the DB were generated before the
-// bug in SignURL was fixed and are missing this prefix, e.g.:
-//
-//	https://<project>.supabase.co/object/sign/<bucket>/<path>?token=…
-//	→ https://<project>.supabase.co/storage/v1/object/sign/<bucket>/<path>?token=…
-//
-// Already-correct URLs are returned unchanged.
+// normalizeStorageURL ensures the URL contains the /storage/v1 path segment.
 func normalizeStorageURL(rawURL string) string {
 	u, err := url.Parse(rawURL)
 	if err != nil || !strings.HasPrefix(u.Path, "/object/") {
@@ -169,7 +179,6 @@ func normalizeStorageURL(rawURL string) string {
 }
 
 // uploadAndSign uploads a single file to storage and returns its signed URL.
-// It is extracted to keep AddItemImages within the funlen limit.
 func (s *ItemImageService) uploadAndSign(
 	ctx context.Context,
 	itemID uuid.UUID,

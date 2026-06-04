@@ -62,14 +62,9 @@ func (s *AddressService) CreateAddress(
 		country = "Spain"
 	}
 
-	lat, err := optionalFloat64ToNumeric(req.Latitude)
+	lat, lon, err := addressCoords(req)
 	if err != nil {
-		return nil, fmt.Errorf("invalid latitude: %w", err)
-	}
-
-	lon, err := optionalFloat64ToNumeric(req.Longitude)
-	if err != nil {
-		return nil, fmt.Errorf("invalid longitude: %w", err)
+		return nil, err
 	}
 
 	row, err := s.q.CreateAddress(ctx, sqlcdb.CreateAddressParams{
@@ -119,14 +114,9 @@ func (s *AddressService) UpdateAddress(
 		country = "Spain"
 	}
 
-	lat, err := optionalFloat64ToNumeric(req.Latitude)
+	lat, lon, err := addressCoords(req)
 	if err != nil {
-		return nil, fmt.Errorf("invalid latitude: %w", err)
-	}
-
-	lon, err := optionalFloat64ToNumeric(req.Longitude)
-	if err != nil {
-		return nil, fmt.Errorf("invalid longitude: %w", err)
+		return nil, err
 	}
 
 	row, err := s.q.UpdateAddress(ctx, sqlcdb.UpdateAddressParams{
@@ -167,6 +157,22 @@ func (s *AddressService) DeleteAddress(ctx context.Context, customerID uuid.UUID
 	}
 
 	return s.q.DeleteAddress(ctx, addressID)
+}
+
+// addressCoords converts the optional latitude/longitude on the request into the
+// pgtype.Numeric values stored in the database.
+func addressCoords(req model.CreateAddressRequest) (lat, lon pgtype.Numeric, err error) {
+	lat, err = optionalFloat64ToNumeric(req.Latitude)
+	if err != nil {
+		return pgtype.Numeric{}, pgtype.Numeric{}, fmt.Errorf("invalid latitude: %w", err)
+	}
+
+	lon, err = optionalFloat64ToNumeric(req.Longitude)
+	if err != nil {
+		return pgtype.Numeric{}, pgtype.Numeric{}, fmt.Errorf("invalid longitude: %w", err)
+	}
+
+	return lat, lon, nil
 }
 
 // toAddressResponse maps a sqlcdb.Address to the API response model.

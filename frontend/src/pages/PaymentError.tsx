@@ -29,9 +29,9 @@ function PaymentError() {
   const handleCancel = () => void navigate("/home");
 
   return (
-    <div className="flex min-h-screen flex-col items-center justify-center bg-[var(--color-section-alt)] px-4 py-12">
+    <div className="bg-section-alt flex min-h-screen flex-col items-center justify-center px-4 py-12">
       <div
-        className="w-full rounded-[var(--radius-panel)] border border-[var(--color-border-main)] bg-white p-10"
+        className="w-full rounded-(--radius-panel) border border-(--color-border-main) bg-white p-10"
         style={{ maxWidth: 600 }}
       >
         {/* ── Icon ── */}
@@ -65,7 +65,7 @@ function PaymentError() {
           <p className="error-pay-code">
             Error Stripe: <span>{errorCode}</span>
           </p>
-          <p className="mt-1 text-[13px] text-[var(--color-subtle)]">{errorMessage}</p>
+          <p className="mt-1 text-[13px] text-(--color-subtle)">{errorMessage}</p>
         </div>
 
         {/* ── Retry button ── */}

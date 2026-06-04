@@ -1,8 +1,9 @@
 import { useCallback, useEffect, useMemo, useReducer, useState, type FormEvent, type ReactNode } from "react";
 import { Link, useSearchParams } from "react-router-dom";
-import { ChevronLeft, ChevronRight, Heart, Search as SearchIcon, Star, X } from "lucide-react";
+import { BadgeCheck, ChevronLeft, ChevronRight, Heart, Search as SearchIcon, Star, X } from "lucide-react";
 
 import { useFavorites } from "@/hooks/useFavorites";
+import { useAuth } from "@/hooks/useAuth";
 
 import type { ApiResponse } from "@/types/common";
 import type { SearchItemResponse, SearchItemsResponse } from "@/types/item";
@@ -194,17 +195,18 @@ interface ProductCardProps {
   item: SearchItemResponse;
   reviewSummary?: ReviewSummary;
   isFavorite: boolean;
+  isOwnItem: boolean;
   onToggleFavorite: () => void;
   /** Route to navigate to when the card is clicked. */
   to: string;
 }
 
-function ProductCard({ item, reviewSummary, isFavorite, onToggleFavorite, to }: ProductCardProps) {
+function ProductCard({ item, reviewSummary, isFavorite, isOwnItem, onToggleFavorite, to }: ProductCardProps) {
   const ratingLabel = reviewSummary ? reviewSummary.average_rating.toFixed(1) : "--";
   const reviewsLabel = reviewSummary ? String(reviewSummary.total) : "--";
   const isReserved = item.item_status === "rented";
   const isAvailable = item.is_available && !isReserved;
-  const locationLabel = [item.city, item.postal_code].filter(Boolean).join(", ") || "Sin ubicacion";
+  const locationLabel = [item.city, item.postal_code].filter(Boolean).join(", ") || "Sin ubicación";
 
   function handleToggle(event: React.MouseEvent) {
     event.preventDefault();
@@ -237,19 +239,21 @@ function ProductCard({ item, reviewSummary, isFavorite, onToggleFavorite, to }: 
             {isAvailable ? "Disponible" : "No disponible"}
           </span>
 
-          <button
-            type="button"
-            className={`absolute top-3 right-3 flex size-8 items-center justify-center rounded-full bg-white p-0 transition-colors ${
-              isFavorite ? "text-heart-active" : "text-subtle hover:text-heart-active"
-            }`}
-            aria-label={isFavorite ? "Quitar de favoritos" : "Guardar favorito"}
-            onClick={handleToggle}
-          >
-            <Heart
-              size={17}
-              fill={isFavorite ? "currentColor" : "none"}
-            />
-          </button>
+          {!isOwnItem && (
+            <button
+              type="button"
+              className={`absolute top-3 right-3 flex size-8 items-center justify-center rounded-full bg-white p-0 transition-colors ${
+                isFavorite ? "text-heart-active" : "text-subtle hover:text-heart-active"
+              }`}
+              aria-label={isFavorite ? "Quitar de favoritos" : "Guardar favorito"}
+              onClick={handleToggle}
+            >
+              <Heart
+                size={17}
+                fill={isFavorite ? "currentColor" : "none"}
+              />
+            </button>
+          )}
         </div>
 
         <div className="p-4">
@@ -269,9 +273,18 @@ function ProductCard({ item, reviewSummary, isFavorite, onToggleFavorite, to }: 
                 {item.owner_last_name.charAt(0).toUpperCase()}
               </span>
             )}
-            <p className="text-card-loc text-subtle truncate">
-              {item.owner_first_name} {item.owner_last_name}
-            </p>
+            <span className="flex min-w-0 items-center gap-1">
+              <p className="text-card-loc text-subtle truncate">
+                {item.owner_first_name} {item.owner_last_name}
+              </p>
+              {item.owner_verification_status === "verified" && (
+                <BadgeCheck
+                  size={14}
+                  className="text-primary shrink-0"
+                  aria-label="Perfil verificado"
+                />
+              )}
+            </span>
           </div>
 
           <div className="mb-5 flex items-center justify-between gap-3">
@@ -611,6 +624,7 @@ function SearchSidebar({
 function Search() {
   const [searchParams, setSearchParams] = useSearchParams();
   const { toggle, isFav } = useFavorites();
+  const { user } = useAuth();
   const query = searchParams.get("q") ?? "";
 
   const [state, dispatch] = useReducer(searchReducer, initialSearchState);
@@ -810,7 +824,10 @@ function Search() {
                   item={item}
                   reviewSummary={ownerReviewSummaries[item.owner_id]}
                   isFavorite={isFav(item.item_id)}
-                  onToggleFavorite={() => toggle(item.item_id, isFav(item.item_id))}
+                  isOwnItem={user?.customer_id === item.owner_id}
+                  onToggleFavorite={() =>
+                    toggle(item.item_id, isFav(item.item_id), { disabled: user?.customer_id === item.owner_id })
+                  }
                   to={`/product/${item.item_id}`}
                 />
               ))

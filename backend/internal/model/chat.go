@@ -18,17 +18,18 @@ type SendMessageRequest struct {
 
 // ConversationResponse is a compact conversation row for the chat list.
 type ConversationResponse struct {
-	ConversationID string     `json:"conversation_id"`
-	ItemID         string     `json:"item_id"`
-	ItemTitle      string     `json:"item_title"`
-	ItemPrice      float64    `json:"item_price"`
-	OtherUserID    string     `json:"other_user_id"`
-	OtherUserName  string     `json:"other_user_name"`
-	OtherAvatarURL string     `json:"other_avatar_url,omitempty"`
-	LastMessage    string     `json:"last_message,omitempty"`
-	LastMessageAt  *time.Time `json:"last_message_at,omitempty"`
-	UpdatedAt      time.Time  `json:"updated_at"`
-	UnreadCount    int        `json:"unread_count"`
+	ConversationID              string     `json:"conversation_id"`
+	ItemID                      string     `json:"item_id"`
+	ItemTitle                   string     `json:"item_title"`
+	ItemPrice                   float64    `json:"item_price"`
+	OtherUserID                 string     `json:"other_user_id"`
+	OtherUserName               string     `json:"other_user_name"`
+	OtherAvatarURL              string     `json:"other_avatar_url,omitempty"`
+	OtherUserVerificationStatus string     `json:"other_user_verification_status"`
+	LastMessage                 string     `json:"last_message,omitempty"`
+	LastMessageAt               *time.Time `json:"last_message_at,omitempty"`
+	UpdatedAt                   time.Time  `json:"updated_at"`
+	UnreadCount                 int        `json:"unread_count"`
 }
 
 // ConversationsResponse wraps the authenticated user's conversations.

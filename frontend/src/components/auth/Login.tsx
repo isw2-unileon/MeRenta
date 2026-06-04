@@ -2,6 +2,7 @@ import { type ChangeEvent, type FormEventHandler, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { Eye, EyeOff } from "lucide-react";
 import { useAuth } from "@/hooks/useAuth";
+import { BlockedAccountError } from "@/types/auth";
 
 type AuthView = "login" | "register" | "forgot";
 
@@ -61,6 +62,15 @@ function Login({ onSwitch }: { onSwitch: (v: AuthView) => void }) {
         setFormData({ email: "", password: "" });
         await navigate("/home", { replace: true });
       } catch (err) {
+        if (err instanceof BlockedAccountError) {
+          if (err.reason === "banned") {
+            await navigate("/banned", { replace: true });
+          } else {
+            const query = err.suspendedUntil ? `?until=${encodeURIComponent(err.suspendedUntil)}` : "";
+            await navigate(`/suspended${query}`, { replace: true });
+          }
+          return;
+        }
         setError(err instanceof Error ? err.message : "Error al iniciar sesión");
       }
     };

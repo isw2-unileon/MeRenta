@@ -1,4 +1,5 @@
 import { useNavigate } from "react-router-dom";
+import { BadgeCheck } from "lucide-react";
 
 import { StarRating } from "@/components/product/detail/StarRating";
 import type { CustomerProfile } from "@/types/customer";
@@ -22,6 +23,10 @@ function getMemberYear(registrationDate: string): number {
   return new Date(registrationDate).getFullYear();
 }
 
+function formatRating(rating: number): string {
+  return rating.toFixed(2);
+}
+
 /**
  * Card showing the listing owner's avatar, name, member-since year and rating.
  * Includes a link to the full public profile page.
@@ -37,6 +42,7 @@ function OwnerCard({ owner, rating = 0, reviewCount = 0 }: OwnerCardProps) {
   const memberYear = getMemberYear(owner.registration_date);
   // Display as "Miguel G." to match the design
   const displayName = `${owner.first_name} ${owner.last_name.charAt(0)}.`;
+  const ratingLabel = formatRating(rating);
 
   return (
     <div className="owner-card">
@@ -60,7 +66,16 @@ function OwnerCard({ owner, rating = 0, reviewCount = 0 }: OwnerCardProps) {
         )}
 
         <div>
-          <p className="owner-name">{displayName}</p>
+          <div className="flex items-center gap-1.5">
+            <p className="owner-name">{displayName}</p>
+            {owner.verification_status === "verified" && (
+              <BadgeCheck
+                size={16}
+                className="text-primary shrink-0"
+                aria-label="Perfil verificado"
+              />
+            )}
+          </div>
           <p className="owner-since">Miembro desde {memberYear}</p>
           {rating > 0 && reviewCount > 0 && (
             <div className="mt-0.5 flex items-center gap-1">
@@ -70,7 +85,7 @@ function OwnerCard({ owner, rating = 0, reviewCount = 0 }: OwnerCardProps) {
                 className="text-sm"
               />
               <p className="owner-rating">
-                {rating} · {reviewCount} valoraciones
+                {ratingLabel} · {reviewCount} valoraciones
               </p>
             </div>
           )}

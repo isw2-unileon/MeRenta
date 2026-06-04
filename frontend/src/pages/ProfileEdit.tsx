@@ -23,7 +23,7 @@ import {
   productsReducer,
   uniqueProductCities,
   type ReceivedReviewsResponseBase,
-} from "@/pages/profile/profileShared";
+} from "@/components/profile/profileShared";
 
 // Reuse shared response shape for received reviews.
 type ReceivedReviewsResponse = ReceivedReviewsResponseBase<unknown>;

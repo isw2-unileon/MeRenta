@@ -3,6 +3,7 @@ package handler
 
 import (
 	"errors"
+	"log/slog"
 	"net/http"
 	"strings"
 
@@ -43,6 +44,8 @@ func (h *AuthHandler) Register(c *gin.Context) {
 		switch {
 		case errors.Is(err, service.ErrEmailExists):
 			response.Error(c, http.StatusConflict, err.Error())
+		case errors.Is(err, service.ErrRegistrationDisabled):
+			response.Error(c, http.StatusForbidden, err.Error())
 		default:
 			response.Error(c, http.StatusInternalServerError, "internal server error")
 		}
@@ -62,14 +65,7 @@ func (h *AuthHandler) Login(c *gin.Context) {
 
 	res, err := h.svc.Login(c.Request.Context(), req)
 	if err != nil {
-		switch {
-		case errors.Is(err, service.ErrInvalidCredentials):
-			response.Error(c, http.StatusUnauthorized, err.Error())
-		case errors.Is(err, service.ErrAccountNotActive):
-			response.Error(c, http.StatusForbidden, err.Error())
-		default:
-			response.Error(c, http.StatusInternalServerError, "internal server error")
-		}
+		writeAuthBlockedOrError(c, err)
 		return
 	}
 	setAuthCookie(c, res.Token)
@@ -94,20 +90,10 @@ func (h *AuthHandler) Me(c *gin.Context) {
 // Response 400: invalid UUID in path
 // Response 404: customer not found
 func (h *AuthHandler) ProfileByID(c *gin.Context) {
-	id, ok := parseUUIDParam(c)
-	if !ok {
-		return
-	}
-
-	res, err := h.svc.GetPublicProfile(c.Request.Context(), id)
-	switch {
-	case err == nil:
-		response.OK(c, http.StatusOK, res)
-	case errors.Is(err, service.ErrCustomerNotFound):
-		response.Error(c, http.StatusNotFound, err.Error())
-	default:
-		response.Error(c, http.StatusInternalServerError, "internal server error")
-	}
+	respondByID(c, service.ErrCustomerNotFound, func(id uuid.UUID) (any, error) {
+		res, err := h.svc.GetPublicProfile(c.Request.Context(), id)
+		return res, err
+	})
 }
 
 // UpdateMe updates editable fields on the authenticated customer's profile.
@@ -230,6 +216,27 @@ func (h *AuthHandler) UploadAvatar(c *gin.Context) {
 	}
 }
 
+// RequestVerification queues the authenticated customer for profile verification.
+func (h *AuthHandler) RequestVerification(c *gin.Context) {
+	customerID, ok := getCustomerID(c)
+	if !ok {
+		return
+	}
+
+	status, err := h.svc.RequestVerification(c.Request.Context(), customerID)
+	switch {
+	case err == nil:
+		response.OK(c, http.StatusOK, gin.H{"verification_status": status})
+	case errors.Is(err, service.ErrAccountNotActive):
+		response.Error(c, http.StatusForbidden, err.Error())
+	case errors.Is(err, service.ErrCustomerNotFound):
+		response.Error(c, http.StatusNotFound, err.Error())
+	default:
+		slog.Error("verification request failed", "customer_id", customerID, "error", err)
+		response.Error(c, http.StatusInternalServerError, "internal server error")
+	}
+}
+
 // DeleteMe removes the authenticated customer account and clears the session.
 func (h *AuthHandler) DeleteMe(c *gin.Context) {
 	customerID, ok := getCustomerID(c)
@@ -273,7 +280,40 @@ func respondWithCurrentCustomer(c *gin.Context, svc *service.AuthService) {
 		response.Error(c, http.StatusInternalServerError, "internal server error")
 		return
 	}
-	response.OK(c, http.StatusOK, res)
+	switch res.AccountStatus {
+	case "banned":
+		c.AbortWithStatusJSON(http.StatusForbidden, blockedPayload("account_banned", nil))
+	case "suspended":
+		c.AbortWithStatusJSON(http.StatusForbidden, blockedPayload("account_suspended", res.SuspendedUntil))
+	default:
+		response.OK(c, http.StatusOK, res)
+	}
+}
+
+// writeAuthBlockedOrError maps login service errors to the appropriate HTTP response.
+func writeAuthBlockedOrError(c *gin.Context, err error) {
+	var suspErr *service.ErrAccountSuspended
+	switch {
+	case errors.Is(err, service.ErrInvalidCredentials):
+		response.Error(c, http.StatusUnauthorized, err.Error())
+	case errors.Is(err, service.ErrAccountBanned):
+		c.AbortWithStatusJSON(http.StatusForbidden, blockedPayload("account_banned", nil))
+	case errors.As(err, &suspErr):
+		c.AbortWithStatusJSON(http.StatusForbidden, blockedPayload("account_suspended", suspErr.Until))
+	case errors.Is(err, service.ErrAccountNotActive):
+		response.Error(c, http.StatusForbidden, err.Error())
+	default:
+		response.Error(c, http.StatusInternalServerError, "internal server error")
+	}
+}
+
+// blockedPayload builds a consistent 403 body for banned/suspended accounts.
+func blockedPayload(errCode string, suspendedUntil interface{}) gin.H {
+	return gin.H{
+		"success": false,
+		"error":   errCode,
+		"data":    gin.H{"suspended_until": suspendedUntil},
+	}
 }
 
 func formatBindError(err error) string {

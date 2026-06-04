@@ -18,14 +18,16 @@ import (
 )
 
 var (
-	// ErrInvalidCategory indicates the category value is not recognised.
+	// ErrInvalidCategory indicates the category value is not recognized.
 	ErrInvalidCategory = errors.New("invalid category")
 	// ErrAddressNotFound indicates the provided address_id does not exist.
 	ErrAddressNotFound = errors.New("address not found")
 	// ErrInvalidRentalPeriod indicates an invalid min/max rental-day range.
 	ErrInvalidRentalPeriod = errors.New("invalid rental period")
-	// ErrInvalidCondition indicates the condition value is not recognised.
+	// ErrInvalidCondition indicates the condition value is not recognized.
 	ErrInvalidCondition = errors.New("invalid condition")
+	// ErrInvalidItemStatus indicates the item status cannot be set through editing.
+	ErrInvalidItemStatus = errors.New("invalid item status")
 )
 
 // itemQuerier is the minimal DB interface needed by ItemService.
@@ -34,6 +36,9 @@ var (
 type itemQuerier interface {
 	CreateItem(ctx context.Context, arg sqlcdb.CreateItemParams) (sqlcdb.CreateItemRow, error)
 	GetItemByID(ctx context.Context, itemID uuid.UUID) (sqlcdb.GetItemByIDRow, error)
+	ExistsItemByID(ctx context.Context, itemID uuid.UUID) (bool, error)
+	UpdateItemForOwner(ctx context.Context, arg sqlcdb.UpdateItemForOwnerParams) (sqlcdb.GetItemByIDRow, error)
+	DeleteItemForOwner(ctx context.Context, itemID, ownerID uuid.UUID) error
 	ListOwnerItemCards(ctx context.Context, arg sqlcdb.ListOwnerItemCardsParams) ([]sqlcdb.SearchItemCardsRow, error)
 	ListOwnerItemCardsWithoutImages(ctx context.Context, arg sqlcdb.ListOwnerItemCardsParams) ([]sqlcdb.SearchItemCardsRow, error)
 	CountItemsByOwner(ctx context.Context, ownerID uuid.UUID) (int64, error)
@@ -41,6 +46,14 @@ type itemQuerier interface {
 	CountItemCardsByCategory(ctx context.Context, arg sqlcdb.CountItemCardsByCategoryParams) ([]sqlcdb.CountItemCardsByCategoryRow, error)
 	CountItemCardsByCity(ctx context.Context, arg sqlcdb.CountItemCardsByCityParams) ([]sqlcdb.CountItemCardsByCityRow, error)
 	CountItemCardsByCondition(ctx context.Context, arg sqlcdb.CountItemCardsByConditionParams) ([]sqlcdb.CountItemCardsByConditionRow, error)
+}
+
+type updateItemValues struct {
+	addressID   uuid.UUID
+	pricePerDay pgtype.Numeric
+	deposit     pgtype.Numeric
+	minDays     int32
+	maxDays     pgtype.Int4
 }
 
 // ItemService handles item listing use cases.
@@ -115,6 +128,132 @@ func (s *ItemService) CreateItem(ctx context.Context, ownerID uuid.UUID, req mod
 	}
 
 	return toItemResponseFromCreateRow(item)
+}
+
+// UpdateItem updates an item listing owned by the authenticated customer.
+func (s *ItemService) UpdateItem(
+	ctx context.Context,
+	ownerID uuid.UUID,
+	itemID uuid.UUID,
+	req model.UpdateItemRequest,
+) (*model.ItemResponse, error) {
+	values, err := prepareUpdateItemValues(req)
+	if err != nil {
+		return nil, err
+	}
+
+	item, err := s.q.UpdateItemForOwner(ctx, sqlcdb.UpdateItemForOwnerParams{
+		ItemID:        itemID,
+		OwnerID:       ownerID,
+		AddressID:     values.addressID,
+		Category:      sqlcdb.CategoryEnum(req.Category),
+		Title:         req.Title,
+		Description:   pgtype.Text{String: req.Description, Valid: req.Description != ""},
+		UsageRules:    pgtype.Text{String: req.UsageRules, Valid: req.UsageRules != ""},
+		ItemCondition: sqlcdb.ItemCondition(req.Condition),
+		PricePerDay:   values.pricePerDay,
+		Deposit:       values.deposit,
+		MinDays:       values.minDays,
+		MaxDays:       values.maxDays,
+		IsAvailable:   req.IsAvailable != nil && *req.IsAvailable,
+		ItemStatus:    sqlcdb.ItemStatus(req.ItemStatus),
+	})
+	if err != nil {
+		return nil, s.mapUpdateItemError(ctx, itemID, err)
+	}
+
+	return toItemResponse(item)
+}
+
+// DeleteItem permanently deletes an item listing owned by the authenticated customer.
+func (s *ItemService) DeleteItem(ctx context.Context, ownerID uuid.UUID, itemID uuid.UUID) error {
+	if err := s.q.DeleteItemForOwner(ctx, itemID, ownerID); err != nil {
+		if errors.Is(err, pgx.ErrNoRows) {
+			exists, existsErr := s.q.ExistsItemByID(ctx, itemID)
+			if existsErr != nil {
+				return existsErr
+			}
+			if exists {
+				return ErrForbidden
+			}
+			return ErrItemNotFound
+		}
+		return err
+	}
+
+	return nil
+}
+
+func prepareUpdateItemValues(req model.UpdateItemRequest) (updateItemValues, error) {
+	if !isValidCategory(req.Category) {
+		return updateItemValues{}, ErrInvalidCategory
+	}
+	if !isValidCondition(req.Condition) {
+		return updateItemValues{}, ErrInvalidCondition
+	}
+	if !isValidEditableStatus(req.ItemStatus) {
+		return updateItemValues{}, ErrInvalidItemStatus
+	}
+
+	minDays := req.MinDays
+	if minDays == 0 {
+		minDays = 1
+	}
+	if req.MaxDays != nil && *req.MaxDays < minDays {
+		return updateItemValues{}, ErrInvalidRentalPeriod
+	}
+	minDaysInt32, err := intToInt32(minDays)
+	if err != nil {
+		return updateItemValues{}, fmt.Errorf("invalid min_days: %w", err)
+	}
+
+	addressID, err := uuid.Parse(req.AddressID)
+	if err != nil {
+		return updateItemValues{}, fmt.Errorf("parsing address_id: %w", err)
+	}
+
+	pricePerDay, err := float64ToNumeric(req.PricePerDay)
+	if err != nil {
+		return updateItemValues{}, fmt.Errorf("invalid price_per_day: %w", err)
+	}
+
+	deposit, err := optionalFloat64ToNumeric(req.Deposit)
+	if err != nil {
+		return updateItemValues{}, fmt.Errorf("invalid deposit: %w", err)
+	}
+
+	maxDays, err := optionalIntToInt4(req.MaxDays)
+	if err != nil {
+		return updateItemValues{}, fmt.Errorf("invalid max_days: %w", err)
+	}
+
+	return updateItemValues{
+		addressID:   addressID,
+		pricePerDay: pricePerDay,
+		deposit:     deposit,
+		minDays:     minDaysInt32,
+		maxDays:     maxDays,
+	}, nil
+}
+
+func (s *ItemService) mapUpdateItemError(ctx context.Context, itemID uuid.UUID, err error) error {
+	if errors.Is(err, pgx.ErrNoRows) {
+		exists, existsErr := s.q.ExistsItemByID(ctx, itemID)
+		if existsErr != nil {
+			return existsErr
+		}
+		if exists {
+			return ErrForbidden
+		}
+		return ErrItemNotFound
+	}
+	if isForeignKeyViolation(err) {
+		return ErrAddressNotFound
+	}
+	if isInvalidTextRepresentation(err) {
+		return ErrInvalidCategory
+	}
+	return err
 }
 
 // GetItem fetches a single item by its UUID.
@@ -231,7 +370,6 @@ func (s *ItemService) SearchItems(ctx context.Context, params sqlcdb.SearchItemC
 		return nil, err
 	}
 
-	items := make([]model.SearchItemResponse, 0, len(rows))
 	categoryCounts := make(map[string]int64, len(countRows))
 	for _, row := range countRows {
 		categoryCounts[string(row.Category)] = row.TotalCount
@@ -245,34 +383,9 @@ func (s *ItemService) SearchItems(ctx context.Context, params sqlcdb.SearchItemC
 		conditionCounts[string(row.Condition)] = row.TotalCount
 	}
 
-	var total int64
-	for _, row := range rows {
-		if total == 0 {
-			total = row.TotalCount
-		}
-
-		pricePerDay, err := numericToFloat64(row.PricePerDay)
-		if err != nil {
-			return nil, fmt.Errorf("converting price_per_day: %w", err)
-		}
-
-		items = append(items, model.SearchItemResponse{
-			ItemID:          row.ItemID.String(),
-			OwnerID:         row.OwnerID.String(),
-			AddressID:       row.AddressID.String(),
-			Category:        string(row.Category),
-			Title:           row.Title,
-			ItemStatus:      string(row.ItemStatus),
-			PricePerDay:     pricePerDay,
-			IsAvailable:     row.IsAvailable,
-			PublishedAt:     row.PublishedAt.Time,
-			City:            row.City,
-			PostalCode:      row.PostalCode,
-			PrimaryImageURL: row.PrimaryImageURL,
-			OwnerFirstName:  row.OwnerFirstName,
-			OwnerLastName:   row.OwnerLastName,
-			OwnerAvatarURL:  row.OwnerAvatarURL,
-		})
+	items, total, err := searchItemCardRowsToResponses(rows)
+	if err != nil {
+		return nil, err
 	}
 
 	return &model.SearchItemsResponse{
@@ -386,6 +499,15 @@ func isValidCondition(c string) bool {
 	}
 }
 
+func isValidEditableStatus(status string) bool {
+	switch status {
+	case string(sqlcdb.ItemStatusAvailable), "withdrawn":
+		return true
+	default:
+		return false
+	}
+}
+
 // float64ToNumeric converts a float64 to a valid pgtype.Numeric with 2 decimal places.
 func float64ToNumeric(v float64) (pgtype.Numeric, error) {
 	var n pgtype.Numeric
@@ -405,12 +527,22 @@ func optionalIntToInt4(v *int) (pgtype.Int4, error) {
 	if v == nil {
 		return pgtype.Int4{}, nil
 	}
+	value, err := intToInt32(*v)
+	if err != nil {
+		return pgtype.Int4{}, err
+	}
+
+	return pgtype.Int4{Int32: value, Valid: true}, nil
+}
+
+func intToInt32(value int) (int32, error) {
 	const minInt32 = -2147483648
 	const maxInt32 = 2147483647
-	if *v < minInt32 || *v > maxInt32 {
-		return pgtype.Int4{}, fmt.Errorf("value %d overflows int32", *v)
+	if value < minInt32 || value > maxInt32 {
+		return 0, fmt.Errorf("value %d overflows int32", value)
 	}
-	return pgtype.Int4{Int32: int32(*v), Valid: true}, nil
+
+	return int32(value), nil
 }
 
 // numericToFloat64 extracts the float64 value from a pgtype.Numeric.

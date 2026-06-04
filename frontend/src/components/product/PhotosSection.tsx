@@ -1,7 +1,7 @@
-import { useCallback, useRef, useEffect, useMemo, type ChangeEvent, type DragEvent } from "react";
+import { useCallback, useRef, useMemo, type ChangeEvent, type DragEvent } from "react";
 import { Plus, X } from "lucide-react";
 
-import type { ProductFormData } from "@/types/item";
+import type { ProductFormData, ProductPhoto } from "@/types/item";
 import * as React from "react";
 
 const MAX_PHOTOS = 10;
@@ -28,14 +28,12 @@ interface PhotosSectionProps {
  * Subcomponente para gestionar la vista previa de la imagen de forma eficiente
  * y evitar fugas de memoria al crear URL de objetos.
  */
-function Thumbnail({ file, index, onRemove }: { file: File; index: number; onRemove: () => void }) {
-  const previewUrl = useMemo(() => URL.createObjectURL(file), [file]);
+function isFilePhoto(photo: ProductPhoto): photo is File {
+  return photo instanceof File;
+}
 
-  useEffect(() => {
-    return () => {
-      URL.revokeObjectURL(previewUrl);
-    };
-  }, [previewUrl]);
+function Thumbnail({ photo, index, onRemove }: { photo: ProductPhoto; index: number; onRemove: () => void }) {
+  const previewUrl = useMemo(() => (isFilePhoto(photo) ? URL.createObjectURL(photo) : photo.image_url), [photo]);
 
   if (!previewUrl) return <div className="h-24 w-28 animate-pulse rounded-lg bg-gray-100" />;
 
@@ -161,7 +159,7 @@ function PhotosSection({ photos, error, onAddPhotos, onRemovePhoto }: PhotosSect
             return (
               <Thumbnail
                 key={idx}
-                file={file}
+                photo={file}
                 index={idx}
                 onRemove={() => onRemovePhoto(idx)}
               />

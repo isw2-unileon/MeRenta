@@ -272,7 +272,7 @@ function Checkout() {
   if (!item || !clientSecret) {
     return (
       <div className="flex min-h-[60vh] items-center justify-center">
-        <p className="text-[var(--color-subtle)]">Cargando checkout…</p>
+        <p className="text-subtle">Cargando checkout…</p>
       </div>
     );
   }
@@ -291,12 +291,12 @@ function Checkout() {
     <div>
       {/* Two-column layout */}
       <div
-        className="mx-auto flex gap-8 px-[var(--spacing-layout-margin)] py-10"
+        className="mx-auto flex gap-8 px-(--spacing-layout-margin) py-10"
         style={{ maxWidth: 1300 }}
       >
         {/* ── Left: payment form ── */}
         <div
-          className="rounded-[var(--radius-panel)] border border-[var(--color-border-main)] bg-white p-8"
+          className="rounded-(--radius-panel) border border-(--color-border-main) bg-white p-8"
           style={{ width: "var(--spacing-panel-payment)", flexShrink: 0 }}
         >
           <Elements
@@ -314,7 +314,7 @@ function Checkout() {
 
         {/* ── Right: summary ── */}
         <div
-          className="rounded-[var(--radius-panel)] border border-[var(--color-border-main)] bg-white p-8"
+          className="rounded-(--radius-panel) border border-(--color-border-main) bg-white p-8"
           style={{ width: "var(--spacing-panel-summary)", flexShrink: 0 }}
         >
           <RentalSummary

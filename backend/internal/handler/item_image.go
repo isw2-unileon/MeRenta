@@ -136,6 +136,45 @@ func (h *ItemImageHandler) AddImages(c *gin.Context) {
 	response.OK(c, http.StatusCreated, imgs)
 }
 
+// DeleteImage handles DELETE /api/items/:id/images/:imageId.
+func (h *ItemImageHandler) DeleteImage(c *gin.Context) {
+	itemID, ok := parseUUIDParam(c)
+	if !ok {
+		return
+	}
+
+	imageID, err := uuid.Parse(c.Param("imageId"))
+	if err != nil {
+		response.Error(c, http.StatusBadRequest, "invalid image id")
+		return
+	}
+
+	ownerRaw, ok := c.Get("customer_id")
+	if !ok {
+		response.Error(c, http.StatusUnauthorized, "missing auth context")
+		return
+	}
+
+	ownerID, ok := ownerRaw.(uuid.UUID)
+	if !ok {
+		response.Error(c, http.StatusUnauthorized, "invalid auth context")
+		return
+	}
+
+	if err := h.svc.DeleteImage(c.Request.Context(), ownerID, itemID, imageID); err != nil {
+		if errors.Is(err, service.ErrImageNotFound) {
+			response.Error(c, http.StatusNotFound, err.Error())
+			return
+		}
+
+		slog.Error("failed to delete item image", "item_id", itemID, "image_id", imageID, "owner_id", ownerID, "error", err)
+		response.Error(c, http.StatusInternalServerError, "internal server error")
+		return
+	}
+
+	response.OK(c, http.StatusOK, gin.H{"message": "image deleted"})
+}
+
 // ProxyImage handles GET /api/items/:id/images/:imageId/content.
 //
 // It fetches the image server-side from Supabase Storage and streams it to the

@@ -36,24 +36,7 @@ func NewBookingHandler(svc *service.BookingService) *BookingHandler {
 // Create handles POST /api/bookings.
 // Creates a booking after a successful Stripe payment.
 func (h *BookingHandler) Create(c *gin.Context) {
-	customerID, ok := getCustomerID(c)
-	if !ok {
-		return
-	}
-
-	var req model.CreateBookingRequest
-	if err := c.ShouldBindJSON(&req); err != nil {
-		response.Error(c, http.StatusBadRequest, formatBindError(err))
-		return
-	}
-
-	res, err := h.svc.Create(c.Request.Context(), customerID, req)
-	if err != nil {
-		response.Error(c, bookingErrStatus(err), err.Error())
-		return
-	}
-
-	response.OK(c, http.StatusCreated, res)
+	bindAndCreate(c, h.svc.Create, bookingErrStatus)
 }
 
 // ListMine handles GET /api/bookings/mine.
@@ -122,6 +105,26 @@ func (h *BookingHandler) Cancel(c *gin.Context) {
 	h.changeStatus(c, bookingActionCancel)
 }
 
+// Complete handles PATCH /api/bookings/:id/complete — owner or renter, on/after end date.
+func (h *BookingHandler) Complete(c *gin.Context) {
+	customerID, ok := getCustomerID(c)
+	if !ok {
+		return
+	}
+	bookingID, ok := parseBookingID(c)
+	if !ok {
+		return
+	}
+
+	res, err := h.svc.Complete(c.Request.Context(), customerID, bookingID)
+	if err != nil {
+		response.Error(c, bookingErrStatus(err), err.Error())
+		return
+	}
+
+	response.OK(c, http.StatusOK, res)
+}
+
 // ─── Private helpers ──────────────────────────────────────────────────────────
 
 func (h *BookingHandler) changeStatus(c *gin.Context, action bookingAction) {
@@ -184,7 +187,8 @@ func bookingErrStatus(err error) int {
 		return http.StatusForbidden
 	case errors.Is(err, service.ErrBookingClosed):
 		return http.StatusConflict
-	case errors.Is(err, service.ErrCannotBookOwnItem):
+	case errors.Is(err, service.ErrCannotBookOwnItem),
+		errors.Is(err, service.ErrBookingNotEnded):
 		return http.StatusUnprocessableEntity
 	default:
 		return http.StatusInternalServerError

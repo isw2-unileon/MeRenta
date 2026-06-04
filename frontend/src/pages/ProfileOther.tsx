@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useReducer, useState, type FormEvent } from "react";
 import { useNavigate, useParams } from "react-router-dom";
-import { Heart, Mail, Star } from "lucide-react";
+import { BadgeCheck, Heart, Mail, Star, X } from "lucide-react";
 
 import { StarRating } from "@/components/product/detail/StarRating";
 import type { ApiResponse } from "@/types/common";
@@ -10,12 +10,16 @@ import type { ReviewSummary } from "@/types/review";
 import { useAuth } from "@/hooks/useAuth";
 import {
   formatMemberSince,
+  formatRelativeDate,
   getInitials,
   initialProductsState,
   productsReducer,
+  reviewerDisplayName,
+  reviewerInitials,
   uniqueProductCities,
+  type ReceivedReview,
   type ReceivedReviewsResponseBase,
-} from "@/pages/profile/profileShared";
+} from "@/components/profile/profileShared";
 
 const emptyReviewSummary: ReviewSummary = {
   average_rating: 0,
@@ -46,13 +50,13 @@ const productTones: Record<string, string> = {
 
 const categoryLabels: Record<string, string> = {
   sports: "Deporte",
-  photography: "Fotografia",
+  photography: "Fotografía",
   camping: "Camping",
   tools: "Herramientas",
   electronics: "Electronica",
   home: "Hogar",
-  gardening: "Jardineria",
-  vehicles: "Vehiculos",
+  gardening: "Jardinería",
+  vehicles: "Vehículos",
   clothing: "Ropa",
   music: "Musica",
   leisure: "Ocio",
@@ -89,18 +93,15 @@ function profileReducer(state: PublicProfileState, action: PublicProfileAction):
   }
 }
 
-interface ReceivedReview {
-  review_id: string;
-  reviewer_id: string;
-  reviewer_first_name: string;
-  reviewer_last_name: string;
-  reviewer_avatar_url?: string;
-  rating: number;
-  comment: string;
-  reviewed_at: string;
-}
-
 type ReceivedReviewsResponse = ReceivedReviewsResponseBase<ReceivedReview>;
+
+type UserIncidentType = "not_delivered" | "late_return" | "other";
+
+const userIncidentOptions: { value: UserIncidentType; label: string }[] = [
+  { value: "not_delivered", label: "No entrego el articulo" },
+  { value: "late_return", label: "Devolución tardía" },
+  { value: "other", label: "Otra incidencia" },
+];
 
 interface ReviewsState {
   items: ReceivedReview[];
@@ -199,7 +200,7 @@ async function createReview(reviewedId: string, rating: number, comment: string)
   });
   const json = (await res.json()) as ApiResponse<ReceivedReview>;
   if (!res.ok || !json.success || !json.data) {
-    throw new Error(json.message ?? json.error ?? "Error al guardar la valoracion");
+    throw new Error(json.message ?? json.error ?? "Error al guardar la valoración");
   }
   return json.data;
 }
@@ -220,57 +221,32 @@ async function openConversation(itemId: string): Promise<string> {
   return json.data.conversation_id;
 }
 
+async function createUserReport(profileId: string, type: UserIncidentType, description: string): Promise<void> {
+  const res = await fetch(`/api/customers/${profileId}/reports`, {
+    method: "POST",
+    credentials: "include",
+    headers: {
+      "Content-Type": "application/json",
+    },
+    body: JSON.stringify({
+      type,
+      description: description.trim(),
+    }),
+  });
+  const json = (await res.json()) as ApiResponse<unknown>;
+  if (!res.ok || !json.success) {
+    throw new Error(json.message ?? json.error ?? "Error al crear la incidencia");
+  }
+}
+
 function formatCompactMemberSince(date?: string) {
   const formatted = formatMemberSince(date);
   return formatted ? `Miembro desde ${formatted}` : "Miembro desde fecha no disponible";
 }
 
-function formatRelativeDate(value: string) {
-  const created = new Date(value);
-  if (Number.isNaN(created.getTime())) return "";
-
-  const diffDays = Math.floor((Date.now() - created.getTime()) / 86_400_000);
-  if (diffDays <= 0) return "Hoy";
-  if (diffDays === 1) return "Hace 1 dia";
-  if (diffDays < 7) return `Hace ${diffDays} dias`;
-
-  const weeks = Math.floor(diffDays / 7);
-  if (weeks === 1) return "Hace 1 semana";
-  if (weeks < 5) return `Hace ${weeks} semanas`;
-
-  const months = Math.floor(diffDays / 30);
-  if (months <= 1) return "Hace 1 mes";
-  return `Hace ${months} meses`;
-}
-
-function reviewerInitials(review: ReceivedReview) {
-  return getInitials(review.reviewer_first_name, review.reviewer_last_name);
-}
-
-function reviewerDisplayName(review: ReceivedReview) {
-  const lastInitial = review.reviewer_last_name[0] ? `${review.reviewer_last_name[0]}.` : "";
-  return `${review.reviewer_first_name} ${lastInitial}`.trim();
-}
-
 function percent(part: number, total: number) {
   if (total === 0) return 0;
   return Math.round((part / total) * 100);
-}
-
-function buildReportUserMailto(profileId: string, profileName: string) {
-  const subject = `Incidencia con usuario: ${profileName || profileId}`;
-  const body = [
-    "Hola equipo de MeRenta,",
-    "",
-    "Quiero reportar una incidencia con este usuario:",
-    `- Nombre: ${profileName || "No disponible"}`,
-    `- ID: ${profileId}`,
-    "",
-    "Describe aqui que ha ocurrido:",
-    "",
-  ].join("\n");
-
-  return `mailto:contact@merenta.com?subject=${encodeURIComponent(subject)}&body=${encodeURIComponent(body)}`;
 }
 
 function ProductCard({ product, ownerRating }: { product: SearchItemResponse; ownerRating: number }) {
@@ -315,7 +291,7 @@ function ProductCard({ product, ownerRating }: { product: SearchItemResponse; ow
         </button>
 
         <div className="mt-3 flex items-center justify-between gap-3">
-          <p className="location truncate">{product.city || "Sin ubicacion"}</p>
+          <p className="location truncate">{product.city || "Sin ubicación"}</p>
           <p className="text-card-loc text-rating flex items-center gap-1">
             <Star
               size={12}
@@ -349,7 +325,7 @@ function RatingSummary({ summary }: { summary: ReviewSummary }) {
       <div>
         <p className="rating-big-number leading-none">{summary.average_rating.toFixed(1)}</p>
         <p className="rating-count-label mt-2">
-          de 5 - {summary.total} {summary.total === 1 ? "valoracion" : "valoraciones"}
+          de 5 - {summary.total} {summary.total === 1 ? "valoración" : "valoraciones"}
         </p>
         <StarRating
           rating={summary.average_rating}
@@ -496,7 +472,7 @@ function ReviewForm({
           className="btn-primary btn--sm min-w-36"
           disabled={submitting || rating === 0}
         >
-          {submitting ? "Enviando..." : "Publicar valoracion"}
+          {submitting ? "Enviando..." : "Publicar valoración"}
         </button>
       </div>
     </form>
@@ -538,7 +514,7 @@ function reviewDraftReducer(state: ReviewDraftState, action: ReviewDraftAction):
     case "submit_start":
       return { ...state, profileId: action.profileId, submitting: true, error: "", success: "" };
     case "submit_success":
-      return { ...state, submitting: false, rating: 0, comment: "", success: "Valoracion publicada correctamente." };
+      return { ...state, submitting: false, rating: 0, comment: "", success: "Valoración publicada correctamente." };
     case "submit_error":
       return { ...state, submitting: false, error: action.error };
     default:
@@ -567,7 +543,124 @@ function messageFlowReducer(_state: MessageFlowState, action: MessageFlowAction)
   }
 }
 
-// ── Shared data/action shapes passed to sub-sections ─────────────
+function UserReportModal({
+  profileId,
+  profileName,
+  onClose,
+  onSuccess,
+}: {
+  profileId: string;
+  profileName: string;
+  onClose: () => void;
+  onSuccess: () => void;
+}) {
+  const [incidentType, setIncidentType] = useState<UserIncidentType>("other");
+  const [description, setDescription] = useState("");
+  const [submitting, setSubmitting] = useState(false);
+  const [error, setError] = useState("");
+
+  const handleSubmit = async (event: FormEvent<HTMLFormElement>) => {
+    event.preventDefault();
+    const trimmedDescription = description.trim();
+    if (trimmedDescription.length < 10) {
+      setError("Describe la incidencia con al menos 10 caracteres.");
+      return;
+    }
+
+    setSubmitting(true);
+    setError("");
+    try {
+      await createUserReport(profileId, incidentType, trimmedDescription);
+      onSuccess();
+    } catch (err: unknown) {
+      setError(err instanceof Error ? err.message : "Error al crear la incidencia");
+    } finally {
+      setSubmitting(false);
+    }
+  };
+
+  return (
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 px-4 py-8">
+      <div className="bg-page w-full max-w-140 rounded-lg p-5 shadow-xl">
+        <div className="flex items-start justify-between gap-4">
+          <div>
+            <h2 className="heading-panel--sm">Reportar usuario</h2>
+            <p className="text-subtle mt-1 text-[13px]">{profileName || "Usuario seleccionado"}</p>
+          </div>
+          <button
+            type="button"
+            className="border-border-input text-subtle hover:text-ink flex size-9 items-center justify-center rounded-full border bg-white p-0"
+            onClick={onClose}
+            aria-label="Cerrar"
+          >
+            <X size={17} />
+          </button>
+        </div>
+
+        <form
+          className="mt-5 space-y-5"
+          onSubmit={handleSubmit}
+        >
+          <div>
+            <p className="text-ink text-[13px] font-semibold">Tipo de incidencia</p>
+            <div className="mt-3 grid gap-2 sm:grid-cols-3">
+              {userIncidentOptions.map((option) => (
+                <button
+                  key={option.value}
+                  type="button"
+                  className={`min-h-11 rounded-lg border px-3 text-[13px] font-medium ${
+                    incidentType === option.value
+                      ? "border-primary bg-primary-light text-primary"
+                      : "border-border-input bg-page text-body-color hover:border-primary hover:text-primary"
+                  }`}
+                  onClick={() => setIncidentType(option.value)}
+                >
+                  {option.label}
+                </button>
+              ))}
+            </div>
+          </div>
+
+          <label className="block">
+            <span className="text-ink text-[13px] font-semibold">Descripcion</span>
+            <textarea
+              className="border-border-input text-body-color focus:border-primary mt-2 min-h-32 w-full resize-none rounded-lg border bg-white px-3 py-2 text-[14px] outline-none"
+              value={description}
+              onChange={(event) => setDescription(event.target.value)}
+              placeholder="Explica que ha ocurrido"
+              maxLength={2000}
+              required
+            />
+          </label>
+
+          {error && (
+            <p className="border-report bg-error-danger text-report rounded-lg border p-3 text-[13px]">{error}</p>
+          )}
+
+          <div className="flex flex-col-reverse gap-3 sm:flex-row sm:justify-end">
+            <button
+              type="button"
+              className="border-border-input text-body-color hover:border-primary hover:text-primary h-11 rounded-lg border bg-white px-5"
+              onClick={onClose}
+              disabled={submitting}
+            >
+              Cancelar
+            </button>
+            <button
+              type="submit"
+              className="btn-primary h-11 px-5"
+              disabled={submitting}
+            >
+              {submitting ? "Enviando..." : "Crear incidencia"}
+            </button>
+          </div>
+        </form>
+      </div>
+    </div>
+  );
+}
+
+// ── Shared data/action shapes passed to subsections ─────────────
 interface ProfileViewData {
   fullName: string;
   initials: string;
@@ -578,6 +671,7 @@ interface ProfileViewData {
   activeProducts: number;
   positivePercent: number;
   fiveStarPercent: number;
+  isVerified: boolean;
 }
 
 interface ProfileActionProps {
@@ -585,6 +679,7 @@ interface ProfileActionProps {
   isOwnProfile: boolean;
   productsLoading: boolean;
   messageError: string;
+  reportSuccess: boolean;
   onOpenMessage: () => void;
   onReportUser: () => void;
 }
@@ -597,6 +692,7 @@ function ProfileHero({
   isOwnProfile,
   productsLoading,
   messageError,
+  reportSuccess,
   onOpenMessage,
   onReportUser,
 }: { data: ProfileViewData; profileLoading: boolean } & ProfileActionProps) {
@@ -614,7 +710,16 @@ function ProfileHero({
             <div className="profile-avatar-hero bg-avatar-blue text-avatar-text-blue">{data.initials || "?"}</div>
           )}
           <div>
-            <p className="profile-name">{profileLoading ? "Cargando perfil..." : data.fullName}</p>
+            <div className="flex flex-wrap items-center gap-2">
+              <p className="profile-name">{profileLoading ? "Cargando perfil..." : data.fullName}</p>
+              {data.isVerified && (
+                <BadgeCheck
+                  size={26}
+                  className="text-primary shrink-0"
+                  aria-label="Perfil verificado"
+                />
+              )}
+            </div>
             <p className="profile-meta mt-1">
               {data.cityLabel} - {data.memberSince}
             </p>
@@ -639,12 +744,14 @@ function ProfileHero({
           </button>
           <button
             type="button"
-            className="text-report h-auto p-0 text-[12px]"
+            className="text-report text-card-loc h-auto p-0"
             onClick={onReportUser}
+            disabled={isOwnProfile}
           >
             Reportar usuario
           </button>
-          {messageError && <p className="text-report max-w-60 text-center text-[12px]">{messageError}</p>}
+          {reportSuccess && <p className="text-primary text-card-loc max-w-60 text-center">Incidencia enviada.</p>}
+          {messageError && <p className="text-report text-card-loc max-w-60 text-center">{messageError}</p>}
         </div>
       </div>
     </section>
@@ -692,6 +799,7 @@ function ProfileSidebar({
   isOwnProfile,
   productsLoading,
   messageError,
+  reportSuccess,
   onOpenMessage,
   onReportUser,
 }: { data: ProfileViewData } & ProfileActionProps) {
@@ -709,7 +817,16 @@ function ProfileSidebar({
             <div className="owner-avatar bg-avatar-blue text-avatar-text-blue">{data.initials || "?"}</div>
           )}
           <div>
-            <p className="text-owner-name font-bold">{data.fullName || "Perfil publico"}</p>
+            <div className="flex flex-wrap items-center gap-1.5">
+              <p className="text-owner-name font-bold">{data.fullName || "Perfil publico"}</p>
+              {data.isVerified && (
+                <BadgeCheck
+                  size={18}
+                  className="text-primary shrink-0"
+                  aria-label="Perfil verificado"
+                />
+              )}
+            </div>
             <p className="text-card-loc text-subtle">
               {data.memberSince} - {data.cityLabel}
             </p>
@@ -721,7 +838,7 @@ function ProfileSidebar({
 
         <div className="divide-border-main my-5 divide-y">
           {[
-            ["Valoracion media", data.summary.average_rating.toFixed(1)],
+            ["Valoración media", data.summary.average_rating.toFixed(1)],
             ["Valoraciones recibidas", String(data.summary.total)],
             ["Opiniones positivas", `${data.positivePercent}%`],
             ["Valoraciones de 5 estrellas", `${data.fiveStarPercent}%`],
@@ -729,7 +846,7 @@ function ProfileSidebar({
           ].map(([label, value]) => (
             <div
               key={label}
-              className="flex items-center justify-between gap-4 py-3 text-[12px]"
+              className="text-card-loc flex items-center justify-between gap-4 py-3"
             >
               <span className="text-subtle">{label}</span>
               <span className="text-ink text-right font-bold">{value}</span>
@@ -745,14 +862,16 @@ function ProfileSidebar({
         >
           <Mail size={15} /> {openingMessage ? "Abriendo..." : "Enviar mensaje"}
         </button>
-        {messageError && <p className="text-report mt-3 text-center text-[12px]">{messageError}</p>}
+        {messageError && <p className="text-report text-card-loc mt-3 text-center">{messageError}</p>}
         <button
           type="button"
-          className="text-report mt-4 h-auto w-full p-0 text-[12px]"
+          className="text-report text-card-loc mt-4 h-auto w-full p-0"
           onClick={onReportUser}
+          disabled={isOwnProfile}
         >
           Reportar a este usuario
         </button>
+        {reportSuccess && <p className="text-primary text-card-loc mt-3 text-center">Incidencia enviada.</p>}
       </div>
     </aside>
   );
@@ -795,7 +914,7 @@ function ProfileProductsSection({
             <button
               key={filter.value}
               type="button"
-              className={`h-7 rounded-full border px-5 text-[12px] ${
+              className={`text-card-loc h-7 rounded-full border px-5 ${
                 selectedCategory === filter.value
                   ? "bg-primary text-white"
                   : "border-border-input bg-page text-subtle hover:border-primary hover:text-primary"
@@ -937,6 +1056,8 @@ function ProfileOther() {
   const navigate = useNavigate();
   const { user } = useAuth();
   const [selectedCategory, setSelectedCategory] = useState("all");
+  const [reportModalOpen, setReportModalOpen] = useState(false);
+  const [reportSuccess, setReportSuccess] = useState(false);
   const [reviewDraft, dispatchReviewDraft] = useReducer(reviewDraftReducer, initialReviewDraftState);
   const [msgFlow, dispatchMsgFlow] = useReducer(messageFlowReducer, initialMessageFlowState);
   const [profileState, dispatchProfile] = useReducer(profileReducer, initialProfileState);
@@ -993,7 +1114,7 @@ function ProfileOther() {
   const fullName = profile ? `${profile.first_name} ${profile.last_name}`.trim() : "";
   const initials = profile ? getInitials(profile.first_name, profile.last_name) : "";
   const cities = uniqueProductCities(products);
-  const cityLabel = cities.join(", ") || "Ubicacion no disponible";
+  const cityLabel = cities.join(", ") || "Ubicación no disponible";
   const memberSince = formatCompactMemberSince(profile?.registration_date);
   const activeProducts = products.filter((product) => product.is_available && product.item_status !== "retired").length;
   const messageProduct = products.find(
@@ -1023,20 +1144,20 @@ function ProfileOther() {
     } catch (err: unknown) {
       dispatchReviewDraft({
         type: "submit_error",
-        error: err instanceof Error ? err.message : "Error al guardar la valoracion",
+        error: err instanceof Error ? err.message : "Error al guardar la valoración",
       });
     }
   };
 
   const handleOpenMessage = async () => {
     if (isOwnProfile) {
-      dispatchMsgFlow({ type: "open_error", error: "No puedes abrir una conversacion contigo." });
+      dispatchMsgFlow({ type: "open_error", error: "No puedes abrir una conversación contigo." });
       return;
     }
     if (!messageProduct) {
       dispatchMsgFlow({
         type: "open_error",
-        error: "Este usuario no tiene productos disponibles para iniciar una conversacion.",
+        error: "Este usuario no tiene productos disponibles para iniciar una conversación.",
       });
       return;
     }
@@ -1052,8 +1173,9 @@ function ProfileOther() {
   };
 
   const handleReportUser = () => {
-    if (!id) return;
-    window.location.href = buildReportUserMailto(id, fullName);
+    if (!id || isOwnProfile) return;
+    setReportSuccess(false);
+    setReportModalOpen(true);
   };
 
   const categoryFilters = useMemo(() => {
@@ -1074,7 +1196,7 @@ function ProfileOther() {
       { value: productsState.loading ? "..." : activeProducts, label: "Productos activos" },
       {
         value: reviewsState.loading ? "..." : summary.average_rating.toFixed(1),
-        label: "Valoracion media",
+        label: "Valoración media",
         rating: true,
       },
       { value: reviewsState.loading ? "..." : summary.total, label: "Valoraciones" },
@@ -1104,6 +1226,7 @@ function ProfileOther() {
     activeProducts,
     positivePercent,
     fiveStarPercent,
+    isVerified: profile?.verification_status === "verified",
   };
 
   const actionProps: ProfileActionProps = {
@@ -1111,6 +1234,7 @@ function ProfileOther() {
     isOwnProfile,
     productsLoading: productsState.loading,
     messageError: msgFlow.error,
+    reportSuccess,
     onOpenMessage: () => void handleOpenMessage(),
     onReportUser: handleReportUser,
   };
@@ -1143,7 +1267,7 @@ function ProfileOther() {
 
       <ProfileStatsStrip stats={stats} />
 
-      <main className="mx-auto grid max-w-340 grid-cols-1 gap-9 px-6 pt-9 pb-18 md:px-10 lg:grid-cols-[minmax(0,1fr)_360px]">
+      <main className="pb-error-icon mx-auto grid max-w-340 grid-cols-1 gap-9 px-6 pt-9 md:px-10 lg:grid-cols-[minmax(0,1fr)_360px]">
         <div className="min-w-0">
           <section className="profile-info-panel px-5 py-4">
             <p className="profile-about-heading">Resumen del perfil</p>
@@ -1192,6 +1316,17 @@ function ProfileOther() {
           {...actionProps}
         />
       </main>
+      {reportModalOpen && id && (
+        <UserReportModal
+          profileId={id}
+          profileName={fullName}
+          onClose={() => setReportModalOpen(false)}
+          onSuccess={() => {
+            setReportModalOpen(false);
+            setReportSuccess(true);
+          }}
+        />
+      )}
     </div>
   );
 }

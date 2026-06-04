@@ -1,6 +1,7 @@
 import { createContext, useCallback, useEffect, useReducer } from "react";
 import * as React from "react";
 import type { CustomerPublic, LoginRequest, RegisterRequest } from "@/types/customer";
+import { BlockedAccountError } from "@/types/auth";
 import { useMe } from "@/hooks/useMe";
 
 /**
@@ -13,14 +14,22 @@ interface AuthContextType {
   login: (credentials: LoginRequest) => Promise<void>;
   register: (data: RegisterRequest) => Promise<void>;
   logout: () => Promise<void>;
-  accessToken: string | null;
+  /** Set when the account is blocked. Drives redirect in ProtectedRoute. */
+  blockedReason: "banned" | "suspended" | null;
+  suspendedUntil: string | null;
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
 const API_BASE_URL = "/api";
-const AUTH_TOKEN_STORAGE_KEY = "merenta:access-token";
 let initialSessionLoadStarted = false;
+
+// One-time migration: remove any token previously stored in localStorage.
+try {
+  window.localStorage.removeItem("merenta:access-token");
+} catch {
+  /* ignore */
+}
 
 /**
  * Extracts a readable error message from an API response payload.
@@ -46,17 +55,12 @@ const parseErrorMessage = async (response: Response): Promise<string> => {
 };
 
 /**
- * Parses the login/register response into a token and user object.
+ * Parses the login/register response into a customer object.
  * @param response Successful auth response to decode.
- * @returns Auth token and customer payload.
+ * @returns The authenticated customer payload.
  * @throws Error when the payload is missing or malformed.
  */
-const parseAuthResponse = async (
-  response: Response
-): Promise<{
-  token: string;
-  customer: CustomerPublic;
-}> => {
+const parseAuthResponse = async (response: Response): Promise<CustomerPublic> => {
   const payload: unknown = await response.json();
   if (!payload || typeof payload !== "object") {
     throw new Error("Invalid response payload");
@@ -65,28 +69,29 @@ const parseAuthResponse = async (
   if (!data || typeof data !== "object") {
     throw new Error("Invalid response data");
   }
-  const token = (data as { token?: unknown }).token;
   const customer = (data as { customer?: unknown }).customer;
-  if (typeof token !== "string" || !customer || typeof customer !== "object") {
+  if (!customer || typeof customer !== "object") {
     throw new Error("Invalid auth response");
   }
-  return { token, customer: customer as CustomerPublic };
+  return customer as CustomerPublic;
 };
 
 interface AuthState {
   isAuthenticated: boolean;
   isLoading: boolean;
   user: CustomerPublic | null;
-  accessToken: string | null;
+  blockedReason: "banned" | "suspended" | null;
+  suspendedUntil: string | null;
 }
 
 type AuthAction =
   | { type: "load_start" }
   | { type: "load_success"; user: CustomerPublic }
   | { type: "load_failure" }
-  | { type: "login_success"; user: CustomerPublic; token: string }
+  | { type: "load_blocked"; reason: "banned" | "suspended"; suspendedUntil?: string }
+  | { type: "login_success"; user: CustomerPublic }
   | { type: "login_failure" }
-  | { type: "register_success"; user: CustomerPublic; token: string }
+  | { type: "register_success"; user: CustomerPublic }
   | { type: "register_failure" }
   | { type: "logout_start" }
   | { type: "logout_success" }
@@ -96,32 +101,9 @@ const initialState: AuthState = {
   isAuthenticated: false,
   isLoading: true,
   user: null,
-  accessToken: readStoredAccessToken(),
+  blockedReason: null,
+  suspendedUntil: null,
 };
-
-function readStoredAccessToken(): string | null {
-  try {
-    return window.localStorage.getItem(AUTH_TOKEN_STORAGE_KEY);
-  } catch {
-    return null;
-  }
-}
-
-function storeAccessToken(token: string): void {
-  try {
-    window.localStorage.setItem(AUTH_TOKEN_STORAGE_KEY, token);
-  } catch {
-    // The auth cookie still keeps HTTP requests authenticated when storage is unavailable.
-  }
-}
-
-function clearStoredAccessToken(): void {
-  try {
-    window.localStorage.removeItem(AUTH_TOKEN_STORAGE_KEY);
-  } catch {
-    // Ignore storage failures while clearing auth state.
-  }
-}
 
 /**
  * Handles state transitions for authentication actions.
@@ -146,7 +128,17 @@ const authReducer = (state: AuthState, action: AuthAction): AuthState => {
         isLoading: false,
         isAuthenticated: false,
         user: null,
-        accessToken: null,
+        blockedReason: null,
+        suspendedUntil: null,
+      };
+    case "load_blocked":
+      return {
+        ...state,
+        isLoading: false,
+        isAuthenticated: false,
+        user: null,
+        blockedReason: action.reason,
+        suspendedUntil: action.suspendedUntil ?? null,
       };
     case "login_success":
     case "register_success":
@@ -155,7 +147,6 @@ const authReducer = (state: AuthState, action: AuthAction): AuthState => {
         isLoading: false,
         isAuthenticated: true,
         user: action.user,
-        accessToken: action.token,
       };
     case "login_failure":
     case "register_failure":
@@ -164,7 +155,6 @@ const authReducer = (state: AuthState, action: AuthAction): AuthState => {
         isLoading: false,
         isAuthenticated: false,
         user: null,
-        accessToken: null,
       };
     case "logout_start":
       return {
@@ -172,20 +162,12 @@ const authReducer = (state: AuthState, action: AuthAction): AuthState => {
         isLoading: true,
       };
     case "logout_success":
-      return {
-        ...state,
-        isLoading: false,
-        isAuthenticated: false,
-        user: null,
-        accessToken: null,
-      };
     case "logout_failure":
       return {
         ...state,
         isLoading: false,
         isAuthenticated: false,
         user: null,
-        accessToken: null,
       };
     default:
       return state;
@@ -199,9 +181,9 @@ const authReducer = (state: AuthState, action: AuthAction): AuthState => {
  */
 function AuthProvider({ children }: { children: React.ReactNode }) {
   const [state, dispatch] = useReducer(authReducer, initialState);
-  const { isAuthenticated, isLoading, user, accessToken } = state;
+  const { isAuthenticated, isLoading, user, blockedReason, suspendedUntil } = state;
 
-  const { getMe } = useMe(accessToken);
+  const { getMe } = useMe();
 
   useEffect(() => {
     if (initialSessionLoadStarted) {
@@ -209,27 +191,28 @@ function AuthProvider({ children }: { children: React.ReactNode }) {
     }
     initialSessionLoadStarted = true;
 
-    if (!accessToken) {
-      dispatch({ type: "load_failure" });
-      return;
-    }
-
+    // Attempt to restore the session using the HttpOnly cookie set by the backend.
+    // No localStorage token is needed — credentials: "include" sends the cookie automatically.
     const loadSession = async () => {
       dispatch({ type: "load_start" });
       try {
         const customer = await getMe();
         dispatch({ type: "load_success", user: customer });
-      } catch {
-        clearStoredAccessToken();
+      } catch (err) {
+        if (err instanceof BlockedAccountError) {
+          dispatch({ type: "load_blocked", reason: err.reason, suspendedUntil: err.suspendedUntil });
+          return;
+        }
         dispatch({ type: "load_failure" });
       }
     };
 
     void loadSession();
-  }, [accessToken, getMe]);
+  }, [getMe]);
 
   /**
-   * Executes the login flow and stores the auth token locally.
+   * Executes the login flow. The backend sets the HttpOnly cookie; no token
+   * is stored in localStorage.
    * @param credentials Email/password credentials.
    * @returns Resolves when the auth state is updated.
    * @throws Error when the API returns a non-OK response.
@@ -247,14 +230,19 @@ function AuthProvider({ children }: { children: React.ReactNode }) {
       });
 
       if (!response.ok) {
+        if (response.status === 403) {
+          const payload = (await response.json()) as { error?: string; data?: { suspended_until?: string } };
+          if (payload.error === "account_banned") throw new BlockedAccountError("banned");
+          if (payload.error === "account_suspended") {
+            throw new BlockedAccountError("suspended", payload.data?.suspended_until ?? undefined);
+          }
+        }
         throw new Error(await parseErrorMessage(response));
       }
 
-      const { token, customer } = await parseAuthResponse(response);
-      storeAccessToken(token);
-      dispatch({ type: "login_success", user: customer, token });
+      const customer = await parseAuthResponse(response);
+      dispatch({ type: "login_success", user: customer });
     } catch (error) {
-      clearStoredAccessToken();
       dispatch({ type: "login_failure" });
       throw error;
     }
@@ -262,6 +250,7 @@ function AuthProvider({ children }: { children: React.ReactNode }) {
 
   /**
    * Registers a new customer and updates auth state on success.
+   * The backend sets the HttpOnly cookie; no token is stored in localStorage.
    * @param data Registration details provided by the user.
    * @returns Resolves when the auth state is updated.
    * @throws Error when the API returns a non-OK response.
@@ -288,19 +277,17 @@ function AuthProvider({ children }: { children: React.ReactNode }) {
       if (!response.ok) {
         throw new Error(await parseErrorMessage(response));
       }
-      const { token, customer } = await parseAuthResponse(response);
-      storeAccessToken(token);
-      dispatch({ type: "register_success", user: customer, token });
+      const customer = await parseAuthResponse(response);
+      dispatch({ type: "register_success", user: customer });
     } catch (error) {
-      clearStoredAccessToken();
       dispatch({ type: "register_failure" });
       throw error;
     }
   }, []);
 
   /**
-   * Clears the local auth state.
-   * @returns Nothing; state is reset synchronously.
+   * Clears the session by asking the backend to expire the HttpOnly cookie.
+   * @returns Resolves when the cookie has been cleared.
    */
   const logout = useCallback(async () => {
     dispatch({ type: "logout_start" });
@@ -314,10 +301,8 @@ function AuthProvider({ children }: { children: React.ReactNode }) {
       if (!response.ok) {
         throw new Error(await parseErrorMessage(response));
       }
-      clearStoredAccessToken();
       dispatch({ type: "logout_success" });
     } catch (error) {
-      clearStoredAccessToken();
       dispatch({ type: "logout_failure" });
       throw error;
     }
@@ -330,7 +315,8 @@ function AuthProvider({ children }: { children: React.ReactNode }) {
     login,
     register,
     logout,
-    accessToken,
+    blockedReason,
+    suspendedUntil,
   };
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;
