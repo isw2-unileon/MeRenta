@@ -269,11 +269,19 @@ interface HomeProductCardProps {
   item: SearchItemResponse | FavoriteItemResponse;
   isFavorite: boolean;
   reviewSummary?: ReviewSummary;
+  isOwnItem?: boolean;
   onToggleFavorite: (id: string, currentlyFavorite: boolean) => void;
   badge?: string;
 }
 
-function HomeProductCard({ item, isFavorite, reviewSummary, onToggleFavorite, badge }: HomeProductCardProps) {
+function HomeProductCard({
+  item,
+  isFavorite,
+  reviewSummary,
+  isOwnItem = false,
+  onToggleFavorite,
+  badge,
+}: HomeProductCardProps) {
   const isAvailable = item.is_available && item.item_status !== "rented" && item.item_status !== "retired";
   const tone = categoryTone(item.category);
   const rating = reviewSummary && reviewSummary.total > 0 ? reviewSummary.average_rating.toFixed(1) : "";
@@ -302,19 +310,21 @@ function HomeProductCard({ item, isFavorite, reviewSummary, onToggleFavorite, ba
             {badge}
           </span>
         )}
-        <button
-          type="button"
-          className={`absolute top-3 right-3 flex size-8 items-center justify-center rounded-full bg-white p-0 shadow-sm ${
-            isFavorite ? "text-heart-active" : "text-subtle hover:text-heart-active"
-          }`}
-          aria-label={isFavorite ? "Quitar de favoritos" : "Guardar favorito"}
-          onClick={handleFavorite}
-        >
-          <Heart
-            size={17}
-            fill={isFavorite ? "currentColor" : "none"}
-          />
-        </button>
+        {!isOwnItem && (
+          <button
+            type="button"
+            className={`absolute top-3 right-3 flex size-8 items-center justify-center rounded-full bg-white p-0 shadow-sm ${
+              isFavorite ? "text-heart-active" : "text-subtle hover:text-heart-active"
+            }`}
+            aria-label={isFavorite ? "Quitar de favoritos" : "Guardar favorito"}
+            onClick={handleFavorite}
+          >
+            <Heart
+              size={17}
+              fill={isFavorite ? "currentColor" : "none"}
+            />
+          </button>
+        )}
       </div>
       <div className="p-4">
         <h3 className="text-ink line-clamp-2 min-h-9.5 text-[15px] leading-snug font-medium">{item.title}</h3>
@@ -371,8 +381,9 @@ interface ProductSectionProps {
   to: string;
   emptyText: string;
   isFavorite: (id: string) => boolean;
-  toggleFavorite: (id: string, currentlyFavorite: boolean) => void;
+  toggleFavorite: (id: string, currentlyFavorite: boolean, options?: { disabled?: boolean }) => void;
   reviewSummaries: Record<string, ReviewSummary>;
+  currentUserId?: string;
   badge?: string;
 }
 
@@ -386,6 +397,7 @@ function ProductSection({
   isFavorite,
   toggleFavorite,
   reviewSummaries,
+  currentUserId,
   badge,
 }: ProductSectionProps) {
   return (
@@ -404,8 +416,13 @@ function ProductSection({
               key={item.item_id}
               item={item}
               isFavorite={isFavorite(item.item_id)}
+              isOwnItem={"owner_id" in item && item.owner_id === currentUserId}
               reviewSummary={"owner_id" in item ? reviewSummaries[item.owner_id] : undefined}
-              onToggleFavorite={toggleFavorite}
+              onToggleFavorite={(id, currentlyFavorite) =>
+                toggleFavorite(id, currentlyFavorite, {
+                  disabled: "owner_id" in item && item.owner_id === currentUserId,
+                })
+              }
               badge={badge}
             />
           ))
@@ -425,8 +442,9 @@ interface NearbyProductsSectionProps {
   selectedCity: string;
   state: NearbyState;
   isFavorite: (id: string) => boolean;
-  toggleFavorite: (id: string, currentlyFavorite: boolean) => void;
+  toggleFavorite: (id: string, currentlyFavorite: boolean, options?: { disabled?: boolean }) => void;
   reviewSummaries: Record<string, ReviewSummary>;
+  currentUserId?: string;
   onCityChange: (city: string) => void;
 }
 
@@ -437,6 +455,7 @@ function NearbyProductsSection({
   isFavorite,
   toggleFavorite,
   reviewSummaries,
+  currentUserId,
   onCityChange,
 }: NearbyProductsSectionProps) {
   if (cities.length === 0) return null;
@@ -499,8 +518,11 @@ function NearbyProductsSection({
                 key={item.item_id}
                 item={item}
                 isFavorite={isFavorite(item.item_id)}
+                isOwnItem={item.owner_id === currentUserId}
                 reviewSummary={reviewSummaries[item.owner_id]}
-                onToggleFavorite={toggleFavorite}
+                onToggleFavorite={(id, currentlyFavorite) =>
+                  toggleFavorite(id, currentlyFavorite, { disabled: item.owner_id === currentUserId })
+                }
               />
             ))
           )}
@@ -797,6 +819,7 @@ function Home() {
           isFavorite={isFav}
           toggleFavorite={toggle}
           reviewSummaries={reviewSummaries}
+          currentUserId={user?.customer_id}
         />
 
         <NearbyProductsSection
@@ -806,6 +829,7 @@ function Home() {
           isFavorite={isFav}
           toggleFavorite={toggle}
           reviewSummaries={reviewSummaries}
+          currentUserId={user?.customer_id}
           onCityChange={setSelectedCity}
         />
 
@@ -823,6 +847,7 @@ function Home() {
           isFavorite={isFav}
           toggleFavorite={toggle}
           reviewSummaries={reviewSummaries}
+          currentUserId={user?.customer_id}
           badge="NEW"
         />
       </main>

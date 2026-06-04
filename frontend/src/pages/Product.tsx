@@ -372,7 +372,10 @@ function Product() {
                 title={item.title}
                 isAvailable={item.is_available}
                 isFavorite={isFav(item.item_id)}
-                onToggleFavorite={() => toggle(item.item_id, isFav(item.item_id))}
+                canToggleFavorite={user?.customer_id !== item.owner_id}
+                onToggleFavorite={() =>
+                  toggle(item.item_id, isFav(item.item_id), { disabled: user?.customer_id === item.owner_id })
+                }
               />
 
               {/* Title, badges and rating */}

@@ -124,19 +124,13 @@ function Sidebar({ active, navItems, onSelect }: SidebarProps) {
         <a
           href="/"
           aria-label="Ir a la página principal"
-          className="text-xl font-light text-neutral-900"
-          style={{ fontFamily: "Inter, ui-sans-serif, system-ui, sans-serif" }}
+          className="text-logo text-ink inline-flex items-baseline gap-0 whitespace-nowrap font-bold tracking-normal"
         >
-          Me
-          <span
-            className="font-bold"
-            style={{ color: GREEN }}
-          >
-            Renta
-          </span>
+          <span>Me</span>
+          <span className="text-primary">Renta</span>
         </a>
         <span
-          className="ml-2 rounded px-1.5 py-0.5 text-[10px] font-semibold tracking-wide uppercase"
+          className="ml-2 rounded-full px-2 py-0.5 text-[10px] font-semibold tracking-wide uppercase"
           style={{ backgroundColor: MINT, color: GREEN }}
         >
           Admin

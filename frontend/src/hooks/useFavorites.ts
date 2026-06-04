@@ -29,7 +29,9 @@ function useFavorites() {
   }, []);
 
   /** Adds or removes an item from favorites. Optimistic — reverts on API error. */
-  const toggle = useCallback((itemId: string, currentlyFavorite: boolean) => {
+  const toggle = useCallback((itemId: string, currentlyFavorite: boolean, options?: { disabled?: boolean }) => {
+    if (options?.disabled) return;
+
     // Optimistic update
     setFavoriteIds((prev) => {
       const next = new Set(prev);
@@ -42,15 +44,19 @@ function useFavorites() {
     fetch(`/api/favorites/${itemId}`, {
       method: currentlyFavorite ? "DELETE" : "POST",
       credentials: "include",
-    }).catch(() => {
-      // Revert optimistic update on failure
-      setFavoriteIds((prev) => {
-        const next = new Set(prev);
-        if (currentlyFavorite) next.add(itemId);
-        else next.delete(itemId);
-        return next;
+    })
+      .then((res) => {
+        if (!res.ok) throw new Error("Favorite update failed");
+      })
+      .catch(() => {
+        // Revert optimistic update on failure
+        setFavoriteIds((prev) => {
+          const next = new Set(prev);
+          if (currentlyFavorite) next.add(itemId);
+          else next.delete(itemId);
+          return next;
+        });
       });
-    });
   }, []);
 
   const isFav = useCallback((itemId: string) => favoriteIds.has(itemId), [favoriteIds]);

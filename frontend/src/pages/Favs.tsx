@@ -162,7 +162,7 @@ function StatusBadge({ item }: StatusBadgeProps) {
 
 interface ActionButtonProps {
   item: FavoriteItemResponse;
-  onRent: () => void;
+  onRent: (event: React.MouseEvent<HTMLButtonElement>) => void;
 }
 
 function ActionButton({ item, onRent }: ActionButtonProps) {
@@ -212,12 +212,19 @@ function FavCard({ item, onRemove }: FavCardProps) {
   const rating = seededRating(item.item_id);
   const categoryLabel = CATEGORY_LABELS[item.category] ?? item.category;
 
-  function handleRent() {
+  function handleRent(event: React.MouseEvent<HTMLButtonElement>) {
+    event.stopPropagation();
     void navigate(`/product/${item.item_id}`);
   }
 
   function handleOpen() {
     void navigate(`/product/${item.item_id}`);
+  }
+
+  function handleKeyDown(event: React.KeyboardEvent<HTMLElement>) {
+    if (event.key !== "Enter" && event.key !== " ") return;
+    event.preventDefault();
+    handleOpen();
   }
 
   function handleRemove(e: React.MouseEvent) {
@@ -226,7 +233,14 @@ function FavCard({ item, onRemove }: FavCardProps) {
   }
 
   return (
-    <article className="border-border-main bg-page overflow-hidden rounded-xl border">
+    <article
+      className="border-border-main bg-page cursor-pointer overflow-hidden rounded-xl border transition-shadow hover:shadow-md"
+      role="link"
+      tabIndex={0}
+      onClick={handleOpen}
+      onKeyDown={handleKeyDown}
+      aria-label={`Abrir ${item.title}`}
+    >
       <div className="bg-primary-light relative h-42 overflow-hidden">
         {item.primary_image_url ? (
           <img
@@ -238,9 +252,12 @@ function FavCard({ item, onRemove }: FavCardProps) {
           <div className="h-full w-full bg-[linear-gradient(135deg,#e1f5ee_0%,#d7f1e9_55%,#dff6ed_100%)]" />
         )}
 
-        <span className="absolute top-3 left-4 rounded-full bg-white/90 px-3 py-1 text-[11px] font-medium text-[#374151]">
-          {categoryLabel}
-        </span>
+        <div className="absolute top-3 right-13 left-4 flex items-center gap-2">
+          <span className="product-estado-badge">
+            {categoryLabel}
+          </span>
+          <StatusBadge item={item} />
+        </div>
 
         <button
           type="button"
@@ -256,13 +273,7 @@ function FavCard({ item, onRemove }: FavCardProps) {
       </div>
 
       <div className="p-4">
-        <button
-          type="button"
-          className="mb-3 block h-auto w-full p-0 text-left"
-          onClick={handleOpen}
-        >
-          <h2 className="text-ink line-clamp-2 min-h-9.5 text-[15px] leading-snug font-medium">{item.title}</h2>
-        </button>
+        <h2 className="text-ink mb-3 line-clamp-2 min-h-9.5 text-[15px] leading-snug font-medium">{item.title}</h2>
 
         <div className="mb-1 flex items-center justify-between">
           <p className="text-card-loc text-subtle">{item.city || "Sin ubicación"}</p>
@@ -273,10 +284,6 @@ function FavCard({ item, onRemove }: FavCardProps) {
             />
             {rating}
           </p>
-        </div>
-
-        <div className="mb-2">
-          <StatusBadge item={item} />
         </div>
 
         <p className="text-subtle mb-4 text-[11px]">Guardado {timeAgo(item.saved_at)}</p>

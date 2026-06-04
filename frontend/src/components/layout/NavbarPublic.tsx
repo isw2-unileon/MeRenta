@@ -14,10 +14,11 @@ function NavbarPublic() {
       <div className="max-w-alert-width px-nav-margin mx-auto flex h-full items-center justify-between">
         <button
           type="button"
-          className="text-logo text-ink cursor-pointer border-none bg-transparent p-0 font-bold"
+          className="text-logo text-ink inline-flex cursor-pointer items-baseline gap-0 whitespace-nowrap border-none bg-transparent p-0 font-bold tracking-normal"
           onClick={() => navigate("/")}
         >
-          Me<span className="text-primary">Renta</span>
+          <span>Me</span>
+          <span className="text-primary">Renta</span>
         </button>
 
         {!isLoading && !isAuthenticated ? (
