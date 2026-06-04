@@ -26,6 +26,8 @@ var (
 	ErrBookingClosed = errors.New("booking cannot be modified in its current state")
 	// ErrCannotBookOwnItem is returned when a user tries to book their own listing.
 	ErrCannotBookOwnItem = errors.New("cannot book your own item")
+	// ErrBookingNotEnded is returned when a completion is attempted before the rental period ends.
+	ErrBookingNotEnded = errors.New("booking period has not ended yet")
 )
 
 const (
@@ -49,6 +51,7 @@ type bookingQuerier interface {
 	GetItemByID(ctx context.Context, itemID uuid.UUID) (sqlcdb.GetItemByIDRow, error)
 	GetItemBookedRanges(ctx context.Context, itemID uuid.UUID) ([]sqlcdb.BookingDateRange, error)
 	ListExpiredPendingBookings(ctx context.Context) ([]sqlcdb.ExpiredBookingRow, error)
+	ListAcceptedBookingsPastDeadline(ctx context.Context) ([]uuid.UUID, error)
 	CountActiveBookingsForItem(ctx context.Context, itemID uuid.UUID) (int64, error)
 	UpdateItemAvailability(ctx context.Context, arg sqlcdb.UpdateItemAvailabilityParams) error
 	UpdateItemStatus(ctx context.Context, arg sqlcdb.UpdateItemStatusParams) (sqlcdb.UpdateItemStatusRow, error)
@@ -205,6 +208,49 @@ func (s *BookingService) Cancel(
 		[]sqlcdb.BookingStatus{sqlcdb.BookingStatusPending, sqlcdb.BookingStatusAccepted})
 }
 
+// Complete marks a booking as completed. Either the owner or the renter may call
+// this, but only on or after the rental end date.
+func (s *BookingService) Complete(
+	ctx context.Context,
+	userID uuid.UUID,
+	bookingID uuid.UUID,
+) (model.BookingResponse, error) {
+	booking, err := s.q.GetBookingByID(ctx, bookingID)
+	if errors.Is(err, pgx.ErrNoRows) {
+		return model.BookingResponse{}, ErrBookingNotFound
+	}
+	if err != nil {
+		return model.BookingResponse{}, fmt.Errorf("get booking: %w", err)
+	}
+	if !bookingStatusAllowed(booking.BookingStatus, []sqlcdb.BookingStatus{sqlcdb.BookingStatusAccepted}) {
+		return model.BookingResponse{}, ErrBookingClosed
+	}
+	if booking.RenterID != userID && booking.OwnerID != userID {
+		return model.BookingResponse{}, ErrBookingForbidden
+	}
+
+	// Allow completion only on or after the end date.
+	today := time.Now().UTC().Truncate(24 * time.Hour)
+	endDate := booking.EndDate.UTC().Truncate(24 * time.Hour)
+	if today.Before(endDate) {
+		return model.BookingResponse{}, ErrBookingNotEnded
+	}
+
+	row, err := s.q.UpdateBookingStatus(ctx, sqlcdb.UpdateBookingStatusParams{
+		BookingID: bookingID,
+		Status:    sqlcdb.BookingStatusCompleted,
+	})
+	if err != nil {
+		return model.BookingResponse{}, fmt.Errorf("update booking status: %w", err)
+	}
+
+	if syncErr := s.syncItemAvailability(ctx, row.ItemID); syncErr != nil {
+		slog.Warn("sync item availability failed", "item_id", row.ItemID, "error", syncErr)
+	}
+
+	return bookingRowToResponse(row)
+}
+
 // ExpireOldBookings auto-cancels pending bookings that have passed their 5-day window.
 // It issues a full Stripe refund for each expired booking and logs failures without stopping.
 func (s *BookingService) ExpireOldBookings(ctx context.Context) error {
@@ -215,6 +261,30 @@ func (s *BookingService) ExpireOldBookings(ctx context.Context) error {
 	for _, row := range rows {
 		if expErr := s.expireOne(ctx, row); expErr != nil {
 			slog.Error("auto-expire booking failed", "booking_id", row.BookingID, "error", expErr)
+		}
+	}
+	return nil
+}
+
+// AutoCompleteExpiredBookings marks accepted bookings as completed when the rental
+// period ended 5 or more days ago and neither party completed it manually.
+// Called by the hourly maintenance job alongside ExpireOldBookings.
+func (s *BookingService) AutoCompleteExpiredBookings(ctx context.Context) error {
+	ids, err := s.q.ListAcceptedBookingsPastDeadline(ctx)
+	if err != nil {
+		return fmt.Errorf("list accepted bookings past deadline: %w", err)
+	}
+	for _, id := range ids {
+		updated, updateErr := s.q.UpdateBookingStatus(ctx, sqlcdb.UpdateBookingStatusParams{
+			BookingID: id,
+			Status:    sqlcdb.BookingStatusCompleted,
+		})
+		if updateErr != nil {
+			slog.Error("auto-complete booking failed", "booking_id", id, "error", updateErr)
+			continue
+		}
+		if syncErr := s.syncItemAvailability(ctx, updated.ItemID); syncErr != nil {
+			slog.Warn("sync item availability failed after auto-complete", "item_id", updated.ItemID, "error", syncErr)
 		}
 	}
 	return nil

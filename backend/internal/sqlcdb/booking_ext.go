@@ -3,6 +3,7 @@ package sqlcdb
 import (
 	"context"
 	"fmt"
+	"strings"
 	"time"
 
 	"github.com/google/uuid"
@@ -112,6 +113,16 @@ type ListBookingsParams struct {
 type UpdateBookingStatusParams struct {
 	BookingID uuid.UUID     `json:"booking_id"`
 	Status    BookingStatus `json:"status"`
+}
+
+// AdminListBookingsParams holds all optional filters and pagination for the
+// admin booking list. Zero-value fields mean "no filter / default".
+type AdminListBookingsParams struct {
+	Status string `json:"status"` // "" = all statuses
+	Query  string `json:"query"`  // "" = no search; matches title, first/last name
+	Sort   string `json:"sort"`   // "recent"|"oldest"|"amount_desc"|"amount_asc"
+	Limit  int    `json:"limit"`
+	Offset int    `json:"offset"`
 }
 
 // ─── SQL ─────────────────────────────────────────────────────────────────────
@@ -411,4 +422,245 @@ func collectBookingDetailRows(rows pgx.Rows) ([]BookingDetailRow, error) {
 		)
 		return b, err
 	})
+}
+
+// ─── Admin payments queries ───────────────────────────────────────────────────
+
+// AdminListPaymentsParams filters paginated payment records for admin use.
+// PaymentStatus: "" = all, "paid" = charged, "refunded" = cancelled/rejected.
+type AdminListPaymentsParams struct {
+	PaymentStatus string `json:"payment_status"`
+	Query         string `json:"query"` // product title or renter name
+	Limit         int    `json:"limit"`
+	Offset        int    `json:"offset"`
+}
+
+// buildAdminPaymentsSQL constructs the payments query from params.
+// Hard-coded IN clauses are used for payment status; no user data in SQL structure.
+func buildAdminPaymentsSQL(arg AdminListPaymentsParams) (string, []interface{}) {
+	sql := bookingListSelect + "WHERE b.payment_intent_id IS NOT NULL\n"
+	var args []interface{}
+	n := 1
+
+	switch arg.PaymentStatus {
+	case "paid":
+		sql += "  AND b.booking_status NOT IN ('cancelled', 'rejected')\n"
+	case "refunded":
+		sql += "  AND b.booking_status IN ('cancelled', 'rejected')\n"
+	}
+
+	if arg.Query != "" {
+		like := "%" + arg.Query + "%"
+		sql += fmt.Sprintf(
+			"  AND (i.title ILIKE $%d OR c.first_name ILIKE $%d OR c.last_name ILIKE $%d)\n", n, n, n,
+		)
+		args = append(args, like)
+		n++
+	}
+
+	sql += "ORDER BY b.requested_at DESC\n"
+	sql += fmt.Sprintf("LIMIT $%d OFFSET $%d", n, n+1)
+	args = append(args, arg.Limit, arg.Offset)
+	return sql, args
+}
+
+// AdminListPayments returns paginated payment records (bookings with a Stripe
+// payment_intent_id) for the admin panel, with optional status and search filters.
+func (q *Queries) AdminListPayments(ctx context.Context, arg AdminListPaymentsParams) ([]BookingDetailRow, error) {
+	sql, args := buildAdminPaymentsSQL(arg)
+	rows, err := q.db.Query(ctx, sql, args...)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	return collectBookingDetailRows(rows)
+}
+
+// ─── Monthly revenue query ────────────────────────────────────────────────────
+
+// MonthlyRevenueRow holds aggregated revenue for a single calendar month.
+type MonthlyRevenueRow struct {
+	Month   time.Time      `json:"month"`
+	Revenue pgtype.Numeric `json:"revenue"`
+}
+
+const monthlyRevenue = `
+WITH months AS (
+    SELECT generate_series(
+        DATE_TRUNC('month', NOW()) - INTERVAL '5 months',
+        DATE_TRUNC('month', NOW()),
+        INTERVAL '1 month'
+    ) AS month
+)
+SELECT
+    m.month,
+    COALESCE(SUM(b.estimated_total) FILTER (WHERE b.booking_status = 'completed'), 0) AS revenue
+FROM months m
+LEFT JOIN booking b ON DATE_TRUNC('month', b.requested_at) = m.month
+GROUP BY m.month
+ORDER BY m.month ASC
+`
+
+// GetMonthlyRevenue returns completed-booking revenue for the last 6 months,
+// always returning one row per month (zero when no data).
+func (q *Queries) GetMonthlyRevenue(ctx context.Context) ([]MonthlyRevenueRow, error) {
+	rows, err := q.db.Query(ctx, monthlyRevenue)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	return pgx.CollectRows(rows, func(row pgx.CollectableRow) (MonthlyRevenueRow, error) {
+		var r MonthlyRevenueRow
+		return r, row.Scan(&r.Month, &r.Revenue)
+	})
+}
+
+// ─── Booking stats query ──────────────────────────────────────────────────────
+
+// BookingStatsRow holds aggregate booking counts and total confirmed revenue.
+type BookingStatsRow struct {
+	Total        int64          `json:"total"`
+	Pending      int64          `json:"pending"`
+	Accepted     int64          `json:"accepted"`
+	Completed    int64          `json:"completed"`
+	Cancelled    int64          `json:"cancelled"`
+	Rejected     int64          `json:"rejected"`
+	TotalRevenue pgtype.Numeric `json:"total_revenue"`
+}
+
+const bookingStats = `
+SELECT
+    COUNT(*)                                                              AS total,
+    COUNT(*) FILTER (WHERE booking_status = 'pending')                   AS pending,
+    COUNT(*) FILTER (WHERE booking_status = 'accepted')                  AS accepted,
+    COUNT(*) FILTER (WHERE booking_status = 'completed')                 AS completed,
+    COUNT(*) FILTER (WHERE booking_status = 'cancelled')                 AS cancelled,
+    COUNT(*) FILTER (WHERE booking_status = 'rejected')                  AS rejected,
+    COALESCE(SUM(estimated_total) FILTER (WHERE booking_status = 'completed'), 0) AS total_revenue
+FROM booking
+`
+
+// GetBookingStats returns a single row of aggregate booking counts and revenue.
+func (q *Queries) GetBookingStats(ctx context.Context) (BookingStatsRow, error) {
+	var r BookingStatsRow
+	err := q.db.QueryRow(ctx, bookingStats).Scan(
+		&r.Total, &r.Pending, &r.Accepted,
+		&r.Completed, &r.Cancelled, &r.Rejected,
+		&r.TotalRevenue,
+	)
+	return r, err
+}
+
+// ─── Auto-complete query ──────────────────────────────────────────────────────
+
+const listAcceptedBookingsPastDeadline = `
+SELECT booking_id
+FROM booking
+WHERE booking_status = 'accepted'
+  AND end_date + INTERVAL '5 days' <= CURRENT_DATE
+`
+
+// ListAcceptedBookingsPastDeadline returns booking IDs for accepted bookings whose
+// rental period ended 5 or more days ago and have not been completed yet.
+func (q *Queries) ListAcceptedBookingsPastDeadline(ctx context.Context) ([]uuid.UUID, error) {
+	rows, err := q.db.Query(ctx, listAcceptedBookingsPastDeadline)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	return pgx.CollectRows(rows, func(row pgx.CollectableRow) (uuid.UUID, error) {
+		var id uuid.UUID
+		return id, row.Scan(&id)
+	})
+}
+
+// ─── Admin booking queries ────────────────────────────────────────────────────
+
+// bookingListSelect is the SELECT … FROM … JOIN base shared by all admin list queries.
+const bookingListSelect = `
+SELECT
+    b.booking_id,
+    b.item_id,
+    i.title                            AS item_title,
+    COALESCE(img.image_url, '')        AS item_image_url,
+    b.renter_id,
+    c.first_name                       AS renter_first_name,
+    c.last_name                        AS renter_last_name,
+    i.owner_id,
+    b.start_date,
+    b.end_date,
+    b.requested_at,
+    b.booking_status,
+    b.estimated_total,
+    b.notes,
+    b.payment_intent_id,
+    b.expires_at,
+    COUNT(*) OVER()                    AS total_count
+FROM booking  b
+JOIN item     i ON i.item_id     = b.item_id
+JOIN customer c ON c.customer_id = b.renter_id
+LEFT JOIN LATERAL (
+    SELECT image_url FROM item_image
+    WHERE item_id = i.item_id
+    ORDER BY display_order, image_id
+    LIMIT 1
+) img ON true
+`
+
+// adminBookingOrderBy maps the sort key to a safe ORDER BY fragment.
+// Only hard-coded strings are returned — no user data is injected.
+func adminBookingOrderBy(sort string) string {
+	switch sort {
+	case "oldest":
+		return "b.requested_at ASC"
+	case "amount_desc":
+		return "b.estimated_total DESC NULLS LAST"
+	case "amount_asc":
+		return "b.estimated_total ASC NULLS FIRST"
+	default:
+		return "b.requested_at DESC"
+	}
+}
+
+// buildAdminBookingsSQL constructs the full query and argument list from params.
+// Status and query are parameterised; ORDER BY uses validated constant strings.
+func buildAdminBookingsSQL(arg AdminListBookingsParams) (string, []interface{}) {
+	var conds []string
+	var args []interface{}
+	n := 1
+
+	if arg.Status != "" {
+		conds = append(conds, fmt.Sprintf("b.booking_status = $%d", n))
+		args = append(args, arg.Status)
+		n++
+	}
+	if arg.Query != "" {
+		like := "%" + arg.Query + "%"
+		conds = append(conds, fmt.Sprintf(
+			"(i.title ILIKE $%d OR c.first_name ILIKE $%d OR c.last_name ILIKE $%d)", n, n, n,
+		))
+		args = append(args, like)
+		n++
+	}
+
+	sql := bookingListSelect
+	if len(conds) > 0 {
+		sql += "WHERE " + strings.Join(conds, " AND ") + "\n"
+	}
+	sql += "ORDER BY " + adminBookingOrderBy(arg.Sort) + "\n"
+	sql += fmt.Sprintf("LIMIT $%d OFFSET $%d", n, n+1)
+	args = append(args, arg.Limit, arg.Offset)
+	return sql, args
+}
+
+// AdminListBookings returns bookings for the admin panel with optional status
+// filter, full-text search and configurable sort order.
+func (q *Queries) AdminListBookings(ctx context.Context, arg AdminListBookingsParams) ([]BookingDetailRow, error) {
+	sql, args := buildAdminBookingsSQL(arg)
+	rows, err := q.db.Query(ctx, sql, args...)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	return collectBookingDetailRows(rows)
 }

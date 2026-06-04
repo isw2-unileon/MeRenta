@@ -1,8 +1,15 @@
-/** Type of incident: problem with the product or with the other user. */
-export type IncidentType = "product" | "user";
+/** Type of incident stored in the database. */
+export type IncidentType =
+  | "damage"
+  | "late_return"
+  | "item_mismatch"
+  | "not_delivered"
+  | "other"
+  | "not_available"
+  | "forbidden_item";
 
 /** Lifecycle state of an incident. */
-export type IncidentStatus = "open" | "reviewing" | "escalated" | "resolved";
+export type IncidentStatus = "open" | "under_review" | "resolved" | "closed";
 
 /** Priority level used for admin triage. */
 export type IncidentPriority = "low" | "medium" | "high";

@@ -11,6 +11,18 @@ type CreateIncidentRequest struct {
 	Cost        float64 `json:"cost"         binding:"omitempty,gte=0"`
 }
 
+// CreateProductReportRequest is the body sent by users to report a product listing.
+type CreateProductReportRequest struct {
+	Type        string `json:"type"        binding:"required"`
+	Description string `json:"description" binding:"required,min=10,max=2000"`
+}
+
+// CreateUserReportRequest is the body sent by users to report another customer.
+type CreateUserReportRequest struct {
+	Type        string `json:"type"        binding:"required"`
+	Description string `json:"description" binding:"required,min=10,max=2000"`
+}
+
 // IncidentResponse is the enriched view of a single incident.
 type IncidentResponse struct {
 	IncidentID     string     `json:"incident_id"`
@@ -43,4 +55,9 @@ type IncidentListResponse struct {
 // UpdateIncidentStatusRequest is the body for admin status changes.
 type UpdateIncidentStatusRequest struct {
 	Status string `json:"status" binding:"required"`
+}
+
+// UpdateIncidentPriorityRequest is the body for admin priority changes.
+type UpdateIncidentPriorityRequest struct {
+	Priority string `json:"priority" binding:"required"`
 }

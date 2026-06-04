@@ -389,19 +389,18 @@ async function markConversationRead(conversationID: string): Promise<void> {
   });
 }
 
-function buildWebSocketURL(conversationID: string, accessToken?: string | null): string {
+function buildWebSocketURL(conversationID: string): string {
   // In dev the Vite proxy (ws: true) forwards /api/* to the backend, so we connect
   // to the dev server origin and let the proxy handle the upgrade. This keeps the
   // connection same-origin and avoids a CSP violation for ws://localhost:8080.
   // In production we use VITE_API_BASE_URL directly (cross-origin backend).
+  // Authentication is handled via the HttpOnly cookie, which the browser sends
+  // automatically on WebSocket connections — no token query-param needed.
   const apiBaseURL = import.meta.env.DEV
     ? window.location.origin
     : import.meta.env.VITE_API_BASE_URL.trim() || window.location.origin;
   const url = new URL(`/api/conversations/${conversationID}/ws`, apiBaseURL);
   url.protocol = url.protocol === "https:" ? "wss:" : "ws:";
-  if (accessToken) {
-    url.searchParams.set("access_token", accessToken);
-  }
   return url.toString();
 }
 
@@ -821,7 +820,7 @@ function DeleteConversationDialog({
 // ── Chat page hook — keeps all state, effects and handlers out of the render ──
 function useChatPage(conversationId: string | undefined) {
   const navigate = useNavigate();
-  const { user, accessToken } = useAuth();
+  const { user } = useAuth();
   const [state, dispatch] = useReducer(chatReducer, initialState);
   const [selectingConversations, setSelectingConversations] = useState(false);
   const [selectedConversationIDs, setSelectedConversationIDs] = useState<Set<string>>(new Set());
@@ -934,7 +933,7 @@ function useChatPage(conversationId: string | undefined) {
     // that closes as soon as auth finishes and currentUserID becomes available.
     if (!activeConversationID || !currentUserID) return undefined;
 
-    const socket = new WebSocket(buildWebSocketURL(activeConversationID, accessToken));
+    const socket = new WebSocket(buildWebSocketURL(activeConversationID));
     socketRef.current = socket;
 
     socket.onmessage = (event) => {
@@ -966,7 +965,7 @@ function useChatPage(conversationId: string | undefined) {
       socket.close();
       if (socketRef.current === socket) socketRef.current = null;
     };
-  }, [accessToken, activeConversationID, currentUserID]);
+  }, [activeConversationID, currentUserID]);
 
   const handleSubmit = async (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault();

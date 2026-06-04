@@ -3,7 +3,9 @@ package handler
 
 import (
 	"errors"
+	"log/slog"
 	"net/http"
+	"strings"
 	"time"
 
 	"github.com/gin-gonic/gin"
@@ -38,6 +40,123 @@ func (h *AdminHandler) ListUsers(c *gin.Context) {
 
 	res, err := h.svc.ListUsers(c.Request.Context(), query, status, page, limit)
 	if err != nil {
+		response.Error(c, http.StatusInternalServerError, "internal server error")
+		return
+	}
+
+	response.OK(c, http.StatusOK, res)
+}
+
+// ListBookings handles GET /api/admin/bookings.
+// Query params: status, q (search), sort, page, limit.
+func (h *AdminHandler) ListBookings(c *gin.Context) {
+	status := c.DefaultQuery("status", "")
+	query := strings.TrimSpace(c.Query("q"))
+	sort := c.DefaultQuery("sort", "recent")
+	page := parsePositiveInt(c.DefaultQuery("page", "1"), 1, 500)
+	limit := parsePositiveInt(c.DefaultQuery("limit", "20"), 20, 100)
+
+	if status != "" && !isValidBookingStatus(status) {
+		response.Error(c, http.StatusBadRequest, "invalid booking status value")
+		return
+	}
+	if !isValidBookingSort(sort) {
+		sort = "recent"
+	}
+
+	res, err := h.svc.ListBookings(c.Request.Context(), status, query, sort, page, limit)
+	if err != nil {
+		slog.Error("admin list bookings failed", "error", err)
+		response.Error(c, http.StatusInternalServerError, "internal server error")
+		return
+	}
+
+	response.OK(c, http.StatusOK, res)
+}
+
+// GetStats handles GET /api/admin/stats — returns platform KPIs.
+func (h *AdminHandler) GetStats(c *gin.Context) {
+	stats, err := h.svc.GetStats(c.Request.Context())
+	if err != nil {
+		slog.Error("admin get stats failed", "error", err)
+		response.Error(c, http.StatusInternalServerError, "internal server error")
+		return
+	}
+	response.OK(c, http.StatusOK, stats)
+}
+
+// ListPayments handles GET /api/admin/payments.
+// Query params: payment_status (""|"paid"|"refunded"), q (search), page, limit.
+func (h *AdminHandler) ListPayments(c *gin.Context) {
+	paymentStatus := c.DefaultQuery("payment_status", "")
+	query := strings.TrimSpace(c.Query("q"))
+	page := parsePositiveInt(c.DefaultQuery("page", "1"), 1, 500)
+	limit := parsePositiveInt(c.DefaultQuery("limit", "20"), 20, 100)
+
+	if paymentStatus != "" && !isValidPaymentStatus(paymentStatus) {
+		response.Error(c, http.StatusBadRequest, "invalid payment_status value")
+		return
+	}
+
+	res, err := h.svc.ListPayments(c.Request.Context(), paymentStatus, query, page, limit)
+	if err != nil {
+		slog.Error("admin list payments failed", "error", err)
+		response.Error(c, http.StatusInternalServerError, "internal server error")
+		return
+	}
+
+	response.OK(c, http.StatusOK, res)
+}
+
+func isValidPaymentStatus(s string) bool {
+	return s == "paid" || s == "refunded"
+}
+
+// AdminUpdateBookingStatus handles PATCH /api/admin/bookings/:id/status.
+// Body: { "status": "pending"|"accepted"|"rejected"|"cancelled"|"completed" }.
+func (h *AdminHandler) AdminUpdateBookingStatus(c *gin.Context) {
+	bookingID, ok := parseUUIDParam(c)
+	if !ok {
+		return
+	}
+
+	var body struct {
+		Status string `json:"status" binding:"required"`
+	}
+	if err := c.ShouldBindJSON(&body); err != nil {
+		response.Error(c, http.StatusBadRequest, "status is required")
+		return
+	}
+	if !isValidBookingStatus(body.Status) {
+		response.Error(c, http.StatusBadRequest, "invalid booking status value")
+		return
+	}
+
+	res, err := h.svc.AdminUpdateBookingStatus(c.Request.Context(), bookingID, sqlcdb.BookingStatus(body.Status))
+	if err != nil {
+		switch {
+		case errors.Is(err, service.ErrAdminBookingNotFound):
+			response.Error(c, http.StatusNotFound, err.Error())
+		default:
+			slog.Error("admin update booking status failed", "error", err)
+			response.Error(c, http.StatusInternalServerError, "internal server error")
+		}
+		return
+	}
+
+	response.OK(c, http.StatusOK, res)
+}
+
+// ListProducts handles GET /api/admin/items.
+// Query params: q, page, limit. Unlike the public item list, this includes every DB item.
+func (h *AdminHandler) ListProducts(c *gin.Context) {
+	query := strings.TrimSpace(c.Query("q"))
+	page := parsePositiveInt(c.DefaultQuery("page", "1"), 1, 500)
+	limit := parsePositiveInt(c.DefaultQuery("limit", "20"), 20, 100)
+
+	res, err := h.svc.ListProducts(c.Request.Context(), query, page, limit)
+	if err != nil {
+		slog.Error("admin list products failed", "error", err)
 		response.Error(c, http.StatusInternalServerError, "internal server error")
 		return
 	}
@@ -102,6 +221,26 @@ func isValidAccountStatus(s string) bool {
 	case sqlcdb.AccountStatusActive,
 		sqlcdb.AccountStatusSuspended,
 		sqlcdb.AccountStatusBanned:
+		return true
+	}
+	return false
+}
+
+func isValidBookingSort(s string) bool {
+	switch s {
+	case "recent", "oldest", "amount_desc", "amount_asc":
+		return true
+	}
+	return false
+}
+
+func isValidBookingStatus(s string) bool {
+	switch sqlcdb.BookingStatus(s) {
+	case sqlcdb.BookingStatusPending,
+		sqlcdb.BookingStatusAccepted,
+		sqlcdb.BookingStatusRejected,
+		sqlcdb.BookingStatusCancelled,
+		sqlcdb.BookingStatusCompleted:
 		return true
 	}
 	return false

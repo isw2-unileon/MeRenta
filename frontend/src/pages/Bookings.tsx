@@ -60,7 +60,10 @@ async function openConversation(itemId: string, withUserId?: string): Promise<st
   return json.data.conversation_id;
 }
 
-async function patchBookingStatus(bookingId: string, action: "accept" | "reject" | "cancel"): Promise<void> {
+async function patchBookingStatus(
+  bookingId: string,
+  action: "accept" | "reject" | "cancel" | "complete"
+): Promise<void> {
   const res = await fetch(`/api/bookings/${bookingId}/${action}`, {
     method: "PATCH",
     credentials: "include",
@@ -74,9 +77,16 @@ async function patchBookingStatus(bookingId: string, action: "accept" | "reject"
 // ── Incident helpers ──────────────────────────────────────────────────────────
 
 const INCIDENT_TYPE_LABELS: Record<IncidentType, string> = {
-  product: "Problema con el producto",
-  user: "Problema con el usuario",
+  damage: "Producto danado",
+  late_return: "Devolucion tardia",
+  item_mismatch: "Producto no coincide",
+  not_delivered: "No entregado",
+  other: "Otra incidencia",
+  not_available: "No disponible",
+  forbidden_item: "Producto no permitido",
 };
+
+const BOOKING_INCIDENT_TYPES: IncidentType[] = ["damage", "late_return", "item_mismatch", "not_delivered", "other"];
 
 async function submitIncident(bookingId: string, type: IncidentType, description: string): Promise<void> {
   const res = await fetch("/api/incidents", {
@@ -100,7 +110,7 @@ interface IncidentModalProps {
 }
 
 function IncidentModal({ booking, onClose, onSuccess }: IncidentModalProps) {
-  const [type, setType] = useState<IncidentType>("product");
+  const [type, setType] = useState<IncidentType>("damage");
   const [description, setDescription] = useState("");
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
@@ -149,8 +159,8 @@ function IncidentModal({ booking, onClose, onSuccess }: IncidentModalProps) {
           {/* Type */}
           <div>
             <p className="mb-1.5 text-sm font-medium text-neutral-700">Tipo de incidencia</p>
-            <div className="grid grid-cols-2 gap-2">
-              {(["product", "user"] as IncidentType[]).map((t) => (
+            <div className="grid grid-cols-1 gap-2 sm:grid-cols-2">
+              {BOOKING_INCIDENT_TYPES.map((t) => (
                 <button
                   key={t}
                   type="button"
@@ -259,6 +269,7 @@ interface BookingCardProps {
   onAccept?: (id: string) => void;
   onReject?: (id: string) => void;
   onCancel?: (id: string) => void;
+  onComplete?: (id: string) => void;
   /** Called with itemId and, for owner view, the renter's userId. */
   onMessage?: (itemId: string, withUserId?: string) => void;
   onReport?: (booking: BookingDetailResponse) => void;
@@ -271,6 +282,7 @@ function BookingCard({
   onAccept,
   onReject,
   onCancel,
+  onComplete,
   onMessage,
   onReport,
   actionLoading,
@@ -278,8 +290,14 @@ function BookingCard({
   const navigate = useNavigate();
   const isPending = booking.booking_status === "pending";
   const isActive = booking.booking_status === "accepted";
-  const isReportable = isActive || booking.booking_status === "completed";
   const isBusy = actionLoading === booking.booking_id;
+
+  // Complete is available on or after the end date for accepted bookings.
+  const today = new Date();
+  today.setHours(0, 0, 0, 0);
+  const endDate = new Date(booking.end_date);
+  endDate.setHours(0, 0, 0, 0);
+  const canComplete = isActive && today >= endDate;
 
   const renterName = `${booking.renter_first_name} ${booking.renter_last_name}`.trim();
 
@@ -371,6 +389,17 @@ function BookingCard({
               {isBusy ? "..." : "Cancelar solicitud"}
             </button>
           )}
+          {canComplete && (
+            <button
+              type="button"
+              className="btn-secondary btn--sm"
+              style={{ borderColor: "#15734f", color: "#15734f" }}
+              onClick={() => onComplete?.(booking.booking_id)}
+              disabled={isBusy}
+            >
+              {isBusy ? "..." : "Completar alquiler"}
+            </button>
+          )}
           <button
             type="button"
             className="btn-secondary btn--sm"
@@ -378,7 +407,7 @@ function BookingCard({
           >
             Enviar mensaje
           </button>
-          {isReportable && onReport && (
+          {onReport && (
             <button
               type="button"
               className="btn-secondary btn--sm flex items-center gap-1.5 border-amber-200 text-amber-700 hover:bg-amber-50"
@@ -408,7 +437,11 @@ function TabPanel({ viewMode, state, dispatch }: TabPanelProps) {
   const [reportingBooking, setReportingBooking] = useState<BookingDetailResponse | null>(null);
   const [reportSuccess, setReportSuccess] = useState(false);
 
-  async function handleAction(bookingId: string, action: "accept" | "reject" | "cancel", nextStatus: BookingStatus) {
+  async function handleAction(
+    bookingId: string,
+    action: "accept" | "reject" | "cancel" | "complete",
+    nextStatus: BookingStatus
+  ) {
     setActionLoading(bookingId);
     setActionError("");
     try {
@@ -475,6 +508,7 @@ function TabPanel({ viewMode, state, dispatch }: TabPanelProps) {
           onAccept={(id) => void handleAction(id, "accept", "accepted")}
           onReject={(id) => void handleAction(id, "reject", "rejected")}
           onCancel={(id) => void handleAction(id, "cancel", "cancelled")}
+          onComplete={(id) => void handleAction(id, "complete", "completed")}
           onReport={(b) => {
             setReportingBooking(b);
             setReportSuccess(false);

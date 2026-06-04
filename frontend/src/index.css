@@ -698,12 +698,12 @@
     color: var(--color-subtle);
     line-height: 1.5;
   }
-  p.booking-report {
+  .booking-report {
     font-size: var(--text-card-loc);
     color: var(--color-report);
     cursor: pointer;
   }
-  p.booking-report:hover {
+  .booking-report:hover {
     text-decoration: underline;
   }
   p.product-desc {

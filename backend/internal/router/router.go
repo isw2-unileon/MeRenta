@@ -70,6 +70,7 @@ func registerPublicRoutes(api *gin.RouterGroup, authH *handler.AuthHandler) {
 	auth.POST("/logout", authH.Logout)
 }
 
+//nolint:funlen // centralizes protected API wiring for readability.
 func registerProtectedRoutes(
 	protected *gin.RouterGroup,
 	authH *handler.AuthHandler,
@@ -93,6 +94,7 @@ func registerProtectedRoutes(
 	customers := protected.Group("/customers")
 	customers.GET("/:id/profile", authH.ProfileByID)
 	customers.GET("/:id/items", itemH.ListByOwner)
+	customers.POST("/:id/reports", incidentH.CreateUserReport)
 
 	items := protected.Group("/items")
 	items.GET("", itemH.List)
@@ -127,6 +129,8 @@ func registerProtectedRoutes(
 	reviews.GET("/received/:id", reviewH.ListReceivedByCustomer)
 	reviews.GET("/summary/:id", reviewH.SummaryByCustomer)
 
+	protected.POST("/items/:id/reports", incidentH.CreateProductReport)
+
 	payment := protected.Group("/payment")
 	payment.POST("/intent", paymentH.CreateIntent)
 
@@ -137,6 +141,7 @@ func registerProtectedRoutes(
 	bookings.PATCH("/:id/accept", bookingH.Accept)
 	bookings.PATCH("/:id/reject", bookingH.Reject)
 	bookings.PATCH("/:id/cancel", bookingH.Cancel)
+	bookings.PATCH("/:id/complete", bookingH.Complete)
 
 	incidents := protected.Group("/incidents")
 	incidents.POST("", incidentH.Create)
@@ -151,8 +156,19 @@ func registerAdminRoutes(api *gin.RouterGroup, adminH *handler.AdminHandler, inc
 	users.GET("", adminH.ListUsers)
 	users.PATCH("/:id/status", adminH.UpdateUserStatus)
 
+	items := admin.Group("/items")
+	items.GET("", adminH.ListProducts)
+
+	bookings := admin.Group("/bookings")
+	bookings.GET("", adminH.ListBookings)
+	bookings.PATCH("/:id/status", adminH.AdminUpdateBookingStatus)
+
+	admin.GET("/payments", adminH.ListPayments)
+	admin.GET("/stats", adminH.GetStats)
+
 	incidents := admin.Group("/incidents")
 	incidents.GET("", incidentH.AdminList)
 	incidents.GET("/:id", incidentH.AdminGet)
 	incidents.PATCH("/:id/status", incidentH.AdminUpdateStatus)
+	incidents.PATCH("/:id/priority", incidentH.AdminUpdatePriority)
 }

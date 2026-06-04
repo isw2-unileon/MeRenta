@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useReducer, useState, type FormEvent } from "react";
 import { useNavigate, useParams } from "react-router-dom";
-import { Heart, Mail, Star } from "lucide-react";
+import { Heart, Mail, Star, X } from "lucide-react";
 
 import { StarRating } from "@/components/product/detail/StarRating";
 import type { ApiResponse } from "@/types/common";
@@ -101,6 +101,14 @@ interface ReceivedReview {
 }
 
 type ReceivedReviewsResponse = ReceivedReviewsResponseBase<ReceivedReview>;
+
+type UserIncidentType = "not_delivered" | "late_return" | "other";
+
+const userIncidentOptions: { value: UserIncidentType; label: string }[] = [
+  { value: "not_delivered", label: "No entrego el articulo" },
+  { value: "late_return", label: "Devolucion tardia" },
+  { value: "other", label: "Otra incidencia" },
+];
 
 interface ReviewsState {
   items: ReceivedReview[];
@@ -220,6 +228,24 @@ async function openConversation(itemId: string): Promise<string> {
   return json.data.conversation_id;
 }
 
+async function createUserReport(profileId: string, type: UserIncidentType, description: string): Promise<void> {
+  const res = await fetch(`/api/customers/${profileId}/reports`, {
+    method: "POST",
+    credentials: "include",
+    headers: {
+      "Content-Type": "application/json",
+    },
+    body: JSON.stringify({
+      type,
+      description: description.trim(),
+    }),
+  });
+  const json = (await res.json()) as ApiResponse<unknown>;
+  if (!res.ok || !json.success) {
+    throw new Error(json.message ?? json.error ?? "Error al crear la incidencia");
+  }
+}
+
 function formatCompactMemberSince(date?: string) {
   const formatted = formatMemberSince(date);
   return formatted ? `Miembro desde ${formatted}` : "Miembro desde fecha no disponible";
@@ -255,22 +281,6 @@ function reviewerDisplayName(review: ReceivedReview) {
 function percent(part: number, total: number) {
   if (total === 0) return 0;
   return Math.round((part / total) * 100);
-}
-
-function buildReportUserMailto(profileId: string, profileName: string) {
-  const subject = `Incidencia con usuario: ${profileName || profileId}`;
-  const body = [
-    "Hola equipo de MeRenta,",
-    "",
-    "Quiero reportar una incidencia con este usuario:",
-    `- Nombre: ${profileName || "No disponible"}`,
-    `- ID: ${profileId}`,
-    "",
-    "Describe aqui que ha ocurrido:",
-    "",
-  ].join("\n");
-
-  return `mailto:contact@merenta.com?subject=${encodeURIComponent(subject)}&body=${encodeURIComponent(body)}`;
 }
 
 function ProductCard({ product, ownerRating }: { product: SearchItemResponse; ownerRating: number }) {
@@ -567,6 +577,123 @@ function messageFlowReducer(_state: MessageFlowState, action: MessageFlowAction)
   }
 }
 
+function UserReportModal({
+  profileId,
+  profileName,
+  onClose,
+  onSuccess,
+}: {
+  profileId: string;
+  profileName: string;
+  onClose: () => void;
+  onSuccess: () => void;
+}) {
+  const [incidentType, setIncidentType] = useState<UserIncidentType>("other");
+  const [description, setDescription] = useState("");
+  const [submitting, setSubmitting] = useState(false);
+  const [error, setError] = useState("");
+
+  const handleSubmit = async (event: FormEvent<HTMLFormElement>) => {
+    event.preventDefault();
+    const trimmedDescription = description.trim();
+    if (trimmedDescription.length < 10) {
+      setError("Describe la incidencia con al menos 10 caracteres.");
+      return;
+    }
+
+    setSubmitting(true);
+    setError("");
+    try {
+      await createUserReport(profileId, incidentType, trimmedDescription);
+      onSuccess();
+    } catch (err: unknown) {
+      setError(err instanceof Error ? err.message : "Error al crear la incidencia");
+    } finally {
+      setSubmitting(false);
+    }
+  };
+
+  return (
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 px-4 py-8">
+      <div className="bg-page w-full max-w-[35rem] rounded-lg p-5 shadow-xl">
+        <div className="flex items-start justify-between gap-4">
+          <div>
+            <h2 className="heading-panel--sm">Reportar usuario</h2>
+            <p className="text-subtle mt-1 text-[13px]">{profileName || "Usuario seleccionado"}</p>
+          </div>
+          <button
+            type="button"
+            className="border-border-input text-subtle hover:text-ink flex size-9 items-center justify-center rounded-full border bg-white p-0"
+            onClick={onClose}
+            aria-label="Cerrar"
+          >
+            <X size={17} />
+          </button>
+        </div>
+
+        <form
+          className="mt-5 space-y-5"
+          onSubmit={handleSubmit}
+        >
+          <div>
+            <p className="text-ink text-[13px] font-semibold">Tipo de incidencia</p>
+            <div className="mt-3 grid gap-2 sm:grid-cols-3">
+              {userIncidentOptions.map((option) => (
+                <button
+                  key={option.value}
+                  type="button"
+                  className={`min-h-11 rounded-lg border px-3 text-[13px] font-medium ${
+                    incidentType === option.value
+                      ? "border-primary bg-primary-light text-primary"
+                      : "border-border-input bg-page text-body-color hover:border-primary hover:text-primary"
+                  }`}
+                  onClick={() => setIncidentType(option.value)}
+                >
+                  {option.label}
+                </button>
+              ))}
+            </div>
+          </div>
+
+          <label className="block">
+            <span className="text-ink text-[13px] font-semibold">Descripcion</span>
+            <textarea
+              className="border-border-input text-body-color focus:border-primary mt-2 min-h-32 w-full resize-none rounded-lg border bg-white px-3 py-2 text-[14px] outline-none"
+              value={description}
+              onChange={(event) => setDescription(event.target.value)}
+              placeholder="Explica que ha ocurrido"
+              maxLength={2000}
+              required
+            />
+          </label>
+
+          {error && (
+            <p className="border-report bg-error-danger text-report rounded-lg border p-3 text-[13px]">{error}</p>
+          )}
+
+          <div className="flex flex-col-reverse gap-3 sm:flex-row sm:justify-end">
+            <button
+              type="button"
+              className="border-border-input text-body-color hover:border-primary hover:text-primary h-11 rounded-lg border bg-white px-5"
+              onClick={onClose}
+              disabled={submitting}
+            >
+              Cancelar
+            </button>
+            <button
+              type="submit"
+              className="btn-primary h-11 px-5"
+              disabled={submitting}
+            >
+              {submitting ? "Enviando..." : "Crear incidencia"}
+            </button>
+          </div>
+        </form>
+      </div>
+    </div>
+  );
+}
+
 // ── Shared data/action shapes passed to sub-sections ─────────────
 interface ProfileViewData {
   fullName: string;
@@ -585,6 +712,7 @@ interface ProfileActionProps {
   isOwnProfile: boolean;
   productsLoading: boolean;
   messageError: string;
+  reportSuccess: boolean;
   onOpenMessage: () => void;
   onReportUser: () => void;
 }
@@ -597,6 +725,7 @@ function ProfileHero({
   isOwnProfile,
   productsLoading,
   messageError,
+  reportSuccess,
   onOpenMessage,
   onReportUser,
 }: { data: ProfileViewData; profileLoading: boolean } & ProfileActionProps) {
@@ -641,9 +770,11 @@ function ProfileHero({
             type="button"
             className="text-report h-auto p-0 text-[12px]"
             onClick={onReportUser}
+            disabled={isOwnProfile}
           >
             Reportar usuario
           </button>
+          {reportSuccess && <p className="text-primary max-w-60 text-center text-[12px]">Incidencia enviada.</p>}
           {messageError && <p className="text-report max-w-60 text-center text-[12px]">{messageError}</p>}
         </div>
       </div>
@@ -692,6 +823,7 @@ function ProfileSidebar({
   isOwnProfile,
   productsLoading,
   messageError,
+  reportSuccess,
   onOpenMessage,
   onReportUser,
 }: { data: ProfileViewData } & ProfileActionProps) {
@@ -750,9 +882,11 @@ function ProfileSidebar({
           type="button"
           className="text-report mt-4 h-auto w-full p-0 text-[12px]"
           onClick={onReportUser}
+          disabled={isOwnProfile}
         >
           Reportar a este usuario
         </button>
+        {reportSuccess && <p className="text-primary mt-3 text-center text-[12px]">Incidencia enviada.</p>}
       </div>
     </aside>
   );
@@ -937,6 +1071,8 @@ function ProfileOther() {
   const navigate = useNavigate();
   const { user } = useAuth();
   const [selectedCategory, setSelectedCategory] = useState("all");
+  const [reportModalOpen, setReportModalOpen] = useState(false);
+  const [reportSuccess, setReportSuccess] = useState(false);
   const [reviewDraft, dispatchReviewDraft] = useReducer(reviewDraftReducer, initialReviewDraftState);
   const [msgFlow, dispatchMsgFlow] = useReducer(messageFlowReducer, initialMessageFlowState);
   const [profileState, dispatchProfile] = useReducer(profileReducer, initialProfileState);
@@ -1052,8 +1188,9 @@ function ProfileOther() {
   };
 
   const handleReportUser = () => {
-    if (!id) return;
-    window.location.href = buildReportUserMailto(id, fullName);
+    if (!id || isOwnProfile) return;
+    setReportSuccess(false);
+    setReportModalOpen(true);
   };
 
   const categoryFilters = useMemo(() => {
@@ -1111,6 +1248,7 @@ function ProfileOther() {
     isOwnProfile,
     productsLoading: productsState.loading,
     messageError: msgFlow.error,
+    reportSuccess,
     onOpenMessage: () => void handleOpenMessage(),
     onReportUser: handleReportUser,
   };
@@ -1192,6 +1330,17 @@ function ProfileOther() {
           {...actionProps}
         />
       </main>
+      {reportModalOpen && id && (
+        <UserReportModal
+          profileId={id}
+          profileName={fullName}
+          onClose={() => setReportModalOpen(false)}
+          onSuccess={() => {
+            setReportModalOpen(false);
+            setReportSuccess(true);
+          }}
+        />
+      )}
     </div>
   );
 }

@@ -370,7 +370,6 @@ func (s *ItemService) SearchItems(ctx context.Context, params sqlcdb.SearchItemC
 		return nil, err
 	}
 
-	items := make([]model.SearchItemResponse, 0, len(rows))
 	categoryCounts := make(map[string]int64, len(countRows))
 	for _, row := range countRows {
 		categoryCounts[string(row.Category)] = row.TotalCount
@@ -384,34 +383,9 @@ func (s *ItemService) SearchItems(ctx context.Context, params sqlcdb.SearchItemC
 		conditionCounts[string(row.Condition)] = row.TotalCount
 	}
 
-	var total int64
-	for _, row := range rows {
-		if total == 0 {
-			total = row.TotalCount
-		}
-
-		pricePerDay, err := numericToFloat64(row.PricePerDay)
-		if err != nil {
-			return nil, fmt.Errorf("converting price_per_day: %w", err)
-		}
-
-		items = append(items, model.SearchItemResponse{
-			ItemID:          row.ItemID.String(),
-			OwnerID:         row.OwnerID.String(),
-			AddressID:       row.AddressID.String(),
-			Category:        string(row.Category),
-			Title:           row.Title,
-			ItemStatus:      string(row.ItemStatus),
-			PricePerDay:     pricePerDay,
-			IsAvailable:     row.IsAvailable,
-			PublishedAt:     row.PublishedAt.Time,
-			City:            row.City,
-			PostalCode:      row.PostalCode,
-			PrimaryImageURL: row.PrimaryImageURL,
-			OwnerFirstName:  row.OwnerFirstName,
-			OwnerLastName:   row.OwnerLastName,
-			OwnerAvatarURL:  row.OwnerAvatarURL,
-		})
+	items, total, err := searchItemCardRowsToResponses(rows)
+	if err != nil {
+		return nil, err
 	}
 
 	return &model.SearchItemsResponse{

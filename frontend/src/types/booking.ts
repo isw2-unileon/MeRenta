@@ -30,6 +30,8 @@ export interface BookingDetailResponse {
   booking_status: BookingStatus;
   estimated_total: number | null;
   notes: string;
+  payment_intent_id: string;
+  expires_at: string;
 }
 
 /** Paginated list of bookings. */

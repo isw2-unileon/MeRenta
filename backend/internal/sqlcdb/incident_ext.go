@@ -12,14 +12,24 @@ import (
 
 // ── Enum types ────────────────────────────────────────────────────────────────
 
-// IncidentType classifies whether the incident concerns the item or the user.
+// IncidentType classifies the incident reason.
 type IncidentType string
 
 const (
-	// IncidentTypeProduct means the incident is about the rented product.
-	IncidentTypeProduct IncidentType = "product"
-	// IncidentTypeUser means the incident is about the other party's behaviour.
-	IncidentTypeUser IncidentType = "user"
+	// IncidentTypeDamage means the item was damaged.
+	IncidentTypeDamage IncidentType = "damage"
+	// IncidentTypeLateReturn means the item was returned late.
+	IncidentTypeLateReturn IncidentType = "late_return"
+	// IncidentTypeItemMismatch means the item did not match the listing.
+	IncidentTypeItemMismatch IncidentType = "item_mismatch"
+	// IncidentTypeNotDelivered means the item was not delivered.
+	IncidentTypeNotDelivered IncidentType = "not_delivered"
+	// IncidentTypeOther means the incident does not fit another category.
+	IncidentTypeOther IncidentType = "other"
+	// IncidentTypeNotAvailable means the listing is not actually available.
+	IncidentTypeNotAvailable IncidentType = "not_available"
+	// IncidentTypeForbiddenItem means the listing contains a forbidden item.
+	IncidentTypeForbiddenItem IncidentType = "forbidden_item"
 )
 
 // Scan implements the Scanner interface for IncidentType.
@@ -41,12 +51,12 @@ type IncidentStatus string
 const (
 	// IncidentStatusOpen is the initial state.
 	IncidentStatusOpen IncidentStatus = "open"
-	// IncidentStatusReviewing means the admin is investigating.
-	IncidentStatusReviewing IncidentStatus = "reviewing"
-	// IncidentStatusEscalated means the incident requires senior action.
-	IncidentStatusEscalated IncidentStatus = "escalated"
+	// IncidentStatusUnderReview means the admin is investigating.
+	IncidentStatusUnderReview IncidentStatus = "under_review"
 	// IncidentStatusResolved means the incident has been closed.
 	IncidentStatusResolved IncidentStatus = "resolved"
+	// IncidentStatusClosed means the incident has been archived.
+	IncidentStatusClosed IncidentStatus = "closed"
 )
 
 // Scan implements the Scanner interface for IncidentStatus.
@@ -71,6 +81,24 @@ type CreateIncidentParams struct {
 	IncidentType   IncidentType
 	Description    string
 	AssociatedCost pgtype.Numeric
+}
+
+// CreateProductIncidentParams holds the fields needed to report a product outside a rental.
+type CreateProductIncidentParams struct {
+	ItemID       uuid.UUID
+	ReporterID   uuid.UUID
+	IncidentType IncidentType
+	Description  string
+	Priority     string
+}
+
+// CreateUserIncidentParams holds the fields needed to report a user outside a rental.
+type CreateUserIncidentParams struct {
+	ReportedCustomerID uuid.UUID
+	ReporterID         uuid.UUID
+	IncidentType       IncidentType
+	Description        string
+	Priority           string
 }
 
 // IncidentRow is the full enriched incident used in both list and detail views.
@@ -99,21 +127,29 @@ type IncidentRow struct {
 
 const incidentCols = `
     i.incident_id,
-    i.rental_id,
+    COALESCE(i.rental_id, '00000000-0000-0000-0000-000000000000'::uuid) AS rental_id,
     i.reporter_id,
     rep.first_name || ' ' || rep.last_name          AS reporter_name,
-    CASE WHEN b.renter_id = i.reporter_id
+    CASE WHEN i.reported_customer_id IS NOT NULL
+         THEN reported.customer_id
+         WHEN b.booking_id IS NULL
+         THEN own.customer_id
+         WHEN b.renter_id = i.reporter_id
          THEN own.customer_id ELSE b.renter_id
     END                                              AS reported_id,
-    CASE WHEN b.renter_id = i.reporter_id
+    CASE WHEN i.reported_customer_id IS NOT NULL
+         THEN reported.first_name || ' ' || reported.last_name
+         WHEN b.booking_id IS NULL
+         THEN own.first_name || ' ' || own.last_name
+         WHEN b.renter_id = i.reporter_id
          THEN own.first_name || ' ' || own.last_name
          ELSE ren.first_name || ' ' || ren.last_name
     END                                              AS reported_name,
-    b.booking_id,
-    it.item_id,
-    it.title                                         AS item_title,
-    b.start_date,
-    b.end_date,
+    COALESCE(b.booking_id, '00000000-0000-0000-0000-000000000000'::uuid) AS booking_id,
+    COALESCE(it.item_id, '00000000-0000-0000-0000-000000000000'::uuid) AS item_id,
+    COALESCE(it.title, 'Usuario reportado')          AS item_title,
+    COALESCE(b.start_date::timestamptz, i.reported_at) AS start_date,
+    COALESCE(b.end_date::timestamptz, i.reported_at)   AS end_date,
     i.incident_type,
     i.description,
     i.incident_status,
@@ -124,16 +160,29 @@ const incidentCols = `
 
 const incidentJoins = `
 FROM incident i
-JOIN rental   r   ON r.rental_id   = i.rental_id
-JOIN booking  b   ON b.booking_id  = r.booking_id
-JOIN item     it  ON it.item_id    = b.item_id
+LEFT JOIN rental  r   ON r.rental_id   = i.rental_id
+LEFT JOIN booking b   ON b.booking_id  = r.booking_id
+LEFT JOIN item it ON it.item_id = COALESCE(b.item_id, i.item_id)
 JOIN customer rep ON rep.customer_id = i.reporter_id
-JOIN customer ren ON ren.customer_id = b.renter_id
-JOIN customer own ON own.customer_id = it.owner_id
+LEFT JOIN customer ren ON ren.customer_id = b.renter_id
+LEFT JOIN customer own ON own.customer_id = it.owner_id
+LEFT JOIN customer reported ON reported.customer_id = i.reported_customer_id
 `
 
 const createIncident = `
 INSERT INTO incident (rental_id, reporter_id, incident_type, description, associated_cost)
+VALUES ($1, $2, $3, $4, $5)
+RETURNING incident_id
+`
+
+const createProductIncident = `
+INSERT INTO incident (item_id, reporter_id, incident_type, description, priority)
+VALUES ($1, $2, $3, $4, $5)
+RETURNING incident_id
+`
+
+const createUserIncident = `
+INSERT INTO incident (reported_customer_id, reporter_id, incident_type, description, priority)
 VALUES ($1, $2, $3, $4, $5)
 RETURNING incident_id
 `
@@ -167,8 +216,17 @@ UPDATE incident SET incident_status = $2 WHERE incident_id = $1
 RETURNING incident_id, incident_status
 `
 
+const updateIncidentPriority = `
+UPDATE incident SET priority = $2 WHERE incident_id = $1
+RETURNING incident_id, priority
+`
+
 const countOpenIncidents = `
 SELECT COUNT(*) FROM incident WHERE incident_status = 'open'
+`
+
+const countUnderReviewIncidents = `
+SELECT COUNT(*) FROM incident WHERE incident_status = 'under_review'
 `
 
 // ── Methods ───────────────────────────────────────────────────────────────────
@@ -179,6 +237,24 @@ func (q *Queries) CreateIncident(ctx context.Context, arg CreateIncidentParams) 
 	err := q.db.QueryRow(ctx, createIncident,
 		arg.RentalID, arg.ReporterID, arg.IncidentType,
 		arg.Description, arg.AssociatedCost,
+	).Scan(&id)
+	return id, err
+}
+
+// CreateProductIncident stores a product report directly in the incident table.
+func (q *Queries) CreateProductIncident(ctx context.Context, arg CreateProductIncidentParams) (uuid.UUID, error) {
+	var id uuid.UUID
+	err := q.db.QueryRow(ctx, createProductIncident,
+		arg.ItemID, arg.ReporterID, arg.IncidentType, arg.Description, arg.Priority,
+	).Scan(&id)
+	return id, err
+}
+
+// CreateUserIncident stores a user report directly in the incident table.
+func (q *Queries) CreateUserIncident(ctx context.Context, arg CreateUserIncidentParams) (uuid.UUID, error) {
+	var id uuid.UUID
+	err := q.db.QueryRow(ctx, createUserIncident,
+		arg.ReportedCustomerID, arg.ReporterID, arg.IncidentType, arg.Description, arg.Priority,
 	).Scan(&id)
 	return id, err
 }
@@ -225,10 +301,25 @@ func (q *Queries) UpdateIncidentStatus(ctx context.Context, id uuid.UUID, status
 	return outStatus, err
 }
 
+// UpdateIncidentPriority changes the priority of an incident.
+func (q *Queries) UpdateIncidentPriority(ctx context.Context, id uuid.UUID, priority string) (string, error) {
+	var outID uuid.UUID
+	var outPriority string
+	err := q.db.QueryRow(ctx, updateIncidentPriority, id, priority).Scan(&outID, &outPriority)
+	return outPriority, err
+}
+
 // CountOpenIncidents returns the number of incidents in 'open' state.
 func (q *Queries) CountOpenIncidents(ctx context.Context) (int64, error) {
 	var n int64
 	err := q.db.QueryRow(ctx, countOpenIncidents).Scan(&n)
+	return n, err
+}
+
+// CountUnderReviewIncidents returns the number of incidents currently under review.
+func (q *Queries) CountUnderReviewIncidents(ctx context.Context) (int64, error) {
+	var n int64
+	err := q.db.QueryRow(ctx, countUnderReviewIncidents).Scan(&n)
 	return n, err
 }
 
