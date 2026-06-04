@@ -8,6 +8,18 @@ function isNewPhoto(photo: ProductPhoto): photo is File {
   return photo instanceof File;
 }
 
+/**
+ * When `errors` is non-empty, runs `onErrors` and scrolls to the first invalid
+ * field. Returns true if there were errors, so the caller can abort the submit.
+ */
+function reportFormErrors(errors: Record<string, string | undefined>, onErrors: () => void): boolean {
+  const keys = Object.keys(errors);
+  if (keys.length === 0) return false;
+  onErrors();
+  document.getElementById(keys[0] ?? "")?.scrollIntoView({ behavior: "smooth", block: "center" });
+  return true;
+}
+
 /** Fetches the authenticated user's saved addresses (empty array on failure). */
 async function fetchAddresses(): Promise<AddressResponse[]> {
   const res = await fetch("/api/addresses", { credentials: "include" });
@@ -47,4 +59,4 @@ async function uploadItemImages(itemId: string, photos: File[]): Promise<ItemIma
   return json.data;
 }
 
-export { isNewPhoto, fetchAddresses, createAddress, uploadItemImages };
+export { isNewPhoto, reportFormErrors, fetchAddresses, createAddress, uploadItemImages };

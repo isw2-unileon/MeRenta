@@ -7,7 +7,13 @@ import { LocationSection } from "@/components/product/LocationSection";
 import { PhotosSection } from "@/components/product/PhotosSection";
 import { PreviewPanel } from "@/components/product/PreviewPanel";
 import { PriceSection } from "@/components/product/PriceSection";
-import { createAddress, fetchAddresses, isNewPhoto, uploadItemImages } from "@/components/product/productApi";
+import {
+  createAddress,
+  fetchAddresses,
+  isNewPhoto,
+  reportFormErrors,
+  uploadItemImages,
+} from "@/components/product/productApi";
 import type { ApiResponse } from "@/types/common";
 import type { AddressResponse, CreateAddressRequest } from "@/types/address";
 import type { CreateItemRequest, ItemResponse, ProductFormData } from "@/types/item";
@@ -214,10 +220,7 @@ function ProductCreate() {
    */
   const submitProduct = (asDraft = false) => {
     const newErrors = validateForm(state.data);
-    if (Object.keys(newErrors).length > 0) {
-      dispatch({ type: "set-errors", errors: newErrors });
-      const firstKey = Object.keys(newErrors)[0] ?? "";
-      document.getElementById(firstKey)?.scrollIntoView({ behavior: "smooth", block: "center" });
+    if (reportFormErrors(newErrors, () => dispatch({ type: "set-errors", errors: newErrors }))) {
       return;
     }
 

@@ -6,6 +6,7 @@ import (
 	"net/http"
 
 	"github.com/gin-gonic/gin"
+	"github.com/google/uuid"
 
 	"github.com/isw2-unileon/MeRenta/backend/internal/model"
 	"github.com/isw2-unileon/MeRenta/backend/internal/service"
@@ -65,20 +66,10 @@ func (h *IncidentHandler) AdminList(c *gin.Context) {
 
 // AdminGet handles GET /api/admin/incidents/:id.
 func (h *IncidentHandler) AdminGet(c *gin.Context) {
-	id, ok := parseUUIDParam(c)
-	if !ok {
-		return
-	}
-
-	res, err := h.svc.GetByID(c.Request.Context(), id)
-	switch {
-	case err == nil:
-		response.OK(c, http.StatusOK, res)
-	case errors.Is(err, service.ErrIncidentNotFound):
-		response.Error(c, http.StatusNotFound, err.Error())
-	default:
-		response.Error(c, http.StatusInternalServerError, "internal server error")
-	}
+	respondByID(c, service.ErrIncidentNotFound, func(id uuid.UUID) (any, error) {
+		res, err := h.svc.GetByID(c.Request.Context(), id)
+		return res, err
+	})
 }
 
 // AdminUpdateStatus handles PATCH /api/admin/incidents/:id/status.

@@ -289,6 +289,20 @@ func (s *AdminService) ListAuditLog(ctx context.Context, action string, page, li
 	return AuditLogListResponse{Entries: entries, Total: total, Page: page, Limit: limit}, nil
 }
 
+// adminUserListResponse maps a page of customer rows into the admin list response.
+func adminUserListResponse[T any](
+	list []T,
+	total int64,
+	page, limit int,
+	toRow func(T) AdminUserRow,
+) AdminUserListResponse {
+	rows := make([]AdminUserRow, len(list))
+	for i, c := range list {
+		rows[i] = toRow(c)
+	}
+	return AdminUserListResponse{Users: rows, Total: total, Page: page, Limit: limit}
+}
+
 func (s *AdminService) listByQuery(
 	ctx context.Context,
 	query string,
@@ -303,12 +317,10 @@ func (s *AdminService) listByQuery(
 	if err != nil {
 		return AdminUserListResponse{}, err
 	}
-	rows := make([]AdminUserRow, len(list))
-	for i, c := range list {
-		rows[i] = toAdminRow(c.CustomerID, c.FirstName, c.LastName, c.Email,
+	return adminUserListResponse(list, int64(len(list)), page, limit, func(c sqlcdb.SearchCustomersRow) AdminUserRow {
+		return toAdminRow(c.CustomerID, c.FirstName, c.LastName, c.Email,
 			c.Phone, c.RegistrationDate, c.AccountStatus, c.UserRole)
-	}
-	return AdminUserListResponse{Users: rows, Total: int64(len(list)), Page: page, Limit: limit}, nil
+	}), nil
 }
 
 func (s *AdminService) listByStatus(
@@ -325,12 +337,10 @@ func (s *AdminService) listByStatus(
 	if err != nil {
 		return AdminUserListResponse{}, err
 	}
-	rows := make([]AdminUserRow, len(list))
-	for i, c := range list {
-		rows[i] = toAdminRow(c.CustomerID, c.FirstName, c.LastName, c.Email,
+	return adminUserListResponse(list, int64(len(list)), page, limit, func(c sqlcdb.ListCustomersByStatusRow) AdminUserRow {
+		return toAdminRow(c.CustomerID, c.FirstName, c.LastName, c.Email,
 			c.Phone, c.RegistrationDate, c.AccountStatus, c.UserRole)
-	}
-	return AdminUserListResponse{Users: rows, Total: int64(len(list)), Page: page, Limit: limit}, nil
+	}), nil
 }
 
 func (s *AdminService) listAll(
@@ -346,12 +356,10 @@ func (s *AdminService) listAll(
 	if err != nil {
 		return AdminUserListResponse{}, err
 	}
-	rows := make([]AdminUserRow, len(list))
-	for i, c := range list {
-		rows[i] = toAdminRow(c.CustomerID, c.FirstName, c.LastName, c.Email,
+	return adminUserListResponse(list, total, page, limit, func(c sqlcdb.ListCustomersRow) AdminUserRow {
+		return toAdminRow(c.CustomerID, c.FirstName, c.LastName, c.Email,
 			c.Phone, c.RegistrationDate, c.AccountStatus, c.UserRole)
-	}
-	return AdminUserListResponse{Users: rows, Total: total, Page: page, Limit: limit}, nil
+	}), nil
 }
 
 // UpdateUserStatus changes the account_status and, for suspensions, sets the end date.

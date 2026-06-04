@@ -164,35 +164,47 @@ func (s *AuthService) Login(ctx context.Context, req model.LoginRequest) (*model
 
 	return &model.AuthResponse{
 		Token: token,
-		Customer: model.CustomerResponse{
-			CustomerID:         c.CustomerID.String(),
-			FirstName:          c.FirstName,
-			LastName:           c.LastName,
-			Email:              c.Email,
-			Phone:              c.Phone.String,
-			AvatarURL:          c.AvatarUrl.String,
-			RegistrationDate:   c.RegistrationDate.Time,
-			AccountStatus:      string(c.AccountStatus),
-			UserRole:           string(c.UserRole),
-			VerificationStatus: string(getVerificationStatusOrDefault(ctx, s.q, c.CustomerID)),
-		},
+		Customer: buildCustomerResponse(
+			c.CustomerID, c.FirstName, c.LastName, c.Email,
+			c.Phone, c.AvatarUrl, c.RegistrationDate,
+			c.AccountStatus, c.UserRole,
+			getVerificationStatusOrDefault(ctx, s.q, c.CustomerID),
+		),
 	}, nil
+}
+
+// buildCustomerResponse maps the customer columns shared across the various
+// sqlc row types into the API response model.
+func buildCustomerResponse(
+	customerID uuid.UUID,
+	firstName, lastName, email string,
+	phone, avatarURL pgtype.Text,
+	registrationDate pgtype.Timestamptz,
+	accountStatus sqlcdb.AccountStatus,
+	userRole sqlcdb.UserRole,
+	verificationStatus sqlcdb.VerificationStatus,
+) model.CustomerResponse {
+	return model.CustomerResponse{
+		CustomerID:         customerID.String(),
+		FirstName:          firstName,
+		LastName:           lastName,
+		Email:              email,
+		Phone:              phone.String,
+		AvatarURL:          avatarURL.String,
+		RegistrationDate:   registrationDate.Time,
+		AccountStatus:      string(accountStatus),
+		UserRole:           string(userRole),
+		VerificationStatus: string(verificationStatus),
+	}
 }
 
 // toCustomerResponse maps a CreateCustomer row into a response model.
 func toCustomerResponse(c sqlcdb.CreateCustomerRow) model.CustomerResponse {
-	return model.CustomerResponse{
-		CustomerID:         c.CustomerID.String(),
-		FirstName:          c.FirstName,
-		LastName:           c.LastName,
-		Email:              c.Email,
-		Phone:              c.Phone.String,
-		AvatarURL:          c.AvatarUrl.String,
-		RegistrationDate:   c.RegistrationDate.Time,
-		AccountStatus:      string(c.AccountStatus),
-		UserRole:           string(c.UserRole),
-		VerificationStatus: string(sqlcdb.VerificationStatusNone),
-	}
+	return buildCustomerResponse(
+		c.CustomerID, c.FirstName, c.LastName, c.Email,
+		c.Phone, c.AvatarUrl, c.RegistrationDate,
+		c.AccountStatus, c.UserRole, sqlcdb.VerificationStatusNone,
+	)
 }
 
 // GetCustomerByID fetches a customer profile by its ID.
@@ -202,18 +214,12 @@ func (s *AuthService) GetCustomerByID(ctx context.Context, id uuid.UUID) (*model
 	if err != nil {
 		return nil, err
 	}
-	resp := model.CustomerResponse{
-		CustomerID:         c.CustomerID.String(),
-		FirstName:          c.FirstName,
-		LastName:           c.LastName,
-		Email:              c.Email,
-		Phone:              c.Phone.String,
-		AvatarURL:          c.AvatarUrl.String,
-		RegistrationDate:   c.RegistrationDate.Time,
-		AccountStatus:      string(c.AccountStatus),
-		UserRole:           string(c.UserRole),
-		VerificationStatus: string(getVerificationStatusOrDefault(ctx, s.q, id)),
-	}
+	resp := buildCustomerResponse(
+		c.CustomerID, c.FirstName, c.LastName, c.Email,
+		c.Phone, c.AvatarUrl, c.RegistrationDate,
+		c.AccountStatus, c.UserRole,
+		getVerificationStatusOrDefault(ctx, s.q, id),
+	)
 	if c.AccountStatus == sqlcdb.AccountStatusSuspended {
 		if t, tErr := s.q.GetCustomerSuspendedUntil(ctx, id); tErr == nil && t.Valid {
 			resp.SuspendedUntil = &t.Time
@@ -257,18 +263,13 @@ func (s *AuthService) UpdateProfile(ctx context.Context, id uuid.UUID, req model
 		return nil, err
 	}
 
-	return &model.CustomerResponse{
-		CustomerID:         c.CustomerID.String(),
-		FirstName:          c.FirstName,
-		LastName:           c.LastName,
-		Email:              c.Email,
-		Phone:              c.Phone.String,
-		AvatarURL:          c.AvatarUrl.String,
-		RegistrationDate:   c.RegistrationDate.Time,
-		AccountStatus:      string(c.AccountStatus),
-		UserRole:           string(c.UserRole),
-		VerificationStatus: string(getVerificationStatusOrDefault(ctx, s.q, id)),
-	}, nil
+	resp := buildCustomerResponse(
+		c.CustomerID, c.FirstName, c.LastName, c.Email,
+		c.Phone, c.AvatarUrl, c.RegistrationDate,
+		c.AccountStatus, c.UserRole,
+		getVerificationStatusOrDefault(ctx, s.q, id),
+	)
+	return &resp, nil
 }
 
 // UpdateEmail changes the customer's email after checking uniqueness.
@@ -288,18 +289,12 @@ func (s *AuthService) UpdateEmail(ctx context.Context, id uuid.UUID, req model.U
 	}
 
 	if strings.EqualFold(current.Email, email) {
-		resp := model.CustomerResponse{
-			CustomerID:         current.CustomerID.String(),
-			FirstName:          current.FirstName,
-			LastName:           current.LastName,
-			Email:              current.Email,
-			Phone:              current.Phone.String,
-			AvatarURL:          current.AvatarUrl.String,
-			RegistrationDate:   current.RegistrationDate.Time,
-			AccountStatus:      string(current.AccountStatus),
-			UserRole:           string(current.UserRole),
-			VerificationStatus: string(getVerificationStatusOrDefault(ctx, s.q, id)),
-		}
+		resp := buildCustomerResponse(
+			current.CustomerID, current.FirstName, current.LastName, current.Email,
+			current.Phone, current.AvatarUrl, current.RegistrationDate,
+			current.AccountStatus, current.UserRole,
+			getVerificationStatusOrDefault(ctx, s.q, id),
+		)
 		return &resp, nil
 	}
 
@@ -326,18 +321,13 @@ func (s *AuthService) UpdateEmail(ctx context.Context, id uuid.UUID, req model.U
 		return nil, err
 	}
 
-	return &model.CustomerResponse{
-		CustomerID:         updated.CustomerID.String(),
-		FirstName:          updated.FirstName,
-		LastName:           updated.LastName,
-		Email:              updated.Email,
-		Phone:              updated.Phone.String,
-		AvatarURL:          updated.AvatarUrl.String,
-		RegistrationDate:   updated.RegistrationDate.Time,
-		AccountStatus:      string(updated.AccountStatus),
-		UserRole:           string(updated.UserRole),
-		VerificationStatus: string(getVerificationStatusOrDefault(ctx, s.q, id)),
-	}, nil
+	resp := buildCustomerResponse(
+		updated.CustomerID, updated.FirstName, updated.LastName, updated.Email,
+		updated.Phone, updated.AvatarUrl, updated.RegistrationDate,
+		updated.AccountStatus, updated.UserRole,
+		getVerificationStatusOrDefault(ctx, s.q, id),
+	)
+	return &resp, nil
 }
 
 // RequestVerification queues the current customer for admin profile-badge review.
@@ -473,18 +463,13 @@ func (s *AuthService) UploadAvatar(ctx context.Context, id uuid.UUID, fh *multip
 		return nil, err
 	}
 
-	return &model.CustomerResponse{
-		CustomerID:         updated.CustomerID.String(),
-		FirstName:          updated.FirstName,
-		LastName:           updated.LastName,
-		Email:              updated.Email,
-		Phone:              updated.Phone.String,
-		AvatarURL:          updated.AvatarUrl.String,
-		RegistrationDate:   updated.RegistrationDate.Time,
-		AccountStatus:      string(updated.AccountStatus),
-		UserRole:           string(updated.UserRole),
-		VerificationStatus: string(getVerificationStatusOrDefault(ctx, s.q, id)),
-	}, nil
+	resp := buildCustomerResponse(
+		updated.CustomerID, updated.FirstName, updated.LastName, updated.Email,
+		updated.Phone, updated.AvatarUrl, updated.RegistrationDate,
+		updated.AccountStatus, updated.UserRole,
+		getVerificationStatusOrDefault(ctx, s.q, id),
+	)
+	return &resp, nil
 }
 
 // GetPublicProfile returns the minimal public profile for any customer.

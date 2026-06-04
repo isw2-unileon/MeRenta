@@ -3,6 +3,7 @@ package handler
 
 import (
 	"context"
+	"errors"
 	"log/slog"
 	"net/http"
 
@@ -13,6 +14,25 @@ import (
 )
 
 type paginatedResponder func(page int, limit int) (any, error)
+
+// respondByID parses the ":id" route param, runs fetch, and writes the result as
+// 200 — mapping a notFound match to 404 and any other error to 500.
+func respondByID(c *gin.Context, notFound error, fetch func(uuid.UUID) (any, error)) {
+	id, ok := parseUUIDParam(c)
+	if !ok {
+		return
+	}
+
+	res, err := fetch(id)
+	switch {
+	case err == nil:
+		response.OK(c, http.StatusOK, res)
+	case errors.Is(err, notFound):
+		response.Error(c, http.StatusNotFound, err.Error())
+	default:
+		response.Error(c, http.StatusInternalServerError, "internal server error")
+	}
+}
 
 // parseUUIDParam extracts the ":id" route parameter and parses it as a UUID.
 // On success, it returns the UUID and true.
