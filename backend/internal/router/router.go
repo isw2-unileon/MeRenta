@@ -86,6 +86,7 @@ func registerProtectedRoutes(
 ) {
 	protected.GET("/session", authH.Session)
 	protected.GET("/me", authH.Me)
+	protected.POST("/me/verification-request", authH.RequestVerification)
 
 	addresses := protected.Group("/addresses")
 	addresses.GET("", addrH.List)
@@ -155,6 +156,10 @@ func registerAdminRoutes(api *gin.RouterGroup, adminH *handler.AdminHandler, inc
 	users := admin.Group("/users")
 	users.GET("", adminH.ListUsers)
 	users.PATCH("/:id/status", adminH.UpdateUserStatus)
+
+	verification := admin.Group("/verification")
+	verification.GET("", adminH.ListVerification)
+	verification.PATCH("/:id", adminH.UpdateVerification)
 
 	items := admin.Group("/items")
 	items.GET("", adminH.ListProducts)

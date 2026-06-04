@@ -31,6 +31,10 @@ type adminQuerier interface {
 	SearchItemCards(ctx context.Context, arg sqlcdb.SearchItemCardsParams) ([]sqlcdb.SearchItemCardsRow, error)
 	UpdateCustomerStatus(ctx context.Context, arg sqlcdb.UpdateCustomerStatusParams) (sqlcdb.UpdateCustomerStatusRow, error)
 	SetCustomerSuspendedUntil(ctx context.Context, customerID uuid.UUID, until pgtype.Timestamptz) error
+	EnsureCustomerVerificationSchema(ctx context.Context) error
+	ListAdminVerificationRows(ctx context.Context, status sqlcdb.VerificationStatus, limit, offset int32) ([]sqlcdb.AdminVerificationRow, error)
+	CountAdminVerificationRows(ctx context.Context, status sqlcdb.VerificationStatus) (int64, error)
+	UpdateCustomerVerificationStatus(ctx context.Context, customerID uuid.UUID, status sqlcdb.VerificationStatus) (sqlcdb.VerificationStatus, error)
 	AdminListBookings(ctx context.Context, arg sqlcdb.AdminListBookingsParams) ([]sqlcdb.BookingDetailRow, error)
 	AdminListPayments(ctx context.Context, arg sqlcdb.AdminListPaymentsParams) ([]sqlcdb.BookingDetailRow, error)
 	GetBookingByID(ctx context.Context, bookingID uuid.UUID) (sqlcdb.BookingDetailRow, error)
@@ -75,6 +79,28 @@ type AdminUserListResponse struct {
 	Limit int            `json:"limit"`
 }
 
+// AdminVerificationRow is one customer in the admin verification queue.
+type AdminVerificationRow struct {
+	CustomerID         uuid.UUID                 `json:"customer_id"`
+	FirstName          string                    `json:"first_name"`
+	LastName           string                    `json:"last_name"`
+	Email              string                    `json:"email"`
+	Phone              string                    `json:"phone,omitempty"`
+	AvatarURL          string                    `json:"avatar_url,omitempty"`
+	AccountStatus      sqlcdb.AccountStatus      `json:"account_status"`
+	VerificationStatus sqlcdb.VerificationStatus `json:"verification_status"`
+	RequestedAt        string                    `json:"requested_at"`
+	HasAddress         bool                      `json:"has_address"`
+}
+
+// AdminVerificationListResponse is the paginated verification queue.
+type AdminVerificationListResponse struct {
+	Requests []AdminVerificationRow `json:"requests"`
+	Total    int64                  `json:"total"`
+	Page     int                    `json:"page"`
+	Limit    int                    `json:"limit"`
+}
+
 // ListUsers returns a paginated customer list with optional search and status filter.
 // Priority: query > status > plain list.
 func (s *AdminService) ListUsers(
@@ -93,6 +119,67 @@ func (s *AdminService) ListUsers(
 	default:
 		return s.listAll(ctx, page, limit, offset, lim)
 	}
+}
+
+// ListVerification returns profile badge requests filtered by decision status.
+func (s *AdminService) ListVerification(
+	ctx context.Context,
+	status string,
+	page, limit int,
+) (AdminVerificationListResponse, error) {
+	offset := int32((page - 1) * limit) //nolint:gosec
+	lim := int32(limit)                 //nolint:gosec
+	verificationStatus := sqlcdb.VerificationStatus(status)
+
+	if err := s.q.EnsureCustomerVerificationSchema(ctx); err != nil {
+		return AdminVerificationListResponse{}, err
+	}
+
+	total, err := s.q.CountAdminVerificationRows(ctx, verificationStatus)
+	if err != nil {
+		return AdminVerificationListResponse{}, err
+	}
+	list, err := s.q.ListAdminVerificationRows(ctx, verificationStatus, lim, offset)
+	if err != nil {
+		return AdminVerificationListResponse{}, err
+	}
+
+	rows := make([]AdminVerificationRow, len(list))
+	for i, c := range list {
+		rows[i] = AdminVerificationRow{
+			CustomerID:         c.CustomerID,
+			FirstName:          c.FirstName,
+			LastName:           c.LastName,
+			Email:              c.Email,
+			Phone:              nullableStr(c.Phone),
+			AvatarURL:          nullableStr(c.AvatarURL),
+			AccountStatus:      c.AccountStatus,
+			VerificationStatus: c.VerificationStatus,
+			RequestedAt:        nullableTime(c.RequestedVerificationAt),
+			HasAddress:         c.HasAddress,
+		}
+	}
+	return AdminVerificationListResponse{Requests: rows, Total: total, Page: page, Limit: limit}, nil
+}
+
+// UpdateVerification records an admin verification decision.
+func (s *AdminService) UpdateVerification(
+	ctx context.Context,
+	customerID uuid.UUID,
+	status sqlcdb.VerificationStatus,
+) (sqlcdb.VerificationStatus, error) {
+	if err := s.q.EnsureCustomerVerificationSchema(ctx); err != nil {
+		return "", err
+	}
+
+	updated, err := s.q.UpdateCustomerVerificationStatus(ctx, customerID, status)
+	if err != nil {
+		if errors.Is(err, pgx.ErrNoRows) {
+			return "", ErrAdminUserNotFound
+		}
+		return "", err
+	}
+	return updated, nil
 }
 
 // ListProducts returns all item rows visible to admins, including unavailable and retired listings.

@@ -2,6 +2,7 @@
  * Allowed account lifecycle states.
  */
 type AccountStatus = "active" | "suspended" | "banned";
+type VerificationStatus = "none" | "pending" | "verified" | "rejected";
 /**
  * Roles supported by the platform.
  */
@@ -21,6 +22,7 @@ interface Customer {
   registration_date: string;
   account_status: AccountStatus;
   user_role: UserRole;
+  verification_status: VerificationStatus;
   stripe_customer_id: string | null;
 }
 
@@ -39,6 +41,7 @@ interface CustomerPublic {
   user_role: UserRole;
   /** ISO-8601 date when suspension ends; only present for suspended accounts. */
   suspended_until?: string | null;
+  verification_status: VerificationStatus;
 }
 
 /**
@@ -109,4 +112,5 @@ export type {
   RegisterResponse,
   UpdateProfileRequest,
   UserRole,
+  VerificationStatus,
 };

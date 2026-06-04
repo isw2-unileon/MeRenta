@@ -47,6 +47,68 @@ func (h *AdminHandler) ListUsers(c *gin.Context) {
 	response.OK(c, http.StatusOK, res)
 }
 
+// ListVerification handles GET /api/admin/verification.
+// Query params: status (pending|verified|rejected), page, limit.
+func (h *AdminHandler) ListVerification(c *gin.Context) {
+	status := c.DefaultQuery("status", "pending")
+	page := parsePositiveInt(c.DefaultQuery("page", "1"), 1, 500)
+	limit := parsePositiveInt(c.DefaultQuery("limit", "20"), 20, 100)
+
+	if !isValidAdminVerificationStatus(status) {
+		response.Error(c, http.StatusBadRequest, "invalid verification status value")
+		return
+	}
+
+	res, err := h.svc.ListVerification(c.Request.Context(), status, page, limit)
+	if err != nil {
+		slog.Error("admin list verification failed", "error", err)
+		response.Error(c, http.StatusInternalServerError, "internal server error")
+		return
+	}
+
+	response.OK(c, http.StatusOK, res)
+}
+
+// UpdateVerification handles PATCH /api/admin/verification/:id.
+// Body: { "status": "verified"|"rejected" }.
+func (h *AdminHandler) UpdateVerification(c *gin.Context) {
+	customerID, ok := parseUUIDParam(c)
+	if !ok {
+		return
+	}
+
+	var body struct {
+		Status string `json:"status" binding:"required"`
+	}
+	if err := c.ShouldBindJSON(&body); err != nil {
+		response.Error(c, http.StatusBadRequest, "status is required")
+		return
+	}
+	if !isValidVerificationDecision(body.Status) {
+		response.Error(c, http.StatusBadRequest, "invalid verification status value")
+		return
+	}
+
+	status, err := h.svc.UpdateVerification(
+		c.Request.Context(), customerID, sqlcdb.VerificationStatus(body.Status),
+	)
+	if err != nil {
+		switch {
+		case errors.Is(err, service.ErrAdminUserNotFound):
+			response.Error(c, http.StatusNotFound, err.Error())
+		default:
+			slog.Error("admin update verification failed", "error", err)
+			response.Error(c, http.StatusInternalServerError, "internal server error")
+		}
+		return
+	}
+
+	response.OK(c, http.StatusOK, gin.H{
+		"customer_id": customerID,
+		"status":      status,
+	})
+}
+
 // ListBookings handles GET /api/admin/bookings.
 // Query params: status, q (search), sort, page, limit.
 func (h *AdminHandler) ListBookings(c *gin.Context) {
@@ -221,6 +283,25 @@ func isValidAccountStatus(s string) bool {
 	case sqlcdb.AccountStatusActive,
 		sqlcdb.AccountStatusSuspended,
 		sqlcdb.AccountStatusBanned:
+		return true
+	}
+	return false
+}
+
+func isValidAdminVerificationStatus(s string) bool {
+	switch sqlcdb.VerificationStatus(s) {
+	case sqlcdb.VerificationStatusPending,
+		sqlcdb.VerificationStatusVerified,
+		sqlcdb.VerificationStatusRejected:
+		return true
+	}
+	return false
+}
+
+func isValidVerificationDecision(s string) bool {
+	switch sqlcdb.VerificationStatus(s) {
+	case sqlcdb.VerificationStatusVerified,
+		sqlcdb.VerificationStatusRejected:
 		return true
 	}
 	return false

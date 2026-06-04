@@ -1,9 +1,11 @@
-import { useEffect, useMemo, useReducer } from "react";
-import { ArrowRight, Check, Circle, Star } from "lucide-react";
+import { useEffect, useMemo, useReducer, useState } from "react";
+import { ArrowRight, Check, Circle, ShieldCheck, Star } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 
 import { StarRating } from "@/components/product/detail/StarRating";
 import { useAuth } from "@/hooks/useAuth";
+import type { ApiResponse } from "@/types/common";
+import type { VerificationStatus } from "@/types/customer";
 import type { SearchItemResponse } from "@/types/item";
 import {
   fetchMyItems,
@@ -153,6 +155,18 @@ function handleAbortable<T>(
     if (err instanceof DOMException && err.name === "AbortError") return;
     onError(err instanceof Error ? err.message : fallbackMessage);
   });
+}
+
+async function requestVerification(): Promise<VerificationStatus> {
+  const res = await fetch("/api/me/verification-request", {
+    method: "POST",
+    credentials: "include",
+  });
+  const json = (await res.json()) as ApiResponse<{ verification_status: VerificationStatus }>;
+  if (!res.ok || !json.success || !json.data) {
+    throw new Error(json.error ?? "Error al solicitar la verificacion");
+  }
+  return json.data.verification_status;
 }
 
 interface ProductCardProps {
@@ -361,6 +375,9 @@ function MyProfile() {
   const { user } = useAuth();
   const [productsState, dispatchProducts] = useReducer(productsReducer, initialProductsState);
   const [reviewsState, dispatchReviews] = useReducer(reviewsReducer, initialReviewsState);
+  const [requestedVerificationStatus, setRequestedVerificationStatus] = useState<VerificationStatus | null>(null);
+  const [verificationLoading, setVerificationLoading] = useState(false);
+  const [verificationError, setVerificationError] = useState("");
 
   const firstName = user?.first_name ?? "";
   const lastName = user?.last_name ?? "";
@@ -390,6 +407,30 @@ function MyProfile() {
   const profileMeta = [cities.join(", "), memberSince ? `Miembro desde ${memberSince}` : ""]
     .filter(Boolean)
     .join(" - ");
+
+  const verificationButtonLabel: Record<VerificationStatus, string> = {
+    none: "Solicitar badge verificado",
+    pending: "Solicitud pendiente",
+    verified: "Perfil verificado",
+    rejected: "Solicitar de nuevo",
+  };
+
+  const verificationStatus = requestedVerificationStatus ?? user?.verification_status ?? "none";
+  const canRequestVerification = verificationStatus === "none" || verificationStatus === "rejected";
+
+  async function handleRequestVerification() {
+    setVerificationLoading(true);
+    setVerificationError("");
+    try {
+      const status = await requestVerification();
+      setRequestedVerificationStatus(status);
+      window.dispatchEvent(new Event("merenta:verification-updated"));
+    } catch (err) {
+      setVerificationError(err instanceof Error ? err.message : "Error al solicitar la verificacion");
+    } finally {
+      setVerificationLoading(false);
+    }
+  }
 
   const verifications = [
     { label: "Email vinculado", done: Boolean(user?.email) },
@@ -436,7 +477,18 @@ function MyProfile() {
                 )}
               </div>
               <div>
-                <p className="profile-name">{fullName}</p>
+                <div className="flex flex-wrap items-center gap-2">
+                  <p className="profile-name">{fullName}</p>
+                  {verificationStatus === "verified" && (
+                    <span
+                      className="inline-flex size-6 items-center justify-center rounded-full bg-primary text-white"
+                      title="Perfil verificado"
+                      aria-label="Perfil verificado"
+                    >
+                      <Check size={15} />
+                    </span>
+                  )}
+                </div>
                 {profileMeta && <p className="profile-meta mt-1">{profileMeta}</p>}
               </div>
             </div>
@@ -501,6 +553,30 @@ function MyProfile() {
                 </p>
               ))}
             </div>
+            {verificationStatus !== "verified" && (
+              <div className="mt-4 flex flex-wrap items-center gap-3 border-t border-border-main pt-4">
+                <button
+                  type="button"
+                  className="btn-primary btn--sm"
+                  disabled={!canRequestVerification || verificationLoading}
+                  onClick={handleRequestVerification}
+                >
+                  <ShieldCheck size={15} />
+                  {verificationLoading ? "Enviando..." : verificationButtonLabel[verificationStatus]}
+                </button>
+                {verificationStatus === "pending" && (
+                  <span className="text-subtle text-[13px]">Tu solicitud esta en revision.</span>
+                )}
+                {verificationStatus === "rejected" && (
+                  <span className="text-subtle text-[13px]">Puedes solicitarlo de nuevo tras completar tu perfil.</span>
+                )}
+              </div>
+            )}
+            {verificationError && (
+              <p className="border-report bg-error-danger text-report mt-3 rounded-lg border p-3 text-[13px]">
+                {verificationError}
+              </p>
+            )}
           </section>
 
           <section className="mt-5">

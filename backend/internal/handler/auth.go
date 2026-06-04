@@ -3,6 +3,7 @@ package handler
 
 import (
 	"errors"
+	"log/slog"
 	"net/http"
 	"strings"
 
@@ -219,6 +220,27 @@ func (h *AuthHandler) UploadAvatar(c *gin.Context) {
 	case errors.Is(err, service.ErrCustomerNotFound):
 		response.Error(c, http.StatusNotFound, err.Error())
 	default:
+		response.Error(c, http.StatusInternalServerError, "internal server error")
+	}
+}
+
+// RequestVerification queues the authenticated customer for profile verification.
+func (h *AuthHandler) RequestVerification(c *gin.Context) {
+	customerID, ok := getCustomerID(c)
+	if !ok {
+		return
+	}
+
+	status, err := h.svc.RequestVerification(c.Request.Context(), customerID)
+	switch {
+	case err == nil:
+		response.OK(c, http.StatusOK, gin.H{"verification_status": status})
+	case errors.Is(err, service.ErrAccountNotActive):
+		response.Error(c, http.StatusForbidden, err.Error())
+	case errors.Is(err, service.ErrCustomerNotFound):
+		response.Error(c, http.StatusNotFound, err.Error())
+	default:
+		slog.Error("verification request failed", "customer_id", customerID, "error", err)
 		response.Error(c, http.StatusInternalServerError, "internal server error")
 	}
 }
