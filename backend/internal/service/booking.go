@@ -225,7 +225,7 @@ func (s *BookingService) Complete(
 	if !bookingStatusAllowed(booking.BookingStatus, []sqlcdb.BookingStatus{sqlcdb.BookingStatusAccepted}) {
 		return model.BookingResponse{}, ErrBookingClosed
 	}
-	if booking.RenterID != userID && booking.OwnerID != userID {
+	if booking.RenterID != userID && (!booking.OwnerID.Valid || uuid.UUID(booking.OwnerID.Bytes) != userID) {
 		return model.BookingResponse{}, ErrBookingForbidden
 	}
 
@@ -244,7 +244,7 @@ func (s *BookingService) Complete(
 		return model.BookingResponse{}, fmt.Errorf("update booking status: %w", err)
 	}
 
-	if syncErr := s.syncItemAvailability(ctx, row.ItemID); syncErr != nil {
+	if syncErr := s.syncItemAvailabilityIfPresent(ctx, row.ItemID); syncErr != nil {
 		slog.Warn("sync item availability failed", "item_id", row.ItemID, "error", syncErr)
 	}
 
@@ -283,7 +283,7 @@ func (s *BookingService) AutoCompleteExpiredBookings(ctx context.Context) error 
 			slog.Error("auto-complete booking failed", "booking_id", id, "error", updateErr)
 			continue
 		}
-		if syncErr := s.syncItemAvailability(ctx, updated.ItemID); syncErr != nil {
+		if syncErr := s.syncItemAvailabilityIfPresent(ctx, updated.ItemID); syncErr != nil {
 			slog.Warn("sync item availability failed after auto-complete", "item_id", updated.ItemID, "error", syncErr)
 		}
 	}
@@ -337,7 +337,7 @@ func (s *BookingService) updateStatus(
 	}
 
 	// Best-effort: keep item availability in sync (non-fatal if it fails)
-	if syncErr := s.syncItemAvailability(ctx, row.ItemID); syncErr != nil {
+	if syncErr := s.syncItemAvailabilityIfPresent(ctx, row.ItemID); syncErr != nil {
 		slog.Warn("sync item availability failed", "item_id", row.ItemID, "error", syncErr)
 	}
 
@@ -356,7 +356,7 @@ func (s *BookingService) expireOne(ctx context.Context, row sqlcdb.ExpiredBookin
 	if err != nil {
 		return err
 	}
-	return s.syncItemAvailability(ctx, updated.ItemID)
+	return s.syncItemAvailabilityIfPresent(ctx, updated.ItemID)
 }
 
 // SyncAllAvailabilities reconciles is_available and item_status for all items
@@ -379,6 +379,13 @@ func (s *BookingService) syncItemAvailability(ctx context.Context, itemID uuid.U
 		return fmt.Errorf("update item availability: %w", err)
 	}
 	return s.syncItemStatus(ctx, itemID, count > 0)
+}
+
+func (s *BookingService) syncItemAvailabilityIfPresent(ctx context.Context, itemID pgtype.UUID) error {
+	if !itemID.Valid {
+		return nil
+	}
+	return s.syncItemAvailability(ctx, uuid.UUID(itemID.Bytes))
 }
 
 // syncItemStatus sets item_status to 'rented' when occupied, or restores it
@@ -421,7 +428,7 @@ func authoriseBookingTransition(b sqlcdb.BookingDetailRow, userID uuid.UUID, ren
 	if renterAction && b.RenterID != userID {
 		return ErrBookingForbidden
 	}
-	if !renterAction && b.OwnerID != userID {
+	if !renterAction && (!b.OwnerID.Valid || uuid.UUID(b.OwnerID.Bytes) != userID) {
 		return ErrBookingForbidden
 	}
 	return nil
@@ -450,7 +457,7 @@ func bookingRowToResponse(b sqlcdb.BookingRow) (model.BookingResponse, error) {
 	}
 	return model.BookingResponse{
 		BookingID:       b.BookingID.String(),
-		ItemID:          b.ItemID.String(),
+		ItemID:          nullableUUIDString(b.ItemID),
 		RenterID:        b.RenterID.String(),
 		StartDate:       b.StartDate.Format(bookingDateLayout),
 		EndDate:         b.EndDate.Format(bookingDateLayout),
@@ -471,14 +478,14 @@ func bookingDetailToResponse(b sqlcdb.BookingDetailRow) (model.BookingDetailResp
 	}
 	return model.BookingDetailResponse{
 		BookingID:                b.BookingID.String(),
-		ItemID:                   b.ItemID.String(),
+		ItemID:                   nullableUUIDString(b.ItemID),
 		ItemTitle:                b.ItemTitle,
 		ItemImageURL:             b.ItemImageURL,
 		RenterID:                 b.RenterID.String(),
 		RenterFirstName:          b.RenterFirstName,
 		RenterLastName:           b.RenterLastName,
 		RenterVerificationStatus: string(b.RenterVerificationStatus),
-		OwnerID:                  b.OwnerID.String(),
+		OwnerID:                  nullableUUIDString(b.OwnerID),
 		StartDate:                b.StartDate.Format(bookingDateLayout),
 		EndDate:                  b.EndDate.Format(bookingDateLayout),
 		RequestedAt:              b.RequestedAt.Time.Format(time.RFC3339),
@@ -523,6 +530,13 @@ func optionalTime(t pgtype.Timestamptz) string {
 		return ""
 	}
 	return t.Time.Format(time.RFC3339)
+}
+
+func nullableUUIDString(id pgtype.UUID) string {
+	if !id.Valid {
+		return ""
+	}
+	return uuid.UUID(id.Bytes).String()
 }
 
 // parseBookingDates validates and parses both date strings.

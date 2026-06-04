@@ -134,24 +134,30 @@ const incidentCols = `
     COALESCE(i.rental_id, '00000000-0000-0000-0000-000000000000'::uuid) AS rental_id,
     i.reporter_id,
     rep.first_name || ' ' || rep.last_name          AS reporter_name,
-    CASE WHEN i.reported_customer_id IS NOT NULL
-         THEN reported.customer_id
-         WHEN b.booking_id IS NULL
-         THEN own.customer_id
-         WHEN b.renter_id = i.reporter_id
-         THEN own.customer_id ELSE b.renter_id
-    END                                              AS reported_id,
-    CASE WHEN i.reported_customer_id IS NOT NULL
-         THEN reported.first_name || ' ' || reported.last_name
-         WHEN b.booking_id IS NULL
-         THEN own.first_name || ' ' || own.last_name
-         WHEN b.renter_id = i.reporter_id
-         THEN own.first_name || ' ' || own.last_name
-         ELSE ren.first_name || ' ' || ren.last_name
-    END                                              AS reported_name,
+    COALESCE(
+        CASE WHEN i.reported_customer_id IS NOT NULL
+             THEN reported.customer_id
+             WHEN b.booking_id IS NULL
+             THEN own.customer_id
+             WHEN b.renter_id = i.reporter_id
+             THEN own.customer_id ELSE b.renter_id
+        END,
+        '00000000-0000-0000-0000-000000000000'::uuid
+    )                                                AS reported_id,
+    COALESCE(
+        CASE WHEN i.reported_customer_id IS NOT NULL
+             THEN reported.first_name || ' ' || reported.last_name
+             WHEN b.booking_id IS NULL
+             THEN own.first_name || ' ' || own.last_name
+             WHEN b.renter_id = i.reporter_id
+             THEN own.first_name || ' ' || own.last_name
+             ELSE ren.first_name || ' ' || ren.last_name
+        END,
+        'Usuario eliminado'
+    )                                                AS reported_name,
     COALESCE(b.booking_id, '00000000-0000-0000-0000-000000000000'::uuid) AS booking_id,
-    COALESCE(it.item_id, '00000000-0000-0000-0000-000000000000'::uuid) AS item_id,
-    COALESCE(it.title, 'Usuario reportado')          AS item_title,
+    COALESCE(it.item_id, b.item_id, i.item_id, '00000000-0000-0000-0000-000000000000'::uuid) AS item_id,
+    COALESCE(it.title, b.item_title_snapshot, i.item_title_snapshot, 'Usuario reportado') AS item_title,
     COALESCE(b.start_date::timestamptz, i.reported_at) AS start_date,
     COALESCE(b.end_date::timestamptz, i.reported_at)   AS end_date,
     i.incident_type,
@@ -169,7 +175,7 @@ LEFT JOIN booking b   ON b.booking_id  = r.booking_id
 LEFT JOIN item it ON it.item_id = COALESCE(b.item_id, i.item_id)
 JOIN customer rep ON rep.customer_id = i.reporter_id
 LEFT JOIN customer ren ON ren.customer_id = b.renter_id
-LEFT JOIN customer own ON own.customer_id = it.owner_id
+LEFT JOIN customer own ON own.customer_id = COALESCE(it.owner_id, b.owner_id_snapshot, i.item_owner_id_snapshot)
 LEFT JOIN customer reported ON reported.customer_id = i.reported_customer_id
 `
 
@@ -180,8 +186,11 @@ RETURNING incident_id
 `
 
 const createProductIncident = `
-INSERT INTO incident (item_id, reporter_id, incident_type, description, priority)
-VALUES ($1, $2, $3, $4, $5)
+INSERT INTO incident (item_id, reporter_id, incident_type, description, priority,
+                      item_title_snapshot, item_owner_id_snapshot)
+SELECT i.item_id, $2, $3, $4, $5, i.title, i.owner_id
+FROM item i
+WHERE i.item_id = $1
 RETURNING incident_id
 `
 

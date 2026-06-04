@@ -17,9 +17,22 @@ WHERE item_id = $1
 RETURNING item_id
 `
 
+const deleteItemByID = `
+DELETE FROM item
+WHERE item_id = $1
+RETURNING item_id
+`
+
 // DeleteItemForOwner deletes an item only when it belongs to the given owner.
 func (q *Queries) DeleteItemForOwner(ctx context.Context, itemID, ownerID uuid.UUID) error {
 	row := q.db.QueryRow(ctx, deleteItemForOwner, itemID, ownerID)
+	var deletedID uuid.UUID
+	return row.Scan(&deletedID)
+}
+
+// DeleteItemByID deletes an item without checking ownership.
+func (q *Queries) DeleteItemByID(ctx context.Context, itemID uuid.UUID) error {
+	row := q.db.QueryRow(ctx, deleteItemByID, itemID)
 	var deletedID uuid.UUID
 	return row.Scan(&deletedID)
 }

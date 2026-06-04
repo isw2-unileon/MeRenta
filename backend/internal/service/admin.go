@@ -21,6 +21,12 @@ var ErrAdminUserNotFound = errors.New("user not found")
 // ErrAdminBookingNotFound is returned when the target booking does not exist.
 var ErrAdminBookingNotFound = errors.New("booking not found")
 
+// ErrAdminItemNotFound is returned when the target item does not exist.
+var ErrAdminItemNotFound = errors.New("item not found")
+
+// ErrAdminItemHasDependencies is returned when the database refuses to delete an item still referenced elsewhere.
+var ErrAdminItemHasDependencies = errors.New("item has related records")
+
 // adminQuerier is the minimal DB interface needed by AdminService.
 type adminQuerier interface {
 	CountCustomers(ctx context.Context) (int64, error)
@@ -29,6 +35,7 @@ type adminQuerier interface {
 	ListCustomersByStatus(ctx context.Context, arg sqlcdb.ListCustomersByStatusParams) ([]sqlcdb.ListCustomersByStatusRow, error)
 	SearchCustomers(ctx context.Context, arg sqlcdb.SearchCustomersParams) ([]sqlcdb.SearchCustomersRow, error)
 	SearchItemCards(ctx context.Context, arg sqlcdb.SearchItemCardsParams) ([]sqlcdb.SearchItemCardsRow, error)
+	DeleteItemByID(ctx context.Context, itemID uuid.UUID) error
 	UpdateCustomerStatus(ctx context.Context, arg sqlcdb.UpdateCustomerStatusParams) (sqlcdb.UpdateCustomerStatusRow, error)
 	SetCustomerSuspendedUntil(ctx context.Context, customerID uuid.UUID, until pgtype.Timestamptz) error
 	EnsureCustomerVerificationSchema(ctx context.Context) error
@@ -71,6 +78,7 @@ type AdminUserRow struct {
 	LastName         string               `json:"last_name"`
 	Email            string               `json:"email"`
 	Phone            string               `json:"phone,omitempty"`
+	AvatarURL        string               `json:"avatar_url,omitempty"`
 	RegistrationDate string               `json:"registration_date"`
 	AccountStatus    sqlcdb.AccountStatus `json:"account_status"`
 	UserRole         sqlcdb.UserRole      `json:"user_role"`
@@ -238,6 +246,20 @@ func (s *AdminService) ListProducts(ctx context.Context, query string, page, lim
 	}, nil
 }
 
+// DeleteProduct permanently removes an item listing from the database.
+func (s *AdminService) DeleteProduct(ctx context.Context, itemID uuid.UUID) error {
+	if err := s.q.DeleteItemByID(ctx, itemID); err != nil {
+		if errors.Is(err, pgx.ErrNoRows) {
+			return ErrAdminItemNotFound
+		}
+		if isForeignKeyViolation(err) {
+			return ErrAdminItemHasDependencies
+		}
+		return err
+	}
+	return nil
+}
+
 // LogAuditEntry writes an audit log entry. Errors are warnings only.
 func (s *AdminService) LogAuditEntry(
 	ctx context.Context,
@@ -319,7 +341,7 @@ func (s *AdminService) listByQuery(
 	}
 	return adminUserListResponse(list, int64(len(list)), page, limit, func(c sqlcdb.SearchCustomersRow) AdminUserRow {
 		return toAdminRow(c.CustomerID, c.FirstName, c.LastName, c.Email,
-			c.Phone, c.RegistrationDate, c.AccountStatus, c.UserRole)
+			c.Phone, c.AvatarUrl, c.RegistrationDate, c.AccountStatus, c.UserRole)
 	}), nil
 }
 
@@ -339,7 +361,7 @@ func (s *AdminService) listByStatus(
 	}
 	return adminUserListResponse(list, int64(len(list)), page, limit, func(c sqlcdb.ListCustomersByStatusRow) AdminUserRow {
 		return toAdminRow(c.CustomerID, c.FirstName, c.LastName, c.Email,
-			c.Phone, c.RegistrationDate, c.AccountStatus, c.UserRole)
+			c.Phone, c.AvatarUrl, c.RegistrationDate, c.AccountStatus, c.UserRole)
 	}), nil
 }
 
@@ -358,7 +380,7 @@ func (s *AdminService) listAll(
 	}
 	return adminUserListResponse(list, total, page, limit, func(c sqlcdb.ListCustomersRow) AdminUserRow {
 		return toAdminRow(c.CustomerID, c.FirstName, c.LastName, c.Email,
-			c.Phone, c.RegistrationDate, c.AccountStatus, c.UserRole)
+			c.Phone, c.AvatarUrl, c.RegistrationDate, c.AccountStatus, c.UserRole)
 	}), nil
 }
 
@@ -620,6 +642,7 @@ func toAdminRow(
 	id uuid.UUID,
 	firstName, lastName, email string,
 	phone pgtype.Text,
+	avatarURL pgtype.Text,
 	regDate pgtype.Timestamptz,
 	status sqlcdb.AccountStatus,
 	role sqlcdb.UserRole,
@@ -630,6 +653,7 @@ func toAdminRow(
 		LastName:         lastName,
 		Email:            email,
 		Phone:            nullableStr(phone),
+		AvatarURL:        nullableStr(avatarURL),
 		RegistrationDate: nullableTime(regDate),
 		AccountStatus:    status,
 		UserRole:         role,
