@@ -225,7 +225,7 @@ function Toggle({ checked, disabled = false, onChange, id, ariaLabel }: TogglePr
       aria-label={ariaLabel}
       disabled={disabled}
       onClick={() => onChange(!checked)}
-      className="relative inline-flex h-6 w-11 shrink-0 cursor-pointer items-center rounded-full border-2 border-transparent transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-emerald-500 disabled:cursor-not-allowed disabled:opacity-50"
+      className="relative inline-flex h-6 w-11 shrink-0 cursor-pointer items-center justify-start rounded-full p-0.5 transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-emerald-500 disabled:cursor-not-allowed disabled:opacity-50"
       style={{ backgroundColor: checked ? GREEN : "#d1d5db" }}
     >
       <span
@@ -300,7 +300,7 @@ function ConfigPanel({ state, onToggle }: ConfigPanelProps) {
       {/* ── Acceso a la plataforma ── */}
       <Card className="overflow-hidden">
         <div className="border-b border-neutral-100 px-5 py-4">
-          <h2 className="text-sm font-semibold text-neutral-800">🔒 Acceso a la plataforma</h2>
+          <h2 className="text-sm font-semibold text-neutral-800">Acceso a la plataforma</h2>
           <p className="mt-0.5 text-xs text-neutral-400">Controla si los usuarios pueden crear nuevas cuentas.</p>
         </div>
 
@@ -348,7 +348,7 @@ function ConfigPanel({ state, onToggle }: ConfigPanelProps) {
       {/* ── Precios (solo lectura) ── */}
       <Card className="overflow-hidden">
         <div className="border-b border-neutral-100 px-5 py-4">
-          <h2 className="text-sm font-semibold text-neutral-800">💰 Precios y tarifas</h2>
+          <h2 className="text-sm font-semibold text-neutral-800">Precios y tarifas</h2>
           <p className="mt-0.5 text-xs text-neutral-400">
             Constantes definidas en el código fuente. Contacta con desarrollo para modificarlas.
           </p>
@@ -368,7 +368,7 @@ function ConfigPanel({ state, onToggle }: ConfigPanelProps) {
       {/* ── Reservas (solo lectura) ── */}
       <Card className="overflow-hidden">
         <div className="border-b border-neutral-100 px-5 py-4">
-          <h2 className="text-sm font-semibold text-neutral-800">⏱ Reservas</h2>
+          <h2 className="text-sm font-semibold text-neutral-800">Reservas</h2>
           <p className="mt-0.5 text-xs text-neutral-400">Parámetros del ciclo de vida de las reservas. Solo lectura.</p>
         </div>
         <div className="divide-y divide-neutral-100 px-5">

@@ -1,11 +1,21 @@
 import { useCallback, useEffect, useReducer, useState } from "react";
 import { Check, X } from "lucide-react";
 
-import type { ApiResponse } from "@/types/common";
 import type { VerificationStatus } from "@/types/customer";
 import type { AdminVerificationListResponse, AdminVerificationRequest } from "@/types/admin";
 import { GREEN } from "@/components/admin/adminTokens";
-import { Avatar, Badge, Card, ConfirmModal, SectionTitle } from "@/components/admin/adminUi";
+import { getAdminData, sendAdminMutation } from "@/components/admin/adminApi";
+import { fmtDate } from "@/components/admin/adminFormat";
+import {
+  Avatar,
+  Badge,
+  Card,
+  ConfirmModal,
+  FilterPills,
+  Pagination,
+  SectionTitle,
+  TableSkeleton,
+} from "@/components/admin/adminUi";
 
 const LIMIT = 20;
 
@@ -29,15 +39,6 @@ const STATUS_BADGE_COLORS: Record<QueueStatus, "amber" | "green" | "red"> = {
   verified: "green",
   rejected: "red",
 };
-
-function fmtDate(iso: string): string {
-  if (!iso) return "-";
-  return new Date(iso).toLocaleDateString("es-ES", {
-    day: "numeric",
-    month: "short",
-    year: "numeric",
-  });
-}
 
 function userInitials(u: AdminVerificationRequest): string {
   return `${u.first_name[0] ?? ""}${u.last_name[0] ?? ""}`.toUpperCase();
@@ -76,27 +77,21 @@ function verificationReducer(state: VerificationState, action: VerificationActio
   }
 }
 
-async function fetchVerification(status: QueueStatus, page: number): Promise<AdminVerificationListResponse> {
+function fetchVerification(status: QueueStatus, page: number): Promise<AdminVerificationListResponse> {
   const params = new URLSearchParams({ status, page: String(page), limit: String(LIMIT) });
-  const res = await fetch(`/api/admin/verification?${params.toString()}`, { credentials: "include" });
-  const json = (await res.json()) as ApiResponse<AdminVerificationListResponse>;
-  if (!res.ok || !json.success || !json.data) {
-    throw new Error(json.error ?? "Error al cargar la cola de verificación");
-  }
-  return json.data;
+  return getAdminData<AdminVerificationListResponse>(
+    `/api/admin/verification?${params.toString()}`,
+    "Error al cargar la cola de verificación"
+  );
 }
 
-async function updateVerification(customerId: string, status: DecisionStatus): Promise<void> {
-  const res = await fetch(`/api/admin/verification/${customerId}`, {
-    method: "PATCH",
-    credentials: "include",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ status }),
-  });
-  const json = (await res.json()) as ApiResponse<unknown>;
-  if (!res.ok || !json.success) {
-    throw new Error(json.error ?? "Error al actualizar la verificación");
-  }
+function updateVerification(customerId: string, status: DecisionStatus): Promise<void> {
+  return sendAdminMutation(
+    `/api/admin/verification/${customerId}`,
+    "PATCH",
+    { status },
+    "Error al actualizar la verificación"
+  );
 }
 
 function CheckMark({ ok }: { ok: boolean }) {
@@ -167,27 +162,14 @@ function Verification() {
   }
 
   const { requests, total, loading, error } = state;
-  const totalPages = Math.max(1, Math.ceil(total / LIMIT));
 
   return (
     <div className="space-y-4">
-      <div className="flex flex-wrap items-center gap-2">
-        {FILTER_OPTIONS.map(({ value, label }) => (
-          <button
-            key={value}
-            type="button"
-            onClick={() => handleStatusFilter(value)}
-            className="rounded-full border px-3.5 py-1.5 text-sm font-medium transition"
-            style={
-              filters.status === value
-                ? { backgroundColor: GREEN, color: "#fff", borderColor: GREEN }
-                : { borderColor: "#e5e7eb", color: "#525252" }
-            }
-          >
-            {label}
-          </button>
-        ))}
-      </div>
+      <FilterPills
+        options={FILTER_OPTIONS}
+        value={filters.status}
+        onChange={handleStatusFilter}
+      />
 
       <Card className="overflow-hidden">
         <div className="border-b border-neutral-100 px-5 py-4">
@@ -215,26 +197,12 @@ function Verification() {
               </tr>
             </thead>
             <tbody>
-              {loading &&
-                Array.from({ length: 5 }).map((_, i) => (
-                  <tr
-                    key={i}
-                    className="border-b border-neutral-50"
-                  >
-                    {Array.from({ length: 7 }).map((__, j) => (
-                      <td
-                        key={j}
-                        aria-label="Cargando"
-                        className="px-5 py-4"
-                      >
-                        <div
-                          aria-hidden="true"
-                          className="h-4 w-24 animate-pulse rounded bg-neutral-100"
-                        />
-                      </td>
-                    ))}
-                  </tr>
-                ))}
+              {loading && (
+                <TableSkeleton
+                  rows={5}
+                  cols={7}
+                />
+              )}
 
               {!loading &&
                 requests.map((request, i) => {
@@ -324,32 +292,13 @@ function Verification() {
           </table>
         )}
 
-        {totalPages > 1 && !loading && (
-          <div className="flex items-center justify-between border-t border-neutral-100 px-5 py-3 text-sm text-neutral-500">
-            <span>
-              {(filters.page - 1) * LIMIT + 1}-{Math.min(filters.page * LIMIT, total)} de {total}
-            </span>
-            <div className="flex gap-1">
-              <button
-                type="button"
-                disabled={filters.page <= 1}
-                onClick={() => handlePage(filters.page - 1)}
-                aria-label="Página anterior"
-                className="rounded px-2 py-1 hover:bg-neutral-50 disabled:opacity-40"
-              >
-                Anterior
-              </button>
-              <button
-                type="button"
-                disabled={filters.page >= totalPages}
-                onClick={() => handlePage(filters.page + 1)}
-                aria-label="Página siguiente"
-                className="rounded px-2 py-1 hover:bg-neutral-50 disabled:opacity-40"
-              >
-                Siguiente
-              </button>
-            </div>
-          </div>
+        {!loading && (
+          <Pagination
+            page={filters.page}
+            total={total}
+            limit={LIMIT}
+            onPage={handlePage}
+          />
         )}
       </Card>
 

@@ -1,11 +1,12 @@
 import { useCallback, useEffect, useReducer, useRef, useState } from "react";
 import { Check, MoreHorizontal, Search, X } from "lucide-react";
 
-import type { ApiResponse } from "@/types/common";
 import type { AccountStatus } from "@/types/customer";
 import type { AdminUser, AdminUserListResponse } from "@/types/admin";
 import { GREEN } from "@/components/admin/adminTokens";
-import { Avatar, Badge, Card, SectionTitle } from "@/components/admin/adminUi";
+import { getAdminData, sendAdminMutation } from "@/components/admin/adminApi";
+import { fmtDate } from "@/components/admin/adminFormat";
+import { Avatar, Badge, Card, FilterPills, Pagination, SectionTitle, TableSkeleton } from "@/components/admin/adminUi";
 
 // ── Constants ─────────────────────────────────────────────────────────────────
 
@@ -43,15 +44,6 @@ const FILTER_OPTIONS: { value: string; label: string }[] = [
 ];
 
 // ── Pure helpers (module scope) ───────────────────────────────────────────────
-
-function fmtDate(iso: string): string {
-  if (!iso) return "—";
-  return new Date(iso).toLocaleDateString("es-ES", {
-    day: "numeric",
-    month: "short",
-    year: "numeric",
-  });
-}
 
 function userInitials(u: AdminUser): string {
   return `${u.first_name[0] ?? ""}${u.last_name[0] ?? ""}`.toUpperCase();
@@ -94,33 +86,19 @@ function usersReducer(state: UsersState, action: UsersAction): UsersState {
 
 // ── API helpers ───────────────────────────────────────────────────────────────
 
-async function fetchUsers(query: string, status: string, page: number): Promise<AdminUserListResponse> {
+function fetchUsers(query: string, status: string, page: number): Promise<AdminUserListResponse> {
   const params = new URLSearchParams({ page: String(page), limit: String(LIMIT) });
   if (query) params.set("q", query);
   if (status) params.set("status", status);
 
-  const res = await fetch(`/api/admin/users?${params.toString()}`, { credentials: "include" });
-  const json = (await res.json()) as ApiResponse<AdminUserListResponse>;
-  if (!res.ok || !json.success || !json.data) {
-    throw new Error(json.error ?? "Error al cargar usuarios");
-  }
-  return json.data;
+  return getAdminData<AdminUserListResponse>(`/api/admin/users?${params.toString()}`, "Error al cargar usuarios");
 }
 
-async function updateStatus(customerId: string, status: AccountStatus, suspendedUntil?: string): Promise<void> {
+function updateStatus(customerId: string, status: AccountStatus, suspendedUntil?: string): Promise<void> {
   const body: { status: string; suspended_until?: string } = { status };
   if (suspendedUntil) body.suspended_until = suspendedUntil;
 
-  const res = await fetch(`/api/admin/users/${customerId}/status`, {
-    method: "PATCH",
-    credentials: "include",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify(body),
-  });
-  const json = (await res.json()) as ApiResponse<unknown>;
-  if (!res.ok || !json.success) {
-    throw new Error(json.error ?? "Error al actualizar el estado");
-  }
+  return sendAdminMutation(`/api/admin/users/${customerId}/status`, "PATCH", body, "Error al actualizar el estado");
 }
 
 // ── Sub-components ────────────────────────────────────────────────────────────
@@ -337,29 +315,16 @@ function UsersView() {
   );
 
   const { users, total, loading, error } = state;
-  const totalPages = Math.max(1, Math.ceil(total / LIMIT));
 
   return (
     <div className="space-y-4">
       {/* Header + filters */}
       <div className="flex flex-wrap items-center justify-between gap-3">
-        <div className="flex flex-wrap gap-2">
-          {FILTER_OPTIONS.map(({ value, label }) => (
-            <button
-              key={value}
-              type="button"
-              onClick={() => handleStatusFilter(value)}
-              className="rounded-full border px-3.5 py-1.5 text-sm font-medium transition"
-              style={
-                filters.status === value
-                  ? { backgroundColor: GREEN, color: "#fff", borderColor: GREEN }
-                  : { borderColor: "#e5e7eb", color: "#525252" }
-              }
-            >
-              {label}
-            </button>
-          ))}
-        </div>
+        <FilterPills
+          options={FILTER_OPTIONS}
+          value={filters.status}
+          onChange={handleStatusFilter}
+        />
         <div className="relative">
           <Search
             size={15}
@@ -400,26 +365,12 @@ function UsersView() {
               </tr>
             </thead>
             <tbody>
-              {loading &&
-                Array.from({ length: 5 }).map((_, i) => (
-                  <tr
-                    key={i}
-                    className="border-b border-neutral-50"
-                  >
-                    {Array.from({ length: 6 }).map((__, j) => (
-                      <td
-                        key={j}
-                        aria-label="Cargando"
-                        className="px-5 py-4"
-                      >
-                        <div
-                          aria-hidden="true"
-                          className="h-4 w-24 animate-pulse rounded bg-neutral-100"
-                        />
-                      </td>
-                    ))}
-                  </tr>
-                ))}
+              {loading && (
+                <TableSkeleton
+                  rows={5}
+                  cols={6}
+                />
+              )}
 
               {!loading &&
                 users.map((u, i) => (
@@ -473,32 +424,13 @@ function UsersView() {
         )}
 
         {/* Pagination */}
-        {totalPages > 1 && !loading && (
-          <div className="flex items-center justify-between border-t border-neutral-100 px-5 py-3 text-sm text-neutral-500">
-            <span>
-              {(filters.page - 1) * LIMIT + 1}-{Math.min(filters.page * LIMIT, total)} de {total}
-            </span>
-            <div className="flex gap-1">
-              <button
-                type="button"
-                disabled={filters.page <= 1}
-                onClick={() => handlePage(filters.page - 1)}
-                aria-label="Página anterior"
-                className="rounded px-2 py-1 hover:bg-neutral-50 disabled:opacity-40"
-              >
-                Anterior
-              </button>
-              <button
-                type="button"
-                disabled={filters.page >= totalPages}
-                onClick={() => handlePage(filters.page + 1)}
-                aria-label="Página siguiente"
-                className="rounded px-2 py-1 hover:bg-neutral-50 disabled:opacity-40"
-              >
-                Siguiente
-              </button>
-            </div>
-          </div>
+        {!loading && (
+          <Pagination
+            page={filters.page}
+            total={total}
+            limit={LIMIT}
+            onPage={handlePage}
+          />
         )}
       </Card>
     </div>

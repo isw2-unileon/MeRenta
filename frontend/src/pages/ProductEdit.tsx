@@ -8,6 +8,7 @@ import { LocationSection } from "@/components/product/LocationSection";
 import { PhotosSection } from "@/components/product/PhotosSection";
 import { PreviewPanel } from "@/components/product/PreviewPanel";
 import { PriceSection } from "@/components/product/PriceSection";
+import { createAddress, fetchAddresses, isNewPhoto, uploadItemImages } from "@/components/product/productApi";
 import { useAuth } from "@/hooks/useAuth";
 import type { AddressResponse, CreateAddressRequest } from "@/types/address";
 import type { ApiResponse } from "@/types/common";
@@ -85,10 +86,6 @@ const SAVE_STEP_LABELS: Record<SaveStep, string> = {
   uploading: "Subiendo fotos…",
   done: "Cambios guardados",
 };
-
-function isNewPhoto(photo: ProductPhoto): photo is File {
-  return photo instanceof File;
-}
 
 function isExistingPhoto(photo: ProductPhoto): photo is ExistingProductPhoto {
   return !(photo instanceof File);
@@ -249,26 +246,6 @@ async function fetchImages(itemId: string): Promise<ItemImageResponse[]> {
   return json.data ?? [];
 }
 
-async function fetchAddresses(): Promise<AddressResponse[]> {
-  const res = await fetch("/api/addresses", { credentials: "include" });
-  const json = (await res.json()) as ApiResponse<AddressResponse[]>;
-  return json.data ?? [];
-}
-
-async function createAddress(req: CreateAddressRequest): Promise<AddressResponse> {
-  const res = await fetch("/api/addresses", {
-    method: "POST",
-    credentials: "include",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify(req),
-  });
-  const json = (await res.json()) as ApiResponse<AddressResponse>;
-  if (!res.ok || !json.success || !json.data) {
-    throw new Error(json.message ?? json.error ?? "Error al guardar la dirección");
-  }
-  return json.data;
-}
-
 async function updateItem(itemId: string, payload: UpdateItemRequest): Promise<ItemResponse> {
   const res = await fetch(`/api/items/${itemId}`, {
     method: "PATCH",
@@ -292,22 +269,6 @@ async function deleteItem(itemId: string): Promise<void> {
   if (!res.ok || !json.success) {
     throw new Error(json.message ?? json.error ?? "Error al eliminar el anuncio");
   }
-}
-
-async function uploadItemImages(itemId: string, photos: File[]): Promise<ItemImageResponse[]> {
-  const form = new FormData();
-  for (const file of photos) form.append("images", file);
-
-  const res = await fetch(`/api/items/${itemId}/images`, {
-    method: "POST",
-    credentials: "include",
-    body: form,
-  });
-  const json = (await res.json()) as ApiResponse<ItemImageResponse[]>;
-  if (!res.ok || !json.success || !json.data) {
-    throw new Error(json.message ?? json.error ?? "Error al subir las imágenes");
-  }
-  return json.data;
 }
 
 async function deleteItemImage(itemId: string, imageId: string): Promise<void> {
