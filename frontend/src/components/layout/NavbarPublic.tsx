@@ -14,7 +14,7 @@ function NavbarPublic() {
       <div className="max-w-alert-width px-nav-margin mx-auto flex h-full items-center justify-between">
         <button
           type="button"
-          className="text-logo text-ink inline-flex cursor-pointer items-baseline gap-0 whitespace-nowrap border-none bg-transparent p-0 font-bold tracking-normal"
+          className="text-logo text-ink inline-flex cursor-pointer items-baseline gap-0 border-none bg-transparent p-0 font-bold tracking-normal whitespace-nowrap"
           onClick={() => navigate("/")}
         >
           <span>Me</span>

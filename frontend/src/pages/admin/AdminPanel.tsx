@@ -124,7 +124,7 @@ function Sidebar({ active, navItems, onSelect }: SidebarProps) {
         <a
           href="/"
           aria-label="Ir a la página principal"
-          className="text-logo text-ink inline-flex items-baseline gap-0 whitespace-nowrap font-bold tracking-normal"
+          className="text-logo text-ink inline-flex items-baseline gap-0 font-bold tracking-normal whitespace-nowrap"
         >
           <span>Me</span>
           <span className="text-primary">Renta</span>
@@ -165,7 +165,6 @@ function Sidebar({ active, navItems, onSelect }: SidebarProps) {
           );
         })}
       </nav>
-
     </aside>
   );
 }
@@ -275,11 +274,11 @@ function AdminPanel() {
       className="flex min-h-screen bg-stone-50 text-neutral-900"
       style={{ fontFamily: "Inter, ui-sans-serif, system-ui, sans-serif" }}
     >
-        <Sidebar
-          active={active}
-          navItems={navItems}
-          onSelect={setActive}
-        />
+      <Sidebar
+        active={active}
+        navItems={navItems}
+        onSelect={setActive}
+      />
 
       <div className="flex min-w-0 flex-1 flex-col">
         {/* Top header */}

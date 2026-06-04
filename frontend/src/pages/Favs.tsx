@@ -223,9 +223,7 @@ function FavCard({ item, onRemove }: FavCardProps) {
   }
 
   return (
-    <article
-      className="border-border-main bg-page relative overflow-hidden rounded-xl border transition-shadow hover:shadow-md"
-    >
+    <article className="border-border-main bg-page relative overflow-hidden rounded-xl border transition-shadow hover:shadow-md">
       <Link
         to={`/product/${item.item_id}`}
         className="absolute inset-0 z-10 rounded-xl"
@@ -243,9 +241,7 @@ function FavCard({ item, onRemove }: FavCardProps) {
         )}
 
         <div className="absolute top-3 right-13 left-4 flex items-center gap-2">
-          <span className="product-estado-badge">
-            {categoryLabel}
-          </span>
+          <span className="product-estado-badge">{categoryLabel}</span>
           <StatusBadge item={item} />
         </div>
 

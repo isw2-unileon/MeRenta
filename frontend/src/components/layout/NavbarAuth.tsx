@@ -43,7 +43,7 @@ function NavbarAuth() {
         <div className="flex items-center gap-8">
           <button
             type="button"
-            className="text-logo text-ink inline-flex cursor-pointer items-baseline gap-0 whitespace-nowrap border-none bg-transparent p-0 font-bold tracking-normal"
+            className="text-logo text-ink inline-flex cursor-pointer items-baseline gap-0 border-none bg-transparent p-0 font-bold tracking-normal whitespace-nowrap"
             onClick={() => navigate("/home")}
           >
             <span>Me</span>

@@ -4,5 +4,4 @@
  */
 export const GREEN = "#15734f";
 export const MINT = "#e6f2ec";
-export const AMBER = "#f59e0b";
 export const PASTELS = ["#e3efe9", "#dce7f3", "#efe2f1", "#f7ece0", "#e9e7f5"] as const;

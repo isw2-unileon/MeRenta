@@ -12,7 +12,7 @@ function Footer() {
       <div className="max-w-alert-width mx-auto flex h-full items-center">
         <button
           type="button"
-          className="text-logo-footer text-ink inline-flex cursor-pointer items-baseline gap-0 whitespace-nowrap border-none bg-transparent p-0 font-bold tracking-normal"
+          className="text-logo-footer text-ink inline-flex cursor-pointer items-baseline gap-0 border-none bg-transparent p-0 font-bold tracking-normal whitespace-nowrap"
           onClick={() => navigate("/")}
         >
           <span>Me</span>
