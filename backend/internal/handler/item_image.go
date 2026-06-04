@@ -15,6 +15,7 @@ import (
 	"github.com/gin-gonic/gin"
 	"github.com/google/uuid"
 
+	"github.com/isw2-unileon/MeRenta/backend/internal/model"
 	"github.com/isw2-unileon/MeRenta/backend/internal/service"
 	"github.com/isw2-unileon/MeRenta/backend/pkg/response"
 )
@@ -38,12 +39,19 @@ const proxyHTTPTimeout = 30 * time.Second
 
 // ItemImageHandler wires the image endpoints to the image service.
 type ItemImageHandler struct {
-	svc        *service.ItemImageService
+	svc        itemImageService
 	httpClient *http.Client
 }
 
+type itemImageService interface {
+	GetImages(ctx context.Context, itemID uuid.UUID) ([]model.ItemImageResponse, error)
+	AddItemImages(ctx context.Context, ownerID uuid.UUID, itemID uuid.UUID, files []*multipart.FileHeader) ([]model.ItemImageResponse, error)
+	DeleteImage(ctx context.Context, ownerID, itemID, imageID uuid.UUID) error
+	GetImageURL(ctx context.Context, itemID, imageID uuid.UUID) (string, error)
+}
+
 // NewItemImageHandler builds a new ItemImageHandler.
-func NewItemImageHandler(svc *service.ItemImageService) *ItemImageHandler {
+func NewItemImageHandler(svc itemImageService) *ItemImageHandler {
 	return &ItemImageHandler{
 		svc:        svc,
 		httpClient: &http.Client{Timeout: proxyHTTPTimeout},
