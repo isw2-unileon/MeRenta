@@ -81,6 +81,13 @@ const PRODUCTS_SKELETON_IDS = [
   "profile-product-skel-6",
 ];
 
+const VERIFICATION_BUTTON_LABEL: Record<VerificationStatus, string> = {
+  none: "Solicitar badge verificado",
+  pending: "Solicitud pendiente",
+  verified: "Perfil verificado",
+  rejected: "Solicitar de nuevo",
+};
+
 function reviewsReducer(state: ReviewsState, action: ReviewsAction): ReviewsState {
   switch (action.type) {
     case "fetch_start":
@@ -408,13 +415,6 @@ function MyProfile() {
     .filter(Boolean)
     .join(" - ");
 
-  const verificationButtonLabel: Record<VerificationStatus, string> = {
-    none: "Solicitar badge verificado",
-    pending: "Solicitud pendiente",
-    verified: "Perfil verificado",
-    rejected: "Solicitar de nuevo",
-  };
-
   const verificationStatus = requestedVerificationStatus ?? user?.verification_status ?? "none";
   const canRequestVerification = verificationStatus === "none" || verificationStatus === "rejected";
 
@@ -481,7 +481,7 @@ function MyProfile() {
                   <p className="profile-name">{fullName}</p>
                   {verificationStatus === "verified" && (
                     <span
-                      className="inline-flex size-6 items-center justify-center rounded-full bg-primary text-white"
+                      className="bg-primary inline-flex size-6 items-center justify-center rounded-full text-white"
                       title="Perfil verificado"
                       aria-label="Perfil verificado"
                     >
@@ -554,7 +554,7 @@ function MyProfile() {
               ))}
             </div>
             {verificationStatus !== "verified" && (
-              <div className="mt-4 flex flex-wrap items-center gap-3 border-t border-border-main pt-4">
+              <div className="border-border-main mt-4 flex flex-wrap items-center gap-3 border-t pt-4">
                 <button
                   type="button"
                   className="btn-primary btn--sm"
@@ -562,7 +562,7 @@ function MyProfile() {
                   onClick={handleRequestVerification}
                 >
                   <ShieldCheck size={15} />
-                  {verificationLoading ? "Enviando..." : verificationButtonLabel[verificationStatus]}
+                  {verificationLoading ? "Enviando..." : VERIFICATION_BUTTON_LABEL[verificationStatus]}
                 </button>
                 {verificationStatus === "pending" && (
                   <span className="text-subtle text-[13px]">Tu solicitud esta en revision.</span>

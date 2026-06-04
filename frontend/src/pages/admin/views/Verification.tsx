@@ -70,9 +70,7 @@ function verificationReducer(state: VerificationState, action: VerificationActio
       return {
         ...state,
         requests: state.requests.map((request) =>
-          request.customer_id === action.customerId
-            ? { ...request, verification_status: action.status }
-            : request
+          request.customer_id === action.customerId ? { ...request, verification_status: action.status } : request
         ),
       };
   }
