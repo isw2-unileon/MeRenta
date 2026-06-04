@@ -87,7 +87,7 @@ function PreviewPanel({ formData }: PreviewPanelProps) {
           {(categoryLabel || conditionLabel) && (
             <div className="mt-2.5 flex flex-wrap gap-1.5">
               {categoryLabel && (
-                <span className="bg-primary-bg text-primary inline-flex h-[22px] items-center rounded-full px-2.5 text-[11px] font-medium">
+                <span className="bg-primary-bg text-primary inline-flex h-5.5 items-center rounded-full px-2.5 text-[11px] font-medium">
                   {categoryLabel}
                 </span>
               )}
@@ -108,7 +108,7 @@ function PreviewPanel({ formData }: PreviewPanelProps) {
               </p>
             )}
 
-            <div className="text-subtle mt-1 flex items-center gap-2 text-[12px]">
+            <div className="text-subtle text-card-loc mt-1 flex items-center gap-2">
               {previewDeposit !== null && previewDeposit > 0 && <span>Depósito: {previewDeposit.toFixed(0)} EUR</span>}
               {previewDeposit !== null && previewDeposit > 0 && <span className="text-border-main">·</span>}
               <span>
@@ -134,7 +134,7 @@ function PreviewPanel({ formData }: PreviewPanelProps) {
       </p>
 
       {!hasContent && (
-        <p className="border-border-main bg-surface text-subtle rounded-lg border p-3 text-center text-[12px]">
+        <p className="border-border-main bg-surface text-subtle text-card-loc rounded-lg border p-3 text-center">
           Completa el formulario para ver la vista previa
         </p>
       )}

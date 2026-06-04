@@ -1,28 +1,30 @@
 import { useCallback, useEffect, useReducer, useRef, useState } from "react";
 import { ExternalLink, ImageIcon, MoreHorizontal, Search } from "lucide-react";
 
-import type { ApiResponse } from "@/types/common";
 import type { BookingDetailResponse, BookingListResponse, BookingStatus } from "@/types/booking";
-import { GREEN } from "@/pages/admin/components/adminTokens";
-import { Badge, Card, ConfirmModal, SectionTitle } from "@/pages/admin/components/adminUi";
+import { getAdminData, sendAdminMutation } from "@/components/admin/adminApi";
+import { fmtDate, fmtPrice } from "@/components/admin/adminFormat";
+import {
+  Badge,
+  Card,
+  ConfirmModal,
+  FilterPills,
+  Pagination,
+  SectionTitle,
+  TableSkeleton,
+} from "@/components/admin/adminUi";
 
 // ── Constants ─────────────────────────────────────────────────────────────────
 
 const LIMIT = 20;
 
-const EUR_FORMAT = new Intl.NumberFormat("es-ES", {
-  style: "currency",
-  currency: "EUR",
-  maximumFractionDigits: 2,
-});
-
 const REFUNDED_STATUSES: BookingStatus[] = ["cancelled", "rejected"];
 
-const FILTER_OPTIONS = [
+const FILTER_OPTIONS: { value: string; label: string }[] = [
   { value: "", label: "Todos" },
   { value: "paid", label: "Cobrados" },
   { value: "refunded", label: "Reembolsados" },
-] as const;
+];
 
 const BOOKING_STATUS_LABELS: Record<BookingStatus, string> = {
   pending: "pendiente",
@@ -47,16 +49,6 @@ const NEXT_LABELS: Partial<Record<BookingStatus, string>> = {
 };
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
-
-function fmtDate(iso: string): string {
-  if (!iso) return "—";
-  return new Date(iso).toLocaleDateString("es-ES", { day: "numeric", month: "short", year: "numeric" });
-}
-
-function fmtPrice(value: number | null): string {
-  if (value === null) return "—";
-  return EUR_FORMAT.format(value);
-}
 
 function renterName(b: BookingDetailResponse): string {
   return `${b.renter_first_name} ${b.renter_last_name}`.trim() || b.renter_id.slice(0, 8);
@@ -115,25 +107,20 @@ function paymentsReducer(state: PaymentsState, action: PaymentsAction): Payments
 
 // ── API ───────────────────────────────────────────────────────────────────────
 
-async function fetchPayments(paymentStatus: string, query: string, page: number): Promise<BookingListResponse> {
+function fetchPayments(paymentStatus: string, query: string, page: number): Promise<BookingListResponse> {
   const params = new URLSearchParams({ page: String(page), limit: String(LIMIT) });
   if (paymentStatus) params.set("payment_status", paymentStatus);
   if (query) params.set("q", query);
-  const res = await fetch(`/api/admin/payments?${params.toString()}`, { credentials: "include" });
-  const json = (await res.json()) as ApiResponse<BookingListResponse>;
-  if (!res.ok || !json.success || !json.data) throw new Error(json.error ?? "Error al cargar transacciones");
-  return json.data;
+  return getAdminData<BookingListResponse>(`/api/admin/payments?${params.toString()}`, "Error al cargar transacciones");
 }
 
-async function patchAdminBookingStatus(bookingId: string, status: BookingStatus): Promise<void> {
-  const res = await fetch(`/api/admin/bookings/${bookingId}/status`, {
-    method: "PATCH",
-    credentials: "include",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ status }),
-  });
-  const json = (await res.json()) as ApiResponse<unknown>;
-  if (!res.ok || !json.success) throw new Error(json.error ?? "Error al actualizar el estado");
+function patchAdminBookingStatus(bookingId: string, status: BookingStatus): Promise<void> {
+  return sendAdminMutation(
+    `/api/admin/bookings/${bookingId}/status`,
+    "PATCH",
+    { status },
+    "Error al actualizar el estado"
+  );
 }
 
 // ── StatusMenu ────────────────────────────────────────────────────────────────
@@ -246,7 +233,6 @@ function Payments() {
   }
 
   const { payments, total, loading, error } = state;
-  const totalPages = Math.max(1, Math.ceil(total / LIMIT));
   const isDangerous = pending?.status === "cancelled" || pending?.status === "rejected";
 
   return (
@@ -263,23 +249,11 @@ function Payments() {
 
       {/* Filter bar */}
       <div className="flex flex-wrap items-center justify-between gap-3">
-        <div className="flex flex-wrap gap-2">
-          {FILTER_OPTIONS.map(({ value, label }) => (
-            <button
-              key={value}
-              type="button"
-              onClick={() => handleFilter(value)}
-              className="rounded-full border px-3.5 py-1.5 text-sm font-medium transition"
-              style={
-                filters.paymentStatus === value
-                  ? { backgroundColor: GREEN, color: "#fff", borderColor: GREEN }
-                  : { borderColor: "#e5e7eb", color: "#525252" }
-              }
-            >
-              {label}
-            </button>
-          ))}
-        </div>
+        <FilterPills
+          options={FILTER_OPTIONS}
+          value={filters.paymentStatus}
+          onChange={handleFilter}
+        />
         <div className="relative">
           <Search
             size={15}
@@ -329,26 +303,12 @@ function Payments() {
                 </tr>
               </thead>
               <tbody>
-                {loading &&
-                  Array.from({ length: 6 }).map((_, i) => (
-                    <tr
-                      key={i}
-                      className="border-b border-neutral-50"
-                    >
-                      {Array.from({ length: 7 }).map((__, j) => (
-                        <td
-                          key={j}
-                          aria-label="Cargando"
-                          className="px-5 py-4"
-                        >
-                          <div
-                            aria-hidden="true"
-                            className="h-4 w-24 animate-pulse rounded bg-neutral-100"
-                          />
-                        </td>
-                      ))}
-                    </tr>
-                  ))}
+                {loading && (
+                  <TableSkeleton
+                    rows={6}
+                    cols={7}
+                  />
+                )}
 
                 {!loading &&
                   payments.map((p) => {
@@ -421,33 +381,13 @@ function Payments() {
             </table>
           )}
 
-          {totalPages > 1 && !loading && (
-            <div className="flex items-center justify-between border-t border-neutral-100 px-5 py-3 text-sm text-neutral-500">
-              <span>
-                {(filters.page - 1) * LIMIT + 1}–{Math.min(filters.page * LIMIT, total)} de{" "}
-                {total.toLocaleString("es-ES")}
-              </span>
-              <div className="flex gap-1">
-                <button
-                  type="button"
-                  disabled={filters.page <= 1}
-                  onClick={() => handlePage(filters.page - 1)}
-                  aria-label="Página anterior"
-                  className="rounded px-2 py-1 hover:bg-neutral-50 disabled:opacity-40"
-                >
-                  Anterior
-                </button>
-                <button
-                  type="button"
-                  disabled={filters.page >= totalPages}
-                  onClick={() => handlePage(filters.page + 1)}
-                  aria-label="Página siguiente"
-                  className="rounded px-2 py-1 hover:bg-neutral-50 disabled:opacity-40"
-                >
-                  Siguiente
-                </button>
-              </div>
-            </div>
+          {!loading && (
+            <Pagination
+              page={filters.page}
+              total={total}
+              limit={LIMIT}
+              onPage={handlePage}
+            />
           )}
         </Card>
       )}

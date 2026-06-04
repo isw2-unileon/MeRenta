@@ -1,4 +1,5 @@
 import { useNavigate } from "react-router-dom";
+import { BadgeCheck } from "lucide-react";
 
 import { StarRating } from "@/components/product/detail/StarRating";
 import type { CustomerProfile } from "@/types/customer";
@@ -65,7 +66,16 @@ function OwnerCard({ owner, rating = 0, reviewCount = 0 }: OwnerCardProps) {
         )}
 
         <div>
-          <p className="owner-name">{displayName}</p>
+          <div className="flex items-center gap-1.5">
+            <p className="owner-name">{displayName}</p>
+            {owner.verification_status === "verified" && (
+              <BadgeCheck
+                size={16}
+                className="text-primary shrink-0"
+                aria-label="Perfil verificado"
+              />
+            )}
+          </div>
           <p className="owner-since">Miembro desde {memberYear}</p>
           {rating > 0 && reviewCount > 0 && (
             <div className="mt-0.5 flex items-center gap-1">

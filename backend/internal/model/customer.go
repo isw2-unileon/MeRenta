@@ -41,16 +41,17 @@ type UpdatePasswordRequest struct {
 
 // CustomerResponse exposes customer data to API clients.
 type CustomerResponse struct {
-	CustomerID       string     `json:"customer_id"`
-	FirstName        string     `json:"first_name"`
-	LastName         string     `json:"last_name"`
-	Email            string     `json:"email"`
-	Phone            string     `json:"phone,omitempty"`
-	AvatarURL        string     `json:"avatar_url,omitempty"`
-	RegistrationDate time.Time  `json:"registration_date"`
-	AccountStatus    string     `json:"account_status"`
-	UserRole         string     `json:"user_role"`
-	SuspendedUntil   *time.Time `json:"suspended_until,omitempty"`
+	CustomerID         string     `json:"customer_id"`
+	FirstName          string     `json:"first_name"`
+	LastName           string     `json:"last_name"`
+	Email              string     `json:"email"`
+	Phone              string     `json:"phone,omitempty"`
+	AvatarURL          string     `json:"avatar_url,omitempty"`
+	RegistrationDate   time.Time  `json:"registration_date"`
+	AccountStatus      string     `json:"account_status"`
+	UserRole           string     `json:"user_role"`
+	SuspendedUntil     *time.Time `json:"suspended_until,omitempty"`
+	VerificationStatus string     `json:"verification_status"`
 }
 
 // AuthResponse returns a JWT token and the customer profile.
@@ -63,9 +64,10 @@ type AuthResponse struct {
 // (e.g. the owner card on a product detail page). It deliberately omits
 // sensitive fields such as email, phone and stripe_customer_id.
 type CustomerProfileResponse struct {
-	CustomerID       string    `json:"customer_id"`
-	FirstName        string    `json:"first_name"`
-	LastName         string    `json:"last_name"`
-	AvatarURL        string    `json:"avatar_url,omitempty"`
-	RegistrationDate time.Time `json:"registration_date"`
+	CustomerID         string    `json:"customer_id"`
+	FirstName          string    `json:"first_name"`
+	LastName           string    `json:"last_name"`
+	AvatarURL          string    `json:"avatar_url,omitempty"`
+	RegistrationDate   time.Time `json:"registration_date"`
+	VerificationStatus string    `json:"verification_status"`
 }

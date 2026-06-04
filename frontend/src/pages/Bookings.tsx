@@ -1,6 +1,6 @@
-import { useEffect, useReducer, useState } from "react";
+import React, { useEffect, useReducer, useState } from "react";
 import { useNavigate } from "react-router-dom";
-import { AlertTriangle, ArrowRight, CalendarDays, Package, X } from "lucide-react";
+import { AlertTriangle, ArrowRight, BadgeCheck, CalendarDays, Package, X } from "lucide-react";
 
 import { useAuth } from "@/hooks/useAuth";
 import type { ApiResponse } from "@/types/common";
@@ -77,8 +77,8 @@ async function patchBookingStatus(
 // ── Incident helpers ──────────────────────────────────────────────────────────
 
 const INCIDENT_TYPE_LABELS: Record<IncidentType, string> = {
-  damage: "Producto danado",
-  late_return: "Devolucion tardia",
+  damage: "Producto dañado",
+  late_return: "Devolución tardía",
   item_mismatch: "Producto no coincide",
   not_delivered: "No entregado",
   other: "Otra incidencia",
@@ -306,7 +306,7 @@ function BookingCard({
       {/* Image */}
       <button
         type="button"
-        className="size-20 flex-shrink-0 overflow-hidden rounded-lg p-0"
+        className="size-20 shrink-0 overflow-hidden rounded-lg p-0"
         onClick={() => navigate(`/product/${booking.item_id}`)}
         aria-label={`Abrir ${booking.item_title}`}
       >
@@ -339,8 +339,16 @@ function BookingCard({
         </div>
 
         {viewMode === "owner" && (
-          <p className="text-subtle mb-1 text-[13px]">
-            Solicitante: <span className="text-ink font-medium">{renterName}</span>
+          <p className="text-subtle mb-1 flex items-center gap-1 text-[13px]">
+            Solicitante:&nbsp;
+            <span className="text-ink font-medium">{renterName}</span>
+            {booking.renter_verification_status === "verified" && (
+              <BadgeCheck
+                size={14}
+                className="text-primary shrink-0"
+                aria-label="Perfil verificado"
+              />
+            )}
           </p>
         )}
 
@@ -355,7 +363,7 @@ function BookingCard({
           <p className="text-primary mt-1 text-[14px] font-bold">{fmtPrice(booking.estimated_total)} EUR</p>
         )}
 
-        {booking.notes && <p className="text-subtle mt-1 line-clamp-1 text-[12px] italic">"{booking.notes}"</p>}
+        {booking.notes && <p className="text-subtle text-card-loc mt-1 line-clamp-1 italic">"{booking.notes}"</p>}
 
         {/* Actions */}
         <div className="mt-3 flex flex-wrap gap-2">

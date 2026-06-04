@@ -2,7 +2,7 @@
 package model
 
 // CreatePaymentIntentRequest is the body sent by the frontend
-// to initialise a Stripe PaymentIntent for a rental.
+// to initialize a Stripe PaymentIntent for a rental.
 type CreatePaymentIntentRequest struct {
 	ItemID      string  `json:"item_id"      binding:"required,uuid"`
 	StartDate   string  `json:"start_date"   binding:"required"`

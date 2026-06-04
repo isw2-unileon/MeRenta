@@ -23,21 +23,22 @@ func searchItemCardRowsToResponses(rows []sqlcdb.SearchItemCardsRow) ([]model.Se
 		}
 
 		items = append(items, model.SearchItemResponse{
-			ItemID:          row.ItemID.String(),
-			OwnerID:         row.OwnerID.String(),
-			AddressID:       row.AddressID.String(),
-			Category:        string(row.Category),
-			Title:           row.Title,
-			ItemStatus:      string(row.ItemStatus),
-			PricePerDay:     pricePerDay,
-			IsAvailable:     row.IsAvailable,
-			PublishedAt:     row.PublishedAt.Time,
-			City:            row.City,
-			PostalCode:      row.PostalCode,
-			PrimaryImageURL: row.PrimaryImageURL,
-			OwnerFirstName:  row.OwnerFirstName,
-			OwnerLastName:   row.OwnerLastName,
-			OwnerAvatarURL:  row.OwnerAvatarURL,
+			ItemID:                  row.ItemID.String(),
+			OwnerID:                 row.OwnerID.String(),
+			AddressID:               row.AddressID.String(),
+			Category:                string(row.Category),
+			Title:                   row.Title,
+			ItemStatus:              string(row.ItemStatus),
+			PricePerDay:             pricePerDay,
+			IsAvailable:             row.IsAvailable,
+			PublishedAt:             row.PublishedAt.Time,
+			City:                    row.City,
+			PostalCode:              row.PostalCode,
+			PrimaryImageURL:         row.PrimaryImageURL,
+			OwnerFirstName:          row.OwnerFirstName,
+			OwnerLastName:           row.OwnerLastName,
+			OwnerAvatarURL:          row.OwnerAvatarURL,
+			OwnerVerificationStatus: string(row.OwnerVerificationStatus),
 		})
 	}
 

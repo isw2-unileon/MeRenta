@@ -20,7 +20,7 @@ import (
 var (
 	// ErrBookingNotFound is returned when the requested booking does not exist.
 	ErrBookingNotFound = errors.New("booking not found")
-	// ErrBookingForbidden is returned when the user is not authorised to act on the booking.
+	// ErrBookingForbidden is returned when the user is not authorized to act on the booking.
 	ErrBookingForbidden = errors.New("not authorised to modify this booking")
 	// ErrBookingClosed is returned when the booking status does not allow the requested transition.
 	ErrBookingClosed = errors.New("booking cannot be modified in its current state")
@@ -198,7 +198,7 @@ func (s *BookingService) Reject(
 		[]sqlcdb.BookingStatus{sqlcdb.BookingStatusPending})
 }
 
-// Cancel marks a booking as cancelled and refunds the renter.
+// Cancel marks a booking as canceled and refunds the renter.
 func (s *BookingService) Cancel(
 	ctx context.Context,
 	renterID uuid.UUID,
@@ -470,22 +470,23 @@ func bookingDetailToResponse(b sqlcdb.BookingDetailRow) (model.BookingDetailResp
 		return model.BookingDetailResponse{}, fmt.Errorf("convert estimated_total: %w", err)
 	}
 	return model.BookingDetailResponse{
-		BookingID:       b.BookingID.String(),
-		ItemID:          b.ItemID.String(),
-		ItemTitle:       b.ItemTitle,
-		ItemImageURL:    b.ItemImageURL,
-		RenterID:        b.RenterID.String(),
-		RenterFirstName: b.RenterFirstName,
-		RenterLastName:  b.RenterLastName,
-		OwnerID:         b.OwnerID.String(),
-		StartDate:       b.StartDate.Format(bookingDateLayout),
-		EndDate:         b.EndDate.Format(bookingDateLayout),
-		RequestedAt:     b.RequestedAt.Time.Format(time.RFC3339),
-		BookingStatus:   string(b.BookingStatus),
-		EstimatedTotal:  total,
-		Notes:           b.Notes.String,
-		PaymentIntentID: b.PaymentIntentID.String,
-		ExpiresAt:       optionalTime(b.ExpiresAt),
+		BookingID:                b.BookingID.String(),
+		ItemID:                   b.ItemID.String(),
+		ItemTitle:                b.ItemTitle,
+		ItemImageURL:             b.ItemImageURL,
+		RenterID:                 b.RenterID.String(),
+		RenterFirstName:          b.RenterFirstName,
+		RenterLastName:           b.RenterLastName,
+		RenterVerificationStatus: string(b.RenterVerificationStatus),
+		OwnerID:                  b.OwnerID.String(),
+		StartDate:                b.StartDate.Format(bookingDateLayout),
+		EndDate:                  b.EndDate.Format(bookingDateLayout),
+		RequestedAt:              b.RequestedAt.Time.Format(time.RFC3339),
+		BookingStatus:            string(b.BookingStatus),
+		EstimatedTotal:           total,
+		Notes:                    b.Notes.String,
+		PaymentIntentID:          b.PaymentIntentID.String,
+		ExpiresAt:                optionalTime(b.ExpiresAt),
 	}, nil
 }
 
@@ -516,7 +517,7 @@ func numericToOptionalFloat64(n pgtype.Numeric) (*float64, error) {
 	return &f, nil
 }
 
-// optionalTime formats a nullable timestamptz as RFC3339, or returns empty string.
+// optionalTime formats a nullable timestamp as RFC3339, or returns empty string.
 func optionalTime(t pgtype.Timestamptz) string {
 	if !t.Valid {
 		return ""

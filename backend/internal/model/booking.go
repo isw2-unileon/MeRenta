@@ -29,22 +29,23 @@ type BookingResponse struct {
 
 // BookingDetailResponse is returned for list / detail queries with joined data.
 type BookingDetailResponse struct {
-	BookingID       string   `json:"booking_id"`
-	ItemID          string   `json:"item_id"`
-	ItemTitle       string   `json:"item_title"`
-	ItemImageURL    string   `json:"item_image_url"`
-	RenterID        string   `json:"renter_id"`
-	RenterFirstName string   `json:"renter_first_name"`
-	RenterLastName  string   `json:"renter_last_name"`
-	OwnerID         string   `json:"owner_id"`
-	StartDate       string   `json:"start_date"`
-	EndDate         string   `json:"end_date"`
-	RequestedAt     string   `json:"requested_at"`
-	BookingStatus   string   `json:"booking_status"`
-	EstimatedTotal  *float64 `json:"estimated_total"`
-	Notes           string   `json:"notes"`
-	PaymentIntentID string   `json:"payment_intent_id"`
-	ExpiresAt       string   `json:"expires_at"`
+	BookingID                string   `json:"booking_id"`
+	ItemID                   string   `json:"item_id"`
+	ItemTitle                string   `json:"item_title"`
+	ItemImageURL             string   `json:"item_image_url"`
+	RenterID                 string   `json:"renter_id"`
+	RenterFirstName          string   `json:"renter_first_name"`
+	RenterLastName           string   `json:"renter_last_name"`
+	RenterVerificationStatus string   `json:"renter_verification_status"`
+	OwnerID                  string   `json:"owner_id"`
+	StartDate                string   `json:"start_date"`
+	EndDate                  string   `json:"end_date"`
+	RequestedAt              string   `json:"requested_at"`
+	BookingStatus            string   `json:"booking_status"`
+	EstimatedTotal           *float64 `json:"estimated_total"`
+	Notes                    string   `json:"notes"`
+	PaymentIntentID          string   `json:"payment_intent_id"`
+	ExpiresAt                string   `json:"expires_at"`
 }
 
 // BookingListResponse wraps a paginated list of booking detail rows.

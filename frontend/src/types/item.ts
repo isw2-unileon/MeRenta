@@ -101,6 +101,7 @@ interface SearchItemResponse {
   owner_first_name: string;
   owner_last_name: string;
   owner_avatar_url?: string;
+  owner_verification_status: string;
 }
 
 /**
@@ -160,18 +161,10 @@ interface FavoritesResponse {
   total: number;
 }
 
-/**
- * Response envelope for GET /api/favorites/:id/check.
- */
-interface FavoriteCheckResponse {
-  is_favorite: boolean;
-}
-
 export type {
   CategoryOption,
   CreateItemRequest,
   ExistingProductPhoto,
-  FavoriteCheckResponse,
   FavoriteItemResponse,
   FavoritesResponse,
   ItemImageResponse,

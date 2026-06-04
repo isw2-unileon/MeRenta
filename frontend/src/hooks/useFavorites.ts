@@ -14,7 +14,7 @@ async function loadFavoriteIds(): Promise<Set<string>> {
 }
 
 /**
- * Manages the current user's set of favorited item IDs.
+ * Manages the current user's set of favorite item IDs.
  *
  * - Fetches the full favorites list once on mount.
  * - `toggle(itemId, isFav)` updates state optimistically and syncs with the API,

@@ -3,7 +3,7 @@ import { ExternalLink, ImageIcon, Search } from "lucide-react";
 
 import type { ApiResponse } from "@/types/common";
 import type { SearchItemResponse, SearchItemsResponse } from "@/types/item";
-import { Badge, Card, SectionTitle } from "@/pages/admin/components/adminUi";
+import { Badge, Card, SectionTitle } from "@/components/admin/adminUi";
 
 const LIMIT = 20;
 
@@ -35,12 +35,12 @@ const CATEGORY_LABELS: Record<string, string> = {
   tools: "Herramientas",
   electronics: "Electronica",
   sports: "Deporte",
-  vehicles: "Vehiculos",
+  vehicles: "Vehículos",
   home: "Hogar",
-  gardening: "Jardineria",
+  gardening: "Jardinería",
   clothing: "Ropa",
   music: "Musica",
-  photography: "Fotografia",
+  photography: "Fotografía",
   camping: "Camping",
   leisure: "Ocio",
   other: "Otros",

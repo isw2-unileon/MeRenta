@@ -31,7 +31,7 @@ function ConditionsSection({ value, onChange }: ConditionsSectionProps) {
           value={value}
           aria-label="Normas de uso"
           onChange={updateUsageRules}
-          className="min-h-[112px]"
+          className="min-h-28"
         />
         <p className="field-hint mt-1">Opcional pero muy recomendable. Protege tu producto.</p>
       </div>

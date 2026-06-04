@@ -7,9 +7,16 @@ import { LocationSection } from "@/components/product/LocationSection";
 import { PhotosSection } from "@/components/product/PhotosSection";
 import { PreviewPanel } from "@/components/product/PreviewPanel";
 import { PriceSection } from "@/components/product/PriceSection";
+import {
+  createAddress,
+  fetchAddresses,
+  isNewPhoto,
+  reportFormErrors,
+  uploadItemImages,
+} from "@/components/product/productApi";
 import type { ApiResponse } from "@/types/common";
 import type { AddressResponse, CreateAddressRequest } from "@/types/address";
-import type { CreateItemRequest, ItemImageResponse, ItemResponse, ProductFormData, ProductPhoto } from "@/types/item";
+import type { CreateItemRequest, ItemResponse, ProductFormData } from "@/types/item";
 
 const INITIAL_FORM: ProductFormData = {
   title: "",
@@ -96,10 +103,6 @@ function formReducer(state: FormState, action: FormAction): FormState {
   }
 }
 
-function isNewPhoto(photo: ProductPhoto): photo is File {
-  return photo instanceof File;
-}
-
 /**
  * Validates the form and returns a map of field-level errors.
  */
@@ -169,56 +172,8 @@ async function createItem(payload: CreateItemRequest): Promise<ItemResponse> {
 }
 
 /**
- * Calls POST /api/items/:id/images with the photo files.
- * The backend handles uploading to Supabase Storage and signing URLs.
- */
-async function uploadItemImages(itemId: string, photos: File[]): Promise<void> {
-  const form = new FormData();
-  for (const file of photos) {
-    form.append("images", file);
-  }
-
-  const res = await fetch(`/api/items/${itemId}/images`, {
-    method: "POST",
-    credentials: "include",
-    body: form,
-  });
-
-  const json = (await res.json()) as ApiResponse<ItemImageResponse[]>;
-
-  if (!res.ok || !json.success) {
-    throw new Error(json.message ?? json.error ?? "Error al subir las imágenes");
-  }
-}
-
-/** Fetches the authenticated user's saved addresses. */
-async function fetchAddresses(): Promise<AddressResponse[]> {
-  const res = await fetch("/api/addresses", { credentials: "include" });
-  const json = (await res.json()) as ApiResponse<AddressResponse[]>;
-  return json.data ?? [];
-}
-
-/** Calls POST /api/addresses to create and return a new address. */
-async function createAddress(req: CreateAddressRequest): Promise<AddressResponse> {
-  const res = await fetch("/api/addresses", {
-    method: "POST",
-    credentials: "include",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify(req),
-  });
-
-  const json = (await res.json()) as ApiResponse<AddressResponse>;
-
-  if (!res.ok || !json.success || !json.data) {
-    throw new Error(json.message ?? json.error ?? "Error al guardar la dirección");
-  }
-
-  return json.data;
-}
-
-/**
  * Full-page form for publishing a new product listing.
- * Left column contains the multi-section form; the right column shows a live preview.
+ * Left column contains the multisection form; the right column shows a live preview.
  */
 function ProductCreate() {
   const navigate = useNavigate();
@@ -265,10 +220,7 @@ function ProductCreate() {
    */
   const submitProduct = (asDraft = false) => {
     const newErrors = validateForm(state.data);
-    if (Object.keys(newErrors).length > 0) {
-      dispatch({ type: "set-errors", errors: newErrors });
-      const firstKey = Object.keys(newErrors)[0] ?? "";
-      document.getElementById(firstKey)?.scrollIntoView({ behavior: "smooth", block: "center" });
+    if (reportFormErrors(newErrors, () => dispatch({ type: "set-errors", errors: newErrors }))) {
       return;
     }
 

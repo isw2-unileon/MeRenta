@@ -1,21 +1,27 @@
-import { useEffect, useMemo, useReducer } from "react";
-import { ArrowRight, Check, Circle, Star } from "lucide-react";
+import { useEffect, useMemo, useReducer, useState } from "react";
+import { ArrowRight, BadgeCheck, Check, Circle, ShieldCheck, Star } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 
 import { StarRating } from "@/components/product/detail/StarRating";
 import { useAuth } from "@/hooks/useAuth";
+import type { ApiResponse } from "@/types/common";
+import type { VerificationStatus } from "@/types/customer";
 import type { SearchItemResponse } from "@/types/item";
 import {
   fetchMyItems,
   fetchReceivedReviews,
   formatMemberSince,
+  formatRelativeDate,
   getInitials,
   initialProductsState,
   productsReducer,
+  reviewerDisplayName,
+  reviewerInitials,
   uniqueProductCities,
+  type ReceivedReview,
   type ReceivedReviewsResponseBase,
   type ReviewsSummary,
-} from "@/pages/profile/profileShared";
+} from "@/components/profile/profileShared";
 
 const PRODUCT_TONES: Record<string, string> = {
   sports: "bg-cat-deporte",
@@ -30,17 +36,6 @@ const PRODUCT_TONES: Record<string, string> = {
   clothing: "bg-cat-purple-alt",
   other: "bg-primary-light",
 };
-
-interface ReceivedReview {
-  review_id: string;
-  reviewer_id: string;
-  reviewer_first_name: string;
-  reviewer_last_name: string;
-  reviewer_avatar_url?: string;
-  rating: number;
-  comment: string;
-  reviewed_at: string;
-}
 
 type ReceivedReviewsResponse = ReceivedReviewsResponseBase<ReceivedReview>;
 
@@ -79,6 +74,13 @@ const PRODUCTS_SKELETON_IDS = [
   "profile-product-skel-6",
 ];
 
+const VERIFICATION_BUTTON_LABEL: Record<VerificationStatus, string> = {
+  none: "Solicitar badge verificado",
+  pending: "Solicitud pendiente",
+  verified: "Perfil verificado",
+  rejected: "Solicitar de nuevo",
+};
+
 function reviewsReducer(state: ReviewsState, action: ReviewsAction): ReviewsState {
   switch (action.type) {
     case "fetch_start":
@@ -111,33 +113,6 @@ function getStatusLabel(product: SearchItemResponse) {
   return "No disponible";
 }
 
-function reviewerInitials(review: ReceivedReview) {
-  return getInitials(review.reviewer_first_name, review.reviewer_last_name);
-}
-
-function reviewerDisplayName(review: ReceivedReview) {
-  const lastInitial = review.reviewer_last_name[0] ? `${review.reviewer_last_name[0]}.` : "";
-  return `${review.reviewer_first_name} ${lastInitial}`.trim();
-}
-
-function formatRelativeDate(value: string) {
-  const created = new Date(value);
-  if (Number.isNaN(created.getTime())) return "";
-
-  const diffDays = Math.floor((Date.now() - created.getTime()) / 86_400_000);
-  if (diffDays <= 0) return "Hoy";
-  if (diffDays === 1) return "Hace 1 dia";
-  if (diffDays < 7) return `Hace ${diffDays} días`;
-
-  const weeks = Math.floor(diffDays / 7);
-  if (weeks === 1) return "Hace 1 semana";
-  if (weeks < 5) return `Hace ${weeks} semanas`;
-
-  const months = Math.floor(diffDays / 30);
-  if (months <= 1) return "Hace 1 mes";
-  return `Hace ${months} meses`;
-}
-
 function distributionPercent(count: number, total: number) {
   if (total === 0) return 0;
   return Math.round((count / total) * 100);
@@ -153,6 +128,18 @@ function handleAbortable<T>(
     if (err instanceof DOMException && err.name === "AbortError") return;
     onError(err instanceof Error ? err.message : fallbackMessage);
   });
+}
+
+async function requestVerification(): Promise<VerificationStatus> {
+  const res = await fetch("/api/me/verification-request", {
+    method: "POST",
+    credentials: "include",
+  });
+  const json = (await res.json()) as ApiResponse<{ verification_status: VerificationStatus }>;
+  if (!res.ok || !json.success || !json.data) {
+    throw new Error(json.error ?? "Error al solicitar la verificación");
+  }
+  return json.data.verification_status;
 }
 
 interface ProductCardProps {
@@ -361,6 +348,9 @@ function MyProfile() {
   const { user } = useAuth();
   const [productsState, dispatchProducts] = useReducer(productsReducer, initialProductsState);
   const [reviewsState, dispatchReviews] = useReducer(reviewsReducer, initialReviewsState);
+  const [requestedVerificationStatus, setRequestedVerificationStatus] = useState<VerificationStatus | null>(null);
+  const [verificationLoading, setVerificationLoading] = useState(false);
+  const [verificationError, setVerificationError] = useState("");
 
   const firstName = user?.first_name ?? "";
   const lastName = user?.last_name ?? "";
@@ -390,6 +380,23 @@ function MyProfile() {
   const profileMeta = [cities.join(", "), memberSince ? `Miembro desde ${memberSince}` : ""]
     .filter(Boolean)
     .join(" - ");
+
+  const verificationStatus = requestedVerificationStatus ?? user?.verification_status ?? "none";
+  const canRequestVerification = verificationStatus === "none" || verificationStatus === "rejected";
+
+  async function handleRequestVerification() {
+    setVerificationLoading(true);
+    setVerificationError("");
+    try {
+      const status = await requestVerification();
+      setRequestedVerificationStatus(status);
+      window.dispatchEvent(new Event("merenta:verification-updated"));
+    } catch (err) {
+      setVerificationError(err instanceof Error ? err.message : "Error al solicitar la verificación");
+    } finally {
+      setVerificationLoading(false);
+    }
+  }
 
   const verifications = [
     { label: "Email vinculado", done: Boolean(user?.email) },
@@ -436,7 +443,16 @@ function MyProfile() {
                 )}
               </div>
               <div>
-                <p className="profile-name">{fullName}</p>
+                <div className="flex flex-wrap items-center gap-2">
+                  <p className="profile-name">{fullName}</p>
+                  {verificationStatus === "verified" && (
+                    <BadgeCheck
+                      size={26}
+                      className="text-primary shrink-0"
+                      aria-label="Perfil verificado"
+                    />
+                  )}
+                </div>
                 {profileMeta && <p className="profile-meta mt-1">{profileMeta}</p>}
               </div>
             </div>
@@ -501,6 +517,30 @@ function MyProfile() {
                 </p>
               ))}
             </div>
+            {verificationStatus !== "verified" && (
+              <div className="border-border-main mt-4 flex flex-wrap items-center gap-3 border-t pt-4">
+                <button
+                  type="button"
+                  className="btn-primary btn--sm"
+                  disabled={!canRequestVerification || verificationLoading}
+                  onClick={handleRequestVerification}
+                >
+                  <ShieldCheck size={15} />
+                  {verificationLoading ? "Enviando..." : VERIFICATION_BUTTON_LABEL[verificationStatus]}
+                </button>
+                {verificationStatus === "pending" && (
+                  <span className="text-subtle text-[13px]">Tu solicitud esta en revision.</span>
+                )}
+                {verificationStatus === "rejected" && (
+                  <span className="text-subtle text-[13px]">Puedes solicitarlo de nuevo tras completar tu perfil.</span>
+                )}
+              </div>
+            )}
+            {verificationError && (
+              <p className="border-report bg-error-danger text-report mt-3 rounded-lg border p-3 text-[13px]">
+                {verificationError}
+              </p>
+            )}
           </section>
 
           <section className="mt-5">

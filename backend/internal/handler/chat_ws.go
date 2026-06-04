@@ -119,7 +119,12 @@ func (h *ChatHandler) handleWebSocketConnection(
 	customerID uuid.UUID,
 	conversationID uuid.UUID,
 ) {
-	defer ws.Close()
+	defer func(ws *websocket.Conn) {
+		err := ws.Close()
+		if err != nil {
+			slog.Warn("failed to close websocket connection", "error", err)
+		}
+	}(ws)
 
 	out := h.hub.Subscribe(conversationID)
 	defer h.hub.Unsubscribe(conversationID, out)

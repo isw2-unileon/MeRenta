@@ -57,9 +57,9 @@ function PaymentSuccess() {
   const year = startDate ? startDate.slice(0, 4) : new Date().getFullYear().toString();
 
   return (
-    <div className="flex min-h-screen flex-col items-center justify-center bg-[var(--color-section-alt)] px-4 py-12">
+    <div className="bg-section-alt flex min-h-screen flex-col items-center justify-center px-4 py-12">
       <div
-        className="w-full rounded-[var(--radius-panel)] border border-[var(--color-border-main)] bg-white p-10"
+        className="border-border-main w-full rounded-(--radius-panel) border bg-white p-10"
         style={{ maxWidth: 600 }}
       >
         {/* ── Icon ── */}
@@ -104,8 +104,8 @@ function PaymentSuccess() {
         <p className="error-pay-desc mb-6 text-center">Tu alquiler ha sido confirmado y el seguro activado.</p>
 
         {/* ── Stripe info bar ── */}
-        <div className="mb-5 rounded-[var(--radius-md)] bg-[var(--color-error-info)] px-4 py-3">
-          <p className="text-[13px] text-[var(--color-http-info)]">
+        <div className="bg-error-info mb-5 rounded-md px-4 py-3">
+          <p className="text-http-info text-[13px]">
             Stripe ID: <span className="font-medium">{paymentIntentId}</span>
             {"  ·  "}
             <span className="font-medium">{fmtPrice(amountEUR)} EUR cobrados</span>
@@ -113,17 +113,17 @@ function PaymentSuccess() {
         </div>
 
         {/* ── Rental item card ── */}
-        <div className="mb-6 rounded-[var(--radius-lg)] border border-[var(--color-border-main)] p-4">
+        <div className="border-border-main mb-6 rounded-lg border p-4">
           <div className="flex items-start gap-4">
             {/* Item image */}
             {itemImageUrl ? (
               <img
                 src={itemImageUrl}
                 alt={itemTitle}
-                className="size-20 flex-shrink-0 rounded-[var(--radius-md)] object-cover"
+                className="size-20 shrink-0 rounded-md object-cover"
               />
             ) : (
-              <div className="size-20 flex-shrink-0 rounded-[var(--radius-md)] bg-[var(--color-primary-light)]" />
+              <div className="bg-primary-light size-20 shrink-0 rounded-md" />
             )}
 
             <div className="flex flex-col gap-1">
@@ -141,17 +141,17 @@ function PaymentSuccess() {
           </div>
 
           {/* Insurance badge */}
-          <div className="mt-3 flex items-center gap-2 rounded-[var(--radius-md)] bg-[var(--color-insurance)] px-3 py-2">
+          <div className="bg-insurance mt-3 flex items-center gap-2 rounded-md px-3 py-2">
             <span
               className="text-xs font-bold"
               style={{ color: "var(--color-primary)" }}
             >
               ✓ Seguro activado
             </span>
-            <span className="text-xs text-[var(--color-subtle)]">·</span>
-            <span className="text-xs text-[var(--color-subtle)]">Póliza: {policyNumber}</span>
-            <span className="text-xs text-[var(--color-subtle)]">·</span>
-            <span className="text-xs text-[var(--color-subtle)]">
+            <span className="text-subtle text-xs">·</span>
+            <span className="text-subtle text-xs">Póliza: {policyNumber}</span>
+            <span className="text-subtle text-xs">·</span>
+            <span className="text-subtle text-xs">
               Cubre: {startShort}–{endShort}
             </span>
           </div>

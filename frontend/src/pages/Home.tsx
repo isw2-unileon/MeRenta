@@ -32,8 +32,8 @@ const CATEGORY_LABELS: Record<string, string> = {
   electronics: "Electrónica",
   tools: "Herramientas",
   music: "Música",
-  photography: "Fotografia",
-  gardening: "Jardineria",
+  photography: "Fotografía",
+  gardening: "Jardinería",
   camping: "Camping",
   home: "Hogar",
   clothing: "Ropa",
@@ -319,7 +319,7 @@ function HomeProductCard({ item, isFavorite, reviewSummary, onToggleFavorite, ba
       <div className="p-4">
         <h3 className="text-ink line-clamp-2 min-h-9.5 text-[15px] leading-snug font-medium">{item.title}</h3>
         <div className="mt-2 flex items-center justify-between gap-3">
-          <p className="text-card-loc text-subtle truncate">{item.city || "Sin ubicacion"}</p>
+          <p className="text-card-loc text-subtle truncate">{item.city || "Sin ubicación"}</p>
           {rating && (
             <p className="text-card-loc text-rating flex shrink-0 items-center gap-1">
               <Star
@@ -333,7 +333,7 @@ function HomeProductCard({ item, isFavorite, reviewSummary, onToggleFavorite, ba
         <div className="mt-5 flex items-center justify-between gap-3">
           <p className="text-primary text-[17px] font-bold">{Math.round(item.price_per_day)} EUR/dia</p>
           {!isAvailable && (
-            <span className="rounded-lg bg-[#f3f4f6] px-3 py-2 text-[12px] font-medium text-[#9ca3af]">
+            <span className="text-card-loc rounded-lg bg-[#f3f4f6] px-3 py-2 font-medium text-[#9ca3af]">
               No disponible
             </span>
           )}
@@ -568,7 +568,7 @@ function SearchHero({ firstName, categories }: SearchHeroProps) {
               <button
                 key={category.value}
                 type="button"
-                className="border-border-main text-body-color rounded-full border bg-white px-4 py-1.5 text-[12px] shadow-sm"
+                className="border-border-main text-body-color text-card-loc rounded-full border bg-white px-4 py-1.5 shadow-sm"
                 onClick={() => void navigate(`/search?category=${encodeURIComponent(category.value)}`)}
               >
                 {category.label}
@@ -644,7 +644,7 @@ function CategoryGrid({ categories }: CategoryGridProps) {
       </div>
       <div
         id="home-category-carousel"
-        className="flex snap-x [scrollbar-width:none] gap-4 overflow-x-auto scroll-smooth pb-2 [-ms-overflow-style:none] [&::-webkit-scrollbar]:hidden"
+        className="flex snap-x scrollbar-none gap-4 overflow-x-auto scroll-smooth pb-2 [-ms-overflow-style:none] [&::-webkit-scrollbar]:hidden"
       >
         {categories.map((category) => (
           <Link

@@ -204,8 +204,8 @@ func (s *IncidentService) ListMine(
 	reporterID uuid.UUID,
 	page, limit int,
 ) (*model.IncidentListResponse, error) {
-	offset := int32((page - 1) * limit)                                             //nolint:gosec
-	rows, err := s.q.ListIncidentsByReporter(ctx, reporterID, int32(limit), offset) //nolint:gosec
+	offset := toInt32((page - 1) * limit)
+	rows, err := s.q.ListIncidentsByReporter(ctx, reporterID, toInt32(limit), offset)
 	if err != nil {
 		return nil, err
 	}
@@ -218,11 +218,11 @@ func (s *IncidentService) ListAdmin(
 	statusFilter, typeFilter string,
 	page, limit int,
 ) (*model.IncidentListResponse, error) {
-	offset := int32((page - 1) * limit) //nolint:gosec
+	offset := toInt32((page - 1) * limit)
 	rows, err := s.q.ListIncidentsAdmin(ctx, sqlcdb.ListIncidentsAdminParams{
 		Status: nullText(statusFilter),
 		Type:   nullText(typeFilter),
-		Limit:  int32(limit), //nolint:gosec
+		Limit:  toInt32(limit),
 		Offset: offset,
 	})
 	if err != nil {
@@ -407,7 +407,7 @@ func costToNumeric(cost float64) pgtype.Numeric {
 	if cost == 0 {
 		return pgtype.Numeric{Valid: false}
 	}
-	cents := int64(math.Round(cost * 100)) //nolint:mnd
+	cents := int64(math.Round(cost * 100))
 	return pgtype.Numeric{
 		Int:   new(big.Int).SetInt64(cents),
 		Exp:   -2,

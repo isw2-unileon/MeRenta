@@ -8,6 +8,13 @@ import { LocationSection } from "@/components/product/LocationSection";
 import { PhotosSection } from "@/components/product/PhotosSection";
 import { PreviewPanel } from "@/components/product/PreviewPanel";
 import { PriceSection } from "@/components/product/PriceSection";
+import {
+  createAddress,
+  fetchAddresses,
+  isNewPhoto,
+  reportFormErrors,
+  uploadItemImages,
+} from "@/components/product/productApi";
 import { useAuth } from "@/hooks/useAuth";
 import type { AddressResponse, CreateAddressRequest } from "@/types/address";
 import type { ApiResponse } from "@/types/common";
@@ -85,10 +92,6 @@ const SAVE_STEP_LABELS: Record<SaveStep, string> = {
   uploading: "Subiendo fotos…",
   done: "Cambios guardados",
 };
-
-function isNewPhoto(photo: ProductPhoto): photo is File {
-  return photo instanceof File;
-}
 
 function isExistingPhoto(photo: ProductPhoto): photo is ExistingProductPhoto {
   return !(photo instanceof File);
@@ -184,8 +187,8 @@ function validateForm(data: ProductFormData): FormErrors {
 
   if (!data.title.trim()) errors.title = "El titulo es obligatorio";
   if (!data.category) errors.category = "Selecciona una categoria";
-  if (!data.condition) errors.condition = "Selecciona el estado de conservacion";
-  if (!data.description.trim()) errors.description = "La descripcion es obligatoria";
+  if (!data.condition) errors.condition = "Selecciona el estado de conservación";
+  if (!data.description.trim()) errors.description = "La descripción es obligatoria";
   if (!data.pricePerDay || Number.parseFloat(data.pricePerDay) <= 0) {
     errors.pricePerDay = "El precio por dia debe ser mayor que 0";
   }
@@ -193,12 +196,12 @@ function validateForm(data: ProductFormData): FormErrors {
   const minRentalPeriod = Number.parseInt(data.minRentalPeriod, 10);
   const maxRentalPeriod = Number.parseInt(data.maxRentalPeriod, 10);
   if (data.maxRentalPeriod !== "0" && minRentalPeriod > maxRentalPeriod) {
-    errors.minRentalPeriod = "El periodo minimo no puede superar el maximo";
-    errors.maxRentalPeriod = "El periodo maximo debe ser igual o mayor que el minimo";
+    errors.minRentalPeriod = "El periodo mínimo no puede superar el máximo";
+    errors.maxRentalPeriod = "El periodo máximo debe ser igual o mayor que el mínimo";
   }
 
-  if (!data.address) errors.address = "Selecciona una direccion de recogida";
-  if (data.photos.length === 0) errors.photos = "Anade al menos una foto del producto";
+  if (!data.address) errors.address = "Selecciona una dirección de recogida";
+  if (data.photos.length === 0) errors.photos = "Añade al menos una foto del producto";
 
   return errors;
 }
@@ -231,7 +234,7 @@ function formatRelativeDate(value?: string): string {
   const days = Math.max(0, Math.round((Date.now() - date.getTime()) / 86400000));
   if (days === 0) return "hoy";
   if (days === 1) return "hace 1 dia";
-  return `hace ${days} dias`;
+  return `hace ${days} días`;
 }
 
 async function fetchItem(itemId: string): Promise<ItemResponse> {
@@ -247,26 +250,6 @@ async function fetchImages(itemId: string): Promise<ItemImageResponse[]> {
   const res = await fetch(`/api/items/${itemId}/images`, { credentials: "include" });
   const json = (await res.json()) as ApiResponse<ItemImageResponse[]>;
   return json.data ?? [];
-}
-
-async function fetchAddresses(): Promise<AddressResponse[]> {
-  const res = await fetch("/api/addresses", { credentials: "include" });
-  const json = (await res.json()) as ApiResponse<AddressResponse[]>;
-  return json.data ?? [];
-}
-
-async function createAddress(req: CreateAddressRequest): Promise<AddressResponse> {
-  const res = await fetch("/api/addresses", {
-    method: "POST",
-    credentials: "include",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify(req),
-  });
-  const json = (await res.json()) as ApiResponse<AddressResponse>;
-  if (!res.ok || !json.success || !json.data) {
-    throw new Error(json.message ?? json.error ?? "Error al guardar la direccion");
-  }
-  return json.data;
 }
 
 async function updateItem(itemId: string, payload: UpdateItemRequest): Promise<ItemResponse> {
@@ -292,22 +275,6 @@ async function deleteItem(itemId: string): Promise<void> {
   if (!res.ok || !json.success) {
     throw new Error(json.message ?? json.error ?? "Error al eliminar el anuncio");
   }
-}
-
-async function uploadItemImages(itemId: string, photos: File[]): Promise<ItemImageResponse[]> {
-  const form = new FormData();
-  for (const file of photos) form.append("images", file);
-
-  const res = await fetch(`/api/items/${itemId}/images`, {
-    method: "POST",
-    credentials: "include",
-    body: form,
-  });
-  const json = (await res.json()) as ApiResponse<ItemImageResponse[]>;
-  if (!res.ok || !json.success || !json.data) {
-    throw new Error(json.message ?? json.error ?? "Error al subir las imagenes");
-  }
-  return json.data;
 }
 
 async function deleteItemImage(itemId: string, imageId: string): Promise<void> {
@@ -366,7 +333,7 @@ function DeleteProductConfirmModal({ deleting, productTitle, onClose, onConfirm 
             disabled={deleting}
           >
             <Trash2 size={14} />
-            {deleting ? "Eliminando…" : "Confirmar eliminacion"}
+            {deleting ? "Eliminando…" : "Confirmar eliminación"}
           </button>
         </div>
       </div>
@@ -389,7 +356,7 @@ function useProductEditController() {
 
   useEffect(() => {
     if (!id) {
-      dispatch({ type: "load-error", message: "No se encontro el identificador del anuncio" });
+      dispatch({ type: "load-error", message: "No se encontró el identificador del anuncio" });
       return;
     }
 
@@ -461,10 +428,7 @@ function useProductEditController() {
     if (!id) return;
 
     const newErrors = validateForm(state.data);
-    if (Object.keys(newErrors).length > 0) {
-      dispatch({ type: "set-errors", errors: newErrors });
-      const firstKey = Object.keys(newErrors)[0] ?? "";
-      document.getElementById(firstKey)?.scrollIntoView({ behavior: "smooth", block: "center" });
+    if (reportFormErrors(newErrors, () => dispatch({ type: "set-errors", errors: newErrors }))) {
       return;
     }
 

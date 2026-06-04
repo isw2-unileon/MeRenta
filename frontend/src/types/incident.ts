@@ -42,11 +42,3 @@ export interface IncidentListResponse {
   page: number;
   limit: number;
 }
-
-/** Body sent to create a new incident. */
-export interface CreateIncidentRequest {
-  booking_id: string;
-  type: IncidentType;
-  description: string;
-  cost?: number;
-}

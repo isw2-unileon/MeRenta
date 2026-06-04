@@ -21,7 +21,7 @@ var (
 	ErrConversationNotFound = errors.New("conversation not found")
 	// ErrCannotMessageSelf prevents owners from opening a chat with themselves.
 	ErrCannotMessageSelf = errors.New("cannot message yourself")
-	// ErrConversationForbidden is returned when the caller is not authorised to start a conversation.
+	// ErrConversationForbidden is returned when the caller is not authorized to start a conversation.
 	ErrConversationForbidden = errors.New("not authorised to start this conversation")
 	// ErrEmptyMessage indicates the message body is blank after trimming.
 	ErrEmptyMessage = errors.New("message body is required")
@@ -80,20 +80,7 @@ func (s *ChatService) StartConversation(ctx context.Context, customerID, itemID 
 		return nil, err
 	}
 
-	if err := s.q.RestoreConversationForCustomer(ctx, conversationID, customerID); err != nil {
-		return nil, err
-	}
-
-	conversation, err := s.q.GetConversation(ctx, conversationID, customerID)
-	if err != nil {
-		return nil, err
-	}
-
-	res, err := s.toConversationResponse(conversation)
-	if err != nil {
-		return nil, err
-	}
-	return &res, nil
+	return s.finalizeConversation(ctx, conversationID, customerID)
 }
 
 // StartConversationWith is called when the item owner wants to message a specific
@@ -127,11 +114,20 @@ func (s *ChatService) StartConversationWith(
 		return nil, err
 	}
 
-	if err := s.q.RestoreConversationForCustomer(ctx, conversationID, ownerID); err != nil {
+	return s.finalizeConversation(ctx, conversationID, ownerID)
+}
+
+// finalizeConversation restores the conversation for the actor, loads it, and maps
+// it to the API response model.
+func (s *ChatService) finalizeConversation(
+	ctx context.Context,
+	conversationID, actorID uuid.UUID,
+) (*model.ConversationResponse, error) {
+	if err := s.q.RestoreConversationForCustomer(ctx, conversationID, actorID); err != nil {
 		return nil, err
 	}
 
-	conversation, err := s.q.GetConversation(ctx, conversationID, ownerID)
+	conversation, err := s.q.GetConversation(ctx, conversationID, actorID)
 	if err != nil {
 		return nil, err
 	}
@@ -289,17 +285,18 @@ func (s *ChatService) toConversationResponse(row sqlcdb.ConversationRow) (model.
 	}
 
 	return model.ConversationResponse{
-		ConversationID: row.ConversationID.String(),
-		ItemID:         row.ItemID.String(),
-		ItemTitle:      row.ItemTitle,
-		ItemPrice:      itemPrice,
-		OtherUserID:    row.OtherUserID.String(),
-		OtherUserName:  row.OtherUserName,
-		OtherAvatarURL: row.OtherAvatarURL,
-		LastMessage:    lastMessage,
-		LastMessageAt:  timestamptzPtr(row.LastMessageAt),
-		UpdatedAt:      row.UpdatedAt.Time,
-		UnreadCount:    int(row.UnreadCount),
+		ConversationID:              row.ConversationID.String(),
+		ItemID:                      row.ItemID.String(),
+		ItemTitle:                   row.ItemTitle,
+		ItemPrice:                   itemPrice,
+		OtherUserID:                 row.OtherUserID.String(),
+		OtherUserName:               row.OtherUserName,
+		OtherAvatarURL:              row.OtherAvatarURL,
+		OtherUserVerificationStatus: string(row.OtherUserVerificationStatus),
+		LastMessage:                 lastMessage,
+		LastMessageAt:               timestamptzPtr(row.LastMessageAt),
+		UpdatedAt:                   row.UpdatedAt.Time,
+		UnreadCount:                 int(row.UnreadCount),
 	}, nil
 }
 

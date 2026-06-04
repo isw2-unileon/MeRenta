@@ -1,4 +1,4 @@
-import type { AccountStatus } from "@/types/customer";
+import type { AccountStatus, VerificationStatus } from "@/types/customer";
 
 /**
  * Roles as returned by the API (backend uses "user", not "customer").
@@ -28,13 +28,30 @@ interface AdminUserListResponse {
   page: number;
   limit: number;
 }
-
-/**
- * Response from PATCH /api/admin/users/:id/status.
- */
-interface AdminUpdateStatusResponse {
+interface AdminVerificationRequest {
   customer_id: string;
-  status: AccountStatus;
+  first_name: string;
+  last_name: string;
+  email: string;
+  phone: string;
+  avatar_url?: string;
+  account_status: AccountStatus;
+  verification_status: Exclude<VerificationStatus, "none">;
+  requested_at: string;
+  has_address: boolean;
 }
 
-export type { AdminUser, AdminUserListResponse, AdminUpdateStatusResponse, AdminUserRole };
+interface AdminVerificationListResponse {
+  requests: AdminVerificationRequest[];
+  total: number;
+  page: number;
+  limit: number;
+}
+
+export type {
+  AdminUser,
+  AdminUserListResponse,
+  AdminUserRole,
+  AdminVerificationListResponse,
+  AdminVerificationRequest,
+};

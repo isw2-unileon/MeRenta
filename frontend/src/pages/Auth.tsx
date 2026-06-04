@@ -73,7 +73,7 @@ function Auth() {
                   <p className={`text-base ${view === "login" ? "auth-tab" : "auth-tab--inactive"}`}>Iniciar sesión</p>
 
                   {view === "login" && (
-                    <span className="bg-primary absolute -bottom-1 left-1/2 h-0.5 w-30 -translate-x-1/2 rounded-full" />
+                    <span className="bg-primary w-credit-card-h absolute -bottom-1 left-1/2 h-0.5 -translate-x-1/2 rounded-full" />
                   )}
                 </button>
 
@@ -85,7 +85,7 @@ function Auth() {
                   <p className={`text-base ${view === "register" ? "auth-tab" : "auth-tab--inactive"}`}>Crear cuenta</p>
 
                   {view === "register" && (
-                    <span className="bg-primary absolute -bottom-1 left-1/2 h-0.5 w-30 -translate-x-1/2 rounded-full" />
+                    <span className="bg-primary w-credit-card-h absolute -bottom-1 left-1/2 h-0.5 -translate-x-1/2 rounded-full" />
                   )}
                 </button>
               </nav>

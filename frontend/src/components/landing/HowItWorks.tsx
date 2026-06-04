@@ -27,7 +27,7 @@ function HowItWorks() {
   return (
     <section
       id="como-funciona"
-      className="px-layout-margin pt-[24px] pb-18"
+      className="px-layout-margin pb-error-icon pt-[24px]"
     >
       <div className="max-w-alert-width mx-auto">
         <span className="eyebrow">SENCILLO Y SEGURO</span>

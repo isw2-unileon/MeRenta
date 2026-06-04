@@ -28,18 +28,18 @@ const CATEGORIES: CategoryOption[] = [
   },
   {
     value: "photography",
-    label: "Fotografia",
-    subcategories: ["Camaras", "Objetivos", "Iluminacion", "Tripodes", "Accesorios", "Otros"],
+    label: "Fotografía",
+    subcategories: ["Cámaras", "Objetivos", "Iluminación", "Trípodes", "Accesorios", "Otros"],
   },
   {
     value: "gardening",
-    label: "Jardineria",
+    label: "Jardinería",
     subcategories: ["Maquinaria", "Muebles de exterior", "Riego", "Herramientas", "Otros"],
   },
   {
     value: "camping",
     label: "Camping",
-    subcategories: ["Tiendas", "Mochilas", "Sacos", "Iluminacion", "Otros"],
+    subcategories: ["Tiendas", "Mochilas", "Sacos", "Iluminación", "Otros"],
   },
   {
     value: "home",
@@ -235,7 +235,7 @@ function BasicInfoSection({ data, errors, onChange }: BasicInfoSectionProps) {
             aria-label="Descripción completa"
             value={data.description}
             onChange={updateBasicInfoField}
-            className={`min-h-[128px] ${errors.description ? "input-error" : ""}`}
+            className={`min-h-32 ${errors.description ? "input-error" : ""}`}
           />
           <div className="mt-1 flex items-start justify-between gap-4">
             {errors.description ? (

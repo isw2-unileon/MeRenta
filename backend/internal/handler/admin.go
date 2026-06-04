@@ -9,6 +9,7 @@ import (
 	"time"
 
 	"github.com/gin-gonic/gin"
+	"github.com/google/uuid"
 
 	"github.com/isw2-unileon/MeRenta/backend/internal/service"
 	"github.com/isw2-unileon/MeRenta/backend/internal/sqlcdb"
@@ -45,6 +46,105 @@ func (h *AdminHandler) ListUsers(c *gin.Context) {
 	}
 
 	response.OK(c, http.StatusOK, res)
+}
+
+// ListAuditLog handles GET /api/admin/audit.
+// Query params: action (filter), page, limit.
+func (h *AdminHandler) ListAuditLog(c *gin.Context) {
+	action := strings.TrimSpace(c.Query("action"))
+	page := parsePositiveInt(c.DefaultQuery("page", "1"), 1, 500)
+	limit := parsePositiveInt(c.DefaultQuery("limit", "20"), 20, 100)
+
+	if action != "" && !isValidAuditAction(action) {
+		response.Error(c, http.StatusBadRequest, "invalid action value")
+		return
+	}
+
+	res, err := h.svc.ListAuditLog(c.Request.Context(), action, page, limit)
+	if err != nil {
+		slog.Error("admin list audit log failed", "error", err)
+		response.Error(c, http.StatusInternalServerError, "internal server error")
+		return
+	}
+
+	response.OK(c, http.StatusOK, res)
+}
+
+// ListVerification handles GET /api/admin/verification.
+// Query params: status (pending|verified|rejected), page, limit.
+func (h *AdminHandler) ListVerification(c *gin.Context) {
+	status := c.DefaultQuery("status", "pending")
+	page := parsePositiveInt(c.DefaultQuery("page", "1"), 1, 500)
+	limit := parsePositiveInt(c.DefaultQuery("limit", "20"), 20, 100)
+
+	if !isValidAdminVerificationStatus(status) {
+		response.Error(c, http.StatusBadRequest, "invalid verification status value")
+		return
+	}
+
+	res, err := h.svc.ListVerification(c.Request.Context(), status, page, limit)
+	if err != nil {
+		slog.Error("admin list verification failed", "error", err)
+		response.Error(c, http.StatusInternalServerError, "internal server error")
+		return
+	}
+
+	response.OK(c, http.StatusOK, res)
+}
+
+// UpdateVerification handles PATCH /api/admin/verification/:id.
+// Body: { "status": "verified"|"rejected" }.
+func (h *AdminHandler) UpdateVerification(c *gin.Context) {
+	customerID, ok := parseUUIDParam(c)
+	if !ok {
+		return
+	}
+
+	var body struct {
+		Status string `json:"status" binding:"required"`
+	}
+	if err := c.ShouldBindJSON(&body); err != nil {
+		response.Error(c, http.StatusBadRequest, "status is required")
+		return
+	}
+	if !isValidVerificationDecision(body.Status) {
+		response.Error(c, http.StatusBadRequest, "invalid verification status value")
+		return
+	}
+
+	status, err := h.svc.UpdateVerification(
+		c.Request.Context(), customerID, sqlcdb.VerificationStatus(body.Status),
+	)
+	if err != nil {
+		switch {
+		case errors.Is(err, service.ErrAdminUserNotFound):
+			response.Error(c, http.StatusNotFound, err.Error())
+		default:
+			slog.Error("admin update verification failed", "error", err)
+			response.Error(c, http.StatusInternalServerError, "internal server error")
+		}
+		return
+	}
+
+	adminID, adminEmail, ok := getAdminAuditIdentity(c)
+	if ok {
+		h.svc.LogAuditEntry(
+			c.Request.Context(),
+			adminID,
+			adminEmail,
+			"verification_updated",
+			"verification",
+			customerID.String(),
+			"",
+			string(status),
+			customerID.String()[:8],
+		)
+	}
+
+	response.OK(c, http.StatusOK, gin.H{
+		"customer_id": customerID,
+		"status":      status,
+	})
 }
 
 // ListBookings handles GET /api/admin/bookings.
@@ -112,8 +212,15 @@ func isValidPaymentStatus(s string) bool {
 	return s == "paid" || s == "refunded"
 }
 
+func isValidAuditAction(s string) bool {
+	switch s {
+	case "user_status_changed", "booking_status_changed", "verification_updated":
+		return true
+	}
+	return false
+}
+
 // AdminUpdateBookingStatus handles PATCH /api/admin/bookings/:id/status.
-// Body: { "status": "pending"|"accepted"|"rejected"|"cancelled"|"completed" }.
 func (h *AdminHandler) AdminUpdateBookingStatus(c *gin.Context) {
 	bookingID, ok := parseUUIDParam(c)
 	if !ok {
@@ -142,6 +249,21 @@ func (h *AdminHandler) AdminUpdateBookingStatus(c *gin.Context) {
 			response.Error(c, http.StatusInternalServerError, "internal server error")
 		}
 		return
+	}
+
+	adminID, adminEmail, ok := getAdminAuditIdentity(c)
+	if ok {
+		h.svc.LogAuditEntry(
+			c.Request.Context(),
+			adminID,
+			adminEmail,
+			"booking_status_changed",
+			"booking",
+			bookingID.String(),
+			"",
+			body.Status,
+			bookingID.String()[:8],
+		)
 	}
 
 	response.OK(c, http.StatusOK, res)
@@ -210,10 +332,82 @@ func (h *AdminHandler) UpdateUserStatus(c *gin.Context) {
 		return
 	}
 
+	adminID, adminEmail, ok := getAdminAuditIdentity(c)
+	if ok {
+		h.svc.LogAuditEntry(
+			c.Request.Context(),
+			adminID,
+			adminEmail,
+			"user_status_changed",
+			"user",
+			customerID.String(),
+			"",
+			body.Status,
+			customerID.String()[:8],
+		)
+	}
+
 	response.OK(c, http.StatusOK, gin.H{
 		"customer_id": row.CustomerID,
 		"status":      row.AccountStatus,
 	})
+}
+
+// GetPlatformConfig handles GET /api/admin/config.
+// Returns editable flags (from DB) and read-only constants (from service layer).
+func (h *AdminHandler) GetPlatformConfig(c *gin.Context) {
+	cfg, err := h.svc.GetPlatformConfig(c.Request.Context())
+	if err != nil {
+		slog.Error("admin get platform config failed", "error", err)
+		response.Error(c, http.StatusInternalServerError, "internal server error")
+		return
+	}
+	response.OK(c, http.StatusOK, cfg)
+}
+
+// UpdatePlatformConfig handles PATCH /api/admin/config.
+// Body: { "allow_new_registrations": bool }.
+func (h *AdminHandler) UpdatePlatformConfig(c *gin.Context) {
+	adminID, ok := getCustomerID(c)
+	if !ok {
+		return
+	}
+
+	var body struct {
+		AllowNewRegistrations bool `json:"allow_new_registrations"`
+	}
+	if err := c.ShouldBindJSON(&body); err != nil {
+		response.Error(c, http.StatusBadRequest, "allow_new_registrations is required")
+		return
+	}
+
+	cfg, err := h.svc.UpdatePlatformConfig(c.Request.Context(), body.AllowNewRegistrations, adminID)
+	if err != nil {
+		slog.Error("admin update platform config failed", "error", err)
+		response.Error(c, http.StatusInternalServerError, "internal server error")
+		return
+	}
+	response.OK(c, http.StatusOK, cfg)
+}
+
+func getAdminAuditIdentity(c *gin.Context) (uuid.UUID, string, bool) {
+	rawID, ok := c.Get("customer_id")
+	if !ok {
+		return uuid.UUID{}, "", false
+	}
+	customerID, ok := rawID.(uuid.UUID)
+	if !ok {
+		return uuid.UUID{}, "", false
+	}
+	rawEmail, ok := c.Get("email")
+	if !ok {
+		return uuid.UUID{}, "", false
+	}
+	email, ok := rawEmail.(string)
+	if !ok || email == "" {
+		return uuid.UUID{}, "", false
+	}
+	return customerID, email, true
 }
 
 func isValidAccountStatus(s string) bool {
@@ -221,6 +415,25 @@ func isValidAccountStatus(s string) bool {
 	case sqlcdb.AccountStatusActive,
 		sqlcdb.AccountStatusSuspended,
 		sqlcdb.AccountStatusBanned:
+		return true
+	}
+	return false
+}
+
+func isValidAdminVerificationStatus(s string) bool {
+	switch sqlcdb.VerificationStatus(s) {
+	case sqlcdb.VerificationStatusPending,
+		sqlcdb.VerificationStatusVerified,
+		sqlcdb.VerificationStatusRejected:
+		return true
+	}
+	return false
+}
+
+func isValidVerificationDecision(s string) bool {
+	switch sqlcdb.VerificationStatus(s) {
+	case sqlcdb.VerificationStatusVerified,
+		sqlcdb.VerificationStatusRejected:
 		return true
 	}
 	return false

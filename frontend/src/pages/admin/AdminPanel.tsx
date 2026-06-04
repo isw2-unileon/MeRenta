@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import {
   AlertTriangle,
   CreditCard,
@@ -13,10 +13,11 @@ import {
 
 import { useAuth } from "@/hooks/useAuth";
 import type { ApiResponse } from "@/types/common";
+import type { AdminVerificationListResponse } from "@/types/admin";
 import type { IncidentListResponse, IncidentStatus } from "@/types/incident";
 import type { SearchItemsResponse } from "@/types/item";
-import { GREEN, MINT } from "@/pages/admin/components/adminTokens";
-import { Avatar } from "@/pages/admin/components/adminUi";
+import { GREEN, MINT } from "@/components/admin/adminTokens";
+import { Avatar } from "@/components/admin/adminUi";
 import { Dashboard } from "@/pages/admin/views/Dashboard";
 import { Incidents } from "@/pages/admin/views/Incidents";
 import { Operations } from "@/pages/admin/views/Operations";
@@ -99,6 +100,18 @@ async function fetchProductTotal(): Promise<number> {
   return json.data.total;
 }
 
+async function fetchPendingVerificationTotal(): Promise<number> {
+  const params = new URLSearchParams({ status: "pending", page: "1", limit: "1" });
+  const res = await fetch(`/api/admin/verification?${params.toString()}`, {
+    credentials: "include",
+  });
+  const json = (await res.json()) as ApiResponse<AdminVerificationListResponse>;
+  if (!res.ok || !json.success || !json.data) {
+    throw new Error(json.error ?? "Error al cargar verificaciones");
+  }
+  return json.data.total;
+}
+
 // ── Sidebar ────────────────────────────────────────────────────────────────────
 
 interface SidebarProps {
@@ -116,7 +129,7 @@ function Sidebar({ active, navItems, onSelect, userEmail, userName }: SidebarPro
       <div className="flex h-16 items-center border-b border-neutral-100 px-5">
         <a
           href="/"
-          aria-label="Ir a la pagina principal"
+          aria-label="Ir a la página principal"
           className="text-xl font-light text-neutral-900"
           style={{ fontFamily: "Inter, ui-sans-serif, system-ui, sans-serif" }}
         >
@@ -190,6 +203,7 @@ function AdminPanel() {
   const [active, setActive] = useState<SectionId>("dashboard");
   const [incidentBadge, setIncidentBadge] = useState<number | null>(null);
   const [productBadge, setProductBadge] = useState<number | null>(null);
+  const [verificationBadge, setVerificationBadge] = useState<number | null>(null);
   const { user } = useAuth();
 
   const View = VIEWS[active];
@@ -198,9 +212,10 @@ function AdminPanel() {
       NAV.map((item) => {
         if (item.id === "incidents") return { ...item, badge: incidentBadge };
         if (item.id === "products") return { ...item, badge: productBadge };
+        if (item.id === "verification") return { ...item, badge: verificationBadge };
         return item;
       }),
-    [incidentBadge, productBadge]
+    [incidentBadge, productBadge, verificationBadge]
   );
   const current = navItems.find((n) => n.id === active) ?? DEFAULT_NAV_ITEM;
 
@@ -217,8 +232,14 @@ function AdminPanel() {
       .then((total) => setProductBadge(total))
       .catch(() => setProductBadge(0));
   }, []);
+  const refreshVerificationBadge = useCallback(() => {
+    fetchPendingVerificationTotal()
+      .then((total) => setVerificationBadge(total))
+      .catch(() => setVerificationBadge(0));
+  }, []);
   const refreshIncidentBadgeRef = useRef(refreshIncidentBadge);
   const refreshProductBadgeRef = useRef(refreshProductBadge);
+  const refreshVerificationBadgeRef = useRef(refreshVerificationBadge);
 
   useEffect(() => {
     refreshIncidentBadgeRef.current = refreshIncidentBadge;
@@ -227,6 +248,10 @@ function AdminPanel() {
   useEffect(() => {
     refreshProductBadgeRef.current = refreshProductBadge;
   }, [refreshProductBadge]);
+
+  useEffect(() => {
+    refreshVerificationBadgeRef.current = refreshVerificationBadge;
+  }, [refreshVerificationBadge]);
 
   useEffect(() => {
     const handleIncidentBadgeRefresh = () => {
@@ -255,6 +280,21 @@ function AdminPanel() {
       window.removeEventListener("focus", handleProductBadgeRefresh);
       window.removeEventListener("storage", handleProductBadgeRefresh);
       window.removeEventListener("merenta:products-updated", handleProductBadgeRefresh);
+    };
+  }, []);
+
+  useEffect(() => {
+    const handleVerificationBadgeRefresh = () => {
+      refreshVerificationBadgeRef.current();
+    };
+    handleVerificationBadgeRefresh();
+    window.addEventListener("focus", handleVerificationBadgeRefresh);
+    window.addEventListener("storage", handleVerificationBadgeRefresh);
+    window.addEventListener("merenta:verification-updated", handleVerificationBadgeRefresh);
+    return () => {
+      window.removeEventListener("focus", handleVerificationBadgeRefresh);
+      window.removeEventListener("storage", handleVerificationBadgeRefresh);
+      window.removeEventListener("merenta:verification-updated", handleVerificationBadgeRefresh);
     };
   }, []);
 

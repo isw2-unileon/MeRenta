@@ -6,6 +6,7 @@ import (
 	"net/http"
 
 	"github.com/gin-gonic/gin"
+	"github.com/google/uuid"
 
 	"github.com/isw2-unileon/MeRenta/backend/internal/model"
 	"github.com/isw2-unileon/MeRenta/backend/internal/service"
@@ -23,80 +24,18 @@ func NewIncidentHandler(svc *service.IncidentService) *IncidentHandler {
 }
 
 // Create handles POST /api/incidents.
-//
-//nolint:dupl // structurally mirrors BookingHandler.Create; intentional by design
 func (h *IncidentHandler) Create(c *gin.Context) {
-	reporterID, ok := getCustomerID(c)
-	if !ok {
-		return
-	}
-
-	var req model.CreateIncidentRequest
-	if err := c.ShouldBindJSON(&req); err != nil {
-		response.Error(c, http.StatusBadRequest, formatBindError(err))
-		return
-	}
-
-	res, err := h.svc.Create(c.Request.Context(), reporterID, req)
-	if err != nil {
-		response.Error(c, incidentErrStatus(err), err.Error())
-		return
-	}
-	response.OK(c, http.StatusCreated, res)
+	bindAndCreate(c, h.svc.Create, incidentErrStatus)
 }
 
 // CreateProductReport handles POST /api/items/:id/reports.
-//
-//nolint:dupl // mirrors CreateUserReport while binding a different request/service method.
 func (h *IncidentHandler) CreateProductReport(c *gin.Context) {
-	reporterID, ok := getCustomerID(c)
-	if !ok {
-		return
-	}
-	itemID, ok := parseUUIDParam(c)
-	if !ok {
-		return
-	}
-
-	var req model.CreateProductReportRequest
-	if err := c.ShouldBindJSON(&req); err != nil {
-		response.Error(c, http.StatusBadRequest, formatBindError(err))
-		return
-	}
-
-	res, err := h.svc.CreateProductReport(c.Request.Context(), reporterID, itemID, req)
-	if err != nil {
-		response.Error(c, incidentErrStatus(err), err.Error())
-		return
-	}
-	response.OK(c, http.StatusCreated, res)
+	bindAndCreateForTarget(c, h.svc.CreateProductReport, incidentErrStatus)
 }
 
 // CreateUserReport handles POST /api/customers/:id/reports.
-//
-//nolint:dupl // mirrors CreateProductReport while binding a different request/service method.
 func (h *IncidentHandler) CreateUserReport(c *gin.Context) {
-	reporterID, ok := getCustomerID(c)
-	if !ok {
-		return
-	}
-	reportedID, ok := parseUUIDParam(c)
-	if !ok {
-		return
-	}
-
-	var req model.CreateUserReportRequest
-	if err := c.ShouldBindJSON(&req); err != nil {
-		response.Error(c, http.StatusBadRequest, formatBindError(err))
-		return
-	}
-
-	res, err := h.svc.CreateUserReport(c.Request.Context(), reporterID, reportedID, req)
-	if err != nil {
-		response.Error(c, incidentErrStatus(err), err.Error())
-		return
-	}
-	response.OK(c, http.StatusCreated, res)
+	bindAndCreateForTarget(c, h.svc.CreateUserReport, incidentErrStatus)
 }
 
 // ListMine handles GET /api/incidents/mine.
@@ -127,20 +66,10 @@ func (h *IncidentHandler) AdminList(c *gin.Context) {
 
 // AdminGet handles GET /api/admin/incidents/:id.
 func (h *IncidentHandler) AdminGet(c *gin.Context) {
-	id, ok := parseUUIDParam(c)
-	if !ok {
-		return
-	}
-
-	res, err := h.svc.GetByID(c.Request.Context(), id)
-	switch {
-	case err == nil:
-		response.OK(c, http.StatusOK, res)
-	case errors.Is(err, service.ErrIncidentNotFound):
-		response.Error(c, http.StatusNotFound, err.Error())
-	default:
-		response.Error(c, http.StatusInternalServerError, "internal server error")
-	}
+	respondByID(c, service.ErrIncidentNotFound, func(id uuid.UUID) (any, error) {
+		res, err := h.svc.GetByID(c.Request.Context(), id)
+		return res, err
+	})
 }
 
 // AdminUpdateStatus handles PATCH /api/admin/incidents/:id/status.

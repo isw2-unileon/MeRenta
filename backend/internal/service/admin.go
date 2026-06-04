@@ -31,6 +31,10 @@ type adminQuerier interface {
 	SearchItemCards(ctx context.Context, arg sqlcdb.SearchItemCardsParams) ([]sqlcdb.SearchItemCardsRow, error)
 	UpdateCustomerStatus(ctx context.Context, arg sqlcdb.UpdateCustomerStatusParams) (sqlcdb.UpdateCustomerStatusRow, error)
 	SetCustomerSuspendedUntil(ctx context.Context, customerID uuid.UUID, until pgtype.Timestamptz) error
+	EnsureCustomerVerificationSchema(ctx context.Context) error
+	ListAdminVerificationRows(ctx context.Context, status sqlcdb.VerificationStatus, limit, offset int32) ([]sqlcdb.AdminVerificationRow, error)
+	CountAdminVerificationRows(ctx context.Context, status sqlcdb.VerificationStatus) (int64, error)
+	UpdateCustomerVerificationStatus(ctx context.Context, customerID uuid.UUID, status sqlcdb.VerificationStatus) (sqlcdb.VerificationStatus, error)
 	AdminListBookings(ctx context.Context, arg sqlcdb.AdminListBookingsParams) ([]sqlcdb.BookingDetailRow, error)
 	AdminListPayments(ctx context.Context, arg sqlcdb.AdminListPaymentsParams) ([]sqlcdb.BookingDetailRow, error)
 	GetBookingByID(ctx context.Context, bookingID uuid.UUID) (sqlcdb.BookingDetailRow, error)
@@ -41,6 +45,11 @@ type adminQuerier interface {
 	CountUnderReviewIncidents(ctx context.Context) (int64, error)
 	ListIncidentsAdmin(ctx context.Context, arg sqlcdb.ListIncidentsAdminParams) ([]sqlcdb.IncidentRow, error)
 	CountItemCardsByCategory(ctx context.Context, arg sqlcdb.CountItemCardsByCategoryParams) ([]sqlcdb.CountItemCardsByCategoryRow, error)
+	InsertAuditLog(ctx context.Context, p sqlcdb.InsertAuditLogParams) error
+	ListAuditLog(ctx context.Context, action string, adminID uuid.UUID, allAdmins bool, limit, offset int32) ([]sqlcdb.AuditLogRow, error)
+	CountAuditLog(ctx context.Context, action string, adminID uuid.UUID, allAdmins bool) (int64, error)
+	GetPlatformConfig(ctx context.Context) (sqlcdb.PlatformConfig, error)
+	SetPlatformConfig(ctx context.Context, allowReg bool, adminID uuid.UUID) (sqlcdb.PlatformConfig, error)
 }
 
 // AdminService provides admin-only business logic.
@@ -55,7 +64,7 @@ func NewAdminService(q adminQuerier, refunder PaymentRefunder) *AdminService {
 	return &AdminService{q: q, refunder: refunder}
 }
 
-// AdminUserRow is a normalised customer row for the admin panel.
+// AdminUserRow is a normalized customer row for the admin panel.
 type AdminUserRow struct {
 	CustomerID       uuid.UUID            `json:"customer_id"`
 	FirstName        string               `json:"first_name"`
@@ -75,6 +84,49 @@ type AdminUserListResponse struct {
 	Limit int            `json:"limit"`
 }
 
+// AdminVerificationRow is one customer in the admin verification queue.
+type AdminVerificationRow struct {
+	CustomerID         uuid.UUID                 `json:"customer_id"`
+	FirstName          string                    `json:"first_name"`
+	LastName           string                    `json:"last_name"`
+	Email              string                    `json:"email"`
+	Phone              string                    `json:"phone,omitempty"`
+	AvatarURL          string                    `json:"avatar_url,omitempty"`
+	AccountStatus      sqlcdb.AccountStatus      `json:"account_status"`
+	VerificationStatus sqlcdb.VerificationStatus `json:"verification_status"`
+	RequestedAt        string                    `json:"requested_at"`
+	HasAddress         bool                      `json:"has_address"`
+}
+
+// AdminVerificationListResponse is the paginated verification queue.
+type AdminVerificationListResponse struct {
+	Requests []AdminVerificationRow `json:"requests"`
+	Total    int64                  `json:"total"`
+	Page     int                    `json:"page"`
+	Limit    int                    `json:"limit"`
+}
+
+// AuditEntry is one admin action in the audit log.
+type AuditEntry struct {
+	LogID      string `json:"log_id"`
+	AdminEmail string `json:"admin_email"`
+	Action     string `json:"action"`
+	EntityType string `json:"entity_type"`
+	EntityID   string `json:"entity_id"`
+	OldValue   string `json:"old_value,omitempty"`
+	NewValue   string `json:"new_value"`
+	Detail     string `json:"detail,omitempty"`
+	CreatedAt  string `json:"created_at"`
+}
+
+// AuditLogListResponse is the paginated audit log returned to admins.
+type AuditLogListResponse struct {
+	Entries []AuditEntry `json:"entries"`
+	Total   int64        `json:"total"`
+	Page    int          `json:"page"`
+	Limit   int          `json:"limit"`
+}
+
 // ListUsers returns a paginated customer list with optional search and status filter.
 // Priority: query > status > plain list.
 func (s *AdminService) ListUsers(
@@ -82,8 +134,8 @@ func (s *AdminService) ListUsers(
 	query, status string,
 	page, limit int,
 ) (AdminUserListResponse, error) {
-	offset := int32((page - 1) * limit) //nolint:gosec
-	lim := int32(limit)                 //nolint:gosec
+	offset := toInt32((page - 1) * limit)
+	lim := toInt32(limit)
 
 	switch {
 	case query != "":
@@ -93,6 +145,67 @@ func (s *AdminService) ListUsers(
 	default:
 		return s.listAll(ctx, page, limit, offset, lim)
 	}
+}
+
+// ListVerification returns profile badge requests filtered by decision status.
+func (s *AdminService) ListVerification(
+	ctx context.Context,
+	status string,
+	page, limit int,
+) (AdminVerificationListResponse, error) {
+	offset := toInt32((page - 1) * limit)
+	lim := toInt32(limit)
+	verificationStatus := sqlcdb.VerificationStatus(status)
+
+	if err := s.q.EnsureCustomerVerificationSchema(ctx); err != nil {
+		return AdminVerificationListResponse{}, err
+	}
+
+	total, err := s.q.CountAdminVerificationRows(ctx, verificationStatus)
+	if err != nil {
+		return AdminVerificationListResponse{}, err
+	}
+	list, err := s.q.ListAdminVerificationRows(ctx, verificationStatus, lim, offset)
+	if err != nil {
+		return AdminVerificationListResponse{}, err
+	}
+
+	rows := make([]AdminVerificationRow, len(list))
+	for i, c := range list {
+		rows[i] = AdminVerificationRow{
+			CustomerID:         c.CustomerID,
+			FirstName:          c.FirstName,
+			LastName:           c.LastName,
+			Email:              c.Email,
+			Phone:              nullableStr(c.Phone),
+			AvatarURL:          nullableStr(c.AvatarURL),
+			AccountStatus:      c.AccountStatus,
+			VerificationStatus: c.VerificationStatus,
+			RequestedAt:        nullableTime(c.RequestedVerificationAt),
+			HasAddress:         c.HasAddress,
+		}
+	}
+	return AdminVerificationListResponse{Requests: rows, Total: total, Page: page, Limit: limit}, nil
+}
+
+// UpdateVerification records an admin verification decision.
+func (s *AdminService) UpdateVerification(
+	ctx context.Context,
+	customerID uuid.UUID,
+	status sqlcdb.VerificationStatus,
+) (sqlcdb.VerificationStatus, error) {
+	if err := s.q.EnsureCustomerVerificationSchema(ctx); err != nil {
+		return "", err
+	}
+
+	updated, err := s.q.UpdateCustomerVerificationStatus(ctx, customerID, status)
+	if err != nil {
+		if errors.Is(err, pgx.ErrNoRows) {
+			return "", ErrAdminUserNotFound
+		}
+		return "", err
+	}
+	return updated, nil
 }
 
 // ListProducts returns all item rows visible to admins, including unavailable and retired listings.
@@ -125,6 +238,71 @@ func (s *AdminService) ListProducts(ctx context.Context, query string, page, lim
 	}, nil
 }
 
+// LogAuditEntry writes an audit log entry. Errors are warnings only.
+func (s *AdminService) LogAuditEntry(
+	ctx context.Context,
+	adminID uuid.UUID,
+	adminEmail, action, entityType, entityID, oldValue, newValue, detail string,
+) {
+	if err := s.q.InsertAuditLog(ctx, sqlcdb.InsertAuditLogParams{
+		AdminID:    adminID,
+		AdminEmail: adminEmail,
+		Action:     action,
+		EntityType: entityType,
+		EntityID:   entityID,
+		OldValue:   textOrNull(oldValue),
+		NewValue:   newValue,
+		Detail:     textOrNull(detail),
+	}); err != nil {
+		slog.Warn("admin audit log insert failed", "admin_id", adminID, "action", action, "error", err)
+	}
+}
+
+// ListAuditLog returns audit entries, newest first.
+func (s *AdminService) ListAuditLog(ctx context.Context, action string, page, limit int) (AuditLogListResponse, error) {
+	offset := toInt32((page - 1) * limit)
+	lim := toInt32(limit)
+
+	total, err := s.q.CountAuditLog(ctx, action, uuid.Nil, true)
+	if err != nil {
+		return AuditLogListResponse{}, err
+	}
+	list, err := s.q.ListAuditLog(ctx, action, uuid.Nil, true, lim, offset)
+	if err != nil {
+		return AuditLogListResponse{}, err
+	}
+
+	entries := make([]AuditEntry, len(list))
+	for i, row := range list {
+		entries[i] = AuditEntry{
+			LogID:      row.LogID.String(),
+			AdminEmail: row.AdminEmail,
+			Action:     row.Action,
+			EntityType: row.EntityType,
+			EntityID:   row.EntityID,
+			OldValue:   nullableStr(row.OldValue),
+			NewValue:   row.NewValue,
+			Detail:     nullableStr(row.Detail),
+			CreatedAt:  nullableTime(row.CreatedAt),
+		}
+	}
+	return AuditLogListResponse{Entries: entries, Total: total, Page: page, Limit: limit}, nil
+}
+
+// adminUserListResponse maps a page of customer rows into the admin list response.
+func adminUserListResponse[T any](
+	list []T,
+	total int64,
+	page, limit int,
+	toRow func(T) AdminUserRow,
+) AdminUserListResponse {
+	rows := make([]AdminUserRow, len(list))
+	for i, c := range list {
+		rows[i] = toRow(c)
+	}
+	return AdminUserListResponse{Users: rows, Total: total, Page: page, Limit: limit}
+}
+
 func (s *AdminService) listByQuery(
 	ctx context.Context,
 	query string,
@@ -139,12 +317,10 @@ func (s *AdminService) listByQuery(
 	if err != nil {
 		return AdminUserListResponse{}, err
 	}
-	rows := make([]AdminUserRow, len(list))
-	for i, c := range list {
-		rows[i] = toAdminRow(c.CustomerID, c.FirstName, c.LastName, c.Email,
+	return adminUserListResponse(list, int64(len(list)), page, limit, func(c sqlcdb.SearchCustomersRow) AdminUserRow {
+		return toAdminRow(c.CustomerID, c.FirstName, c.LastName, c.Email,
 			c.Phone, c.RegistrationDate, c.AccountStatus, c.UserRole)
-	}
-	return AdminUserListResponse{Users: rows, Total: int64(len(list)), Page: page, Limit: limit}, nil
+	}), nil
 }
 
 func (s *AdminService) listByStatus(
@@ -161,12 +337,10 @@ func (s *AdminService) listByStatus(
 	if err != nil {
 		return AdminUserListResponse{}, err
 	}
-	rows := make([]AdminUserRow, len(list))
-	for i, c := range list {
-		rows[i] = toAdminRow(c.CustomerID, c.FirstName, c.LastName, c.Email,
+	return adminUserListResponse(list, int64(len(list)), page, limit, func(c sqlcdb.ListCustomersByStatusRow) AdminUserRow {
+		return toAdminRow(c.CustomerID, c.FirstName, c.LastName, c.Email,
 			c.Phone, c.RegistrationDate, c.AccountStatus, c.UserRole)
-	}
-	return AdminUserListResponse{Users: rows, Total: int64(len(list)), Page: page, Limit: limit}, nil
+	}), nil
 }
 
 func (s *AdminService) listAll(
@@ -182,12 +356,10 @@ func (s *AdminService) listAll(
 	if err != nil {
 		return AdminUserListResponse{}, err
 	}
-	rows := make([]AdminUserRow, len(list))
-	for i, c := range list {
-		rows[i] = toAdminRow(c.CustomerID, c.FirstName, c.LastName, c.Email,
+	return adminUserListResponse(list, total, page, limit, func(c sqlcdb.ListCustomersRow) AdminUserRow {
+		return toAdminRow(c.CustomerID, c.FirstName, c.LastName, c.Email,
 			c.Phone, c.RegistrationDate, c.AccountStatus, c.UserRole)
-	}
-	return AdminUserListResponse{Users: rows, Total: total, Page: page, Limit: limit}, nil
+	}), nil
 }
 
 // UpdateUserStatus changes the account_status and, for suspensions, sets the end date.
@@ -255,7 +427,7 @@ func (s *AdminService) ListPayments(ctx context.Context, paymentStatus, query st
 }
 
 // AdminUpdateBookingStatus sets a booking to any valid status (admin override).
-// When the new status is cancelled or rejected, a Stripe refund is issued
+// When the new status is canceled or rejected, a Stripe refund is issued
 // automatically if the booking has a payment_intent_id.
 func (s *AdminService) AdminUpdateBookingStatus(
 	ctx context.Context,
@@ -476,4 +648,54 @@ func nullableTime(t pgtype.Timestamptz) string {
 		return t.Time.UTC().Format(time.RFC3339)
 	}
 	return ""
+}
+
+func textOrNull(value string) pgtype.Text {
+	return pgtype.Text{String: value, Valid: value != ""}
+}
+
+// ─── Platform config ──────────────────────────────────────────────────────────
+
+// PlatformConfigResponse is the full config payload returned to the admin UI.
+// Editable fields come from the DB; read-only constants come from the service layer.
+type PlatformConfigResponse struct {
+	AllowNewRegistrations bool    `json:"allow_new_registrations"`
+	ServiceFeeEUR         float64 `json:"service_fee_eur"`
+	InsuranceDailyRateEUR float64 `json:"insurance_daily_rate_eur"`
+	BookingExpiryDays     int     `json:"booking_expiry_days"`
+	UpdatedAt             string  `json:"updated_at,omitempty"`
+	UpdatedByEmail        string  `json:"updated_by_email,omitempty"`
+}
+
+// GetPlatformConfig returns the current platform settings.
+func (s *AdminService) GetPlatformConfig(ctx context.Context) (PlatformConfigResponse, error) {
+	cfg, err := s.q.GetPlatformConfig(ctx)
+	if err != nil {
+		return PlatformConfigResponse{}, err
+	}
+	return platformConfigToResponse(cfg), nil
+}
+
+// UpdatePlatformConfig saves the allow_new_registrations flag and records the editor.
+func (s *AdminService) UpdatePlatformConfig(
+	ctx context.Context,
+	allowReg bool,
+	adminID uuid.UUID,
+) (PlatformConfigResponse, error) {
+	cfg, err := s.q.SetPlatformConfig(ctx, allowReg, adminID)
+	if err != nil {
+		return PlatformConfigResponse{}, err
+	}
+	return platformConfigToResponse(cfg), nil
+}
+
+func platformConfigToResponse(cfg sqlcdb.PlatformConfig) PlatformConfigResponse {
+	return PlatformConfigResponse{
+		AllowNewRegistrations: cfg.AllowNewRegistrations,
+		ServiceFeeEUR:         serviceFeeEUR,
+		InsuranceDailyRateEUR: insuranceDailyRateEUR,
+		BookingExpiryDays:     bookingExpiryDays,
+		UpdatedAt:             cfg.UpdatedAt.UTC().Format(time.RFC3339),
+		UpdatedByEmail:        cfg.UpdatedByEmail,
+	}
 }

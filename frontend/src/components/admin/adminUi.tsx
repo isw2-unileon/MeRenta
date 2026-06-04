@@ -1,7 +1,6 @@
-import { Star } from "lucide-react";
 import type { ReactNode } from "react";
 
-import { AMBER, GREEN, MINT, PASTELS } from "@/pages/admin/components/adminTokens";
+import { GREEN, MINT, PASTELS } from "@/components/admin/adminTokens";
 
 // ── Types ─────────────────────────────────────────────────────────────────────
 type BadgeColor = "gray" | "green" | "amber" | "red" | "blue" | "purple";
@@ -62,7 +61,7 @@ interface AvatarProps {
 }
 
 /**
- * Coloured initials avatar.
+ * Colored initials' avatar.
  */
 function Avatar({ initials, index = 0, size = 36 }: AvatarProps) {
   return (
@@ -89,7 +88,7 @@ interface SectionTitleProps {
 }
 
 /**
- * Section heading with optional sub-title and action slot.
+ * Section heading with optional subtitle and action slot.
  */
 function SectionTitle({ title, sub, action }: SectionTitleProps) {
   return (
@@ -104,52 +103,7 @@ function SectionTitle({ title, sub, action }: SectionTitleProps) {
 }
 
 // ── Stars ─────────────────────────────────────────────────────────────────────
-
-interface StarsProps {
-  value: number;
-}
-
-/**
- * Star rating display.
- */
-function Stars({ value }: StarsProps) {
-  if (!value) {
-    return <span className="text-xs text-neutral-400">Sin valorar</span>;
-  }
-  return (
-    <span
-      className="inline-flex items-center gap-1 text-sm font-medium"
-      style={{ color: AMBER }}
-    >
-      <Star
-        size={13}
-        fill={AMBER}
-        stroke={AMBER}
-      />
-      {value.toFixed(1)}
-    </span>
-  );
-}
-
 // ── ComingSoon stub ────────────────────────────────────────────────────────────
-
-interface ComingSoonProps {
-  title: string;
-  description?: string;
-}
-
-/**
- * Placeholder card for sections not yet implemented.
- */
-function ComingSoon({ title, description }: ComingSoonProps) {
-  return (
-    <Card className="p-10 text-center">
-      <h2 className="text-lg font-bold text-neutral-800">{title}</h2>
-      {description && <p className="mt-1 text-sm text-neutral-500">{description}</p>}
-    </Card>
-  );
-}
-
 // ── ConfirmModal ──────────────────────────────────────────────────────────────
 
 interface ConfirmModalProps {
@@ -198,4 +152,119 @@ function ConfirmModal({
   );
 }
 
-export { Card, Badge, Avatar, SectionTitle, Stars, ComingSoon, ConfirmModal };
+// ── FilterPills ───────────────────────────────────────────────────────────────
+
+interface FilterPillsProps<V extends string> {
+  options: readonly { value: V; label: string }[];
+  value: V;
+  onChange: (value: V) => void;
+}
+
+/**
+ * Row of rounded filter pills; the selected one is highlighted in brand green.
+ */
+function FilterPills<V extends string>({ options, value, onChange }: FilterPillsProps<V>) {
+  return (
+    <div className="flex flex-wrap gap-2">
+      {options.map((option) => (
+        <button
+          key={option.value}
+          type="button"
+          onClick={() => onChange(option.value)}
+          className="rounded-full border px-3.5 py-1.5 text-sm font-medium transition"
+          style={
+            value === option.value
+              ? { backgroundColor: GREEN, color: "#fff", borderColor: GREEN }
+              : { borderColor: "#e5e7eb", color: "#525252" }
+          }
+        >
+          {option.label}
+        </button>
+      ))}
+    </div>
+  );
+}
+
+// ── Pagination ────────────────────────────────────────────────────────────────
+
+interface PaginationProps {
+  page: number;
+  total: number;
+  limit: number;
+  onPage: (page: number) => void;
+}
+
+/**
+ * Footer pager for admin tables. Renders nothing when there is a single page.
+ */
+function Pagination({ page, total, limit, onPage }: PaginationProps) {
+  const totalPages = Math.max(1, Math.ceil(total / limit));
+  if (totalPages <= 1) return null;
+
+  return (
+    <div className="flex items-center justify-between border-t border-neutral-100 px-5 py-3 text-sm text-neutral-500">
+      <span>
+        {(page - 1) * limit + 1}–{Math.min(page * limit, total)} de {total.toLocaleString("es-ES")}
+      </span>
+      <div className="flex gap-1">
+        <button
+          type="button"
+          disabled={page <= 1}
+          onClick={() => onPage(page - 1)}
+          aria-label="Página anterior"
+          className="rounded px-2 py-1 hover:bg-neutral-50 disabled:opacity-40"
+        >
+          Anterior
+        </button>
+        <button
+          type="button"
+          disabled={page >= totalPages}
+          onClick={() => onPage(page + 1)}
+          aria-label="Página siguiente"
+          className="rounded px-2 py-1 hover:bg-neutral-50 disabled:opacity-40"
+        >
+          Siguiente
+        </button>
+      </div>
+    </div>
+  );
+}
+
+// ── TableSkeleton ─────────────────────────────────────────────────────────────
+
+interface TableSkeletonProps {
+  rows: number;
+  cols: number;
+}
+
+/**
+ * Placeholder `<tr>` rows shown while an admin table is loading.
+ * Render inside a `<tbody>`.
+ */
+function TableSkeleton({ rows, cols }: TableSkeletonProps) {
+  return (
+    <>
+      {Array.from({ length: rows }).map((_, i) => (
+        <tr
+          key={i}
+          className="border-b border-neutral-50"
+        >
+          {Array.from({ length: cols }).map((__, j) => (
+            <td
+              key={j}
+              aria-label="Cargando"
+              className="px-5 py-4"
+            >
+              <div
+                aria-hidden="true"
+                className="h-4 w-24 animate-pulse rounded bg-neutral-100"
+              />
+            </td>
+          ))}
+        </tr>
+      ))}
+    </>
+  );
+}
+
+export { Card, Badge, Avatar, SectionTitle, ConfirmModal, FilterPills, Pagination, TableSkeleton };
