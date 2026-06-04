@@ -228,7 +228,12 @@ function SecondaryKpis({ stats }: { stats: AdminStats }) {
   );
 }
 
-function RecentIncidentsSection({ incidents }: { incidents: RecentIncident[] }) {
+interface RecentIncidentsSectionProps {
+  incidents: RecentIncident[];
+  onViewAll: () => void;
+}
+
+function RecentIncidentsSection({ incidents, onViewAll }: RecentIncidentsSectionProps) {
   return (
     <Card>
       <div className="flex items-center justify-between border-b border-neutral-100 px-5 py-4">
@@ -238,6 +243,7 @@ function RecentIncidentsSection({ incidents }: { incidents: RecentIncident[] }) 
         </div>
         <button
           type="button"
+          onClick={onViewAll}
           className="inline-flex items-center gap-1 text-xs font-medium"
           style={{ color: GREEN }}
         >
@@ -332,7 +338,11 @@ function RecentIncidentsSkeleton() {
 /**
  * Admin dashboard — KPIs, revenue + category charts (lazy), and recent incidents.
  */
-function Dashboard() {
+interface DashboardProps {
+  onViewAllIncidents?: () => void;
+}
+
+function Dashboard({ onViewAllIncidents = () => undefined }: DashboardProps) {
   const [stats, setStats] = useState<AdminStats | null>(null);
   const [error, setError] = useState<string | null>(null);
 
@@ -371,7 +381,10 @@ function Dashboard() {
       />
 
       <SecondaryKpis stats={stats} />
-      <RecentIncidentsSection incidents={stats.recent_incidents} />
+      <RecentIncidentsSection
+        incidents={stats.recent_incidents}
+        onViewAll={onViewAllIncidents}
+      />
     </div>
   );
 }

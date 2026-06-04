@@ -1,9 +1,9 @@
 import { useEffect, useReducer, useState } from "react";
-import { ExternalLink, ImageIcon, Search } from "lucide-react";
+import { ExternalLink, ImageIcon, Search, Trash2 } from "lucide-react";
 
 import type { ApiResponse } from "@/types/common";
 import type { SearchItemResponse, SearchItemsResponse } from "@/types/item";
-import { Badge, Card, SectionTitle } from "@/components/admin/adminUi";
+import { Badge, Card, ConfirmModal, SectionTitle } from "@/components/admin/adminUi";
 
 const LIMIT = 20;
 
@@ -83,6 +83,17 @@ async function fetchProducts(query: string, page: number): Promise<SearchItemsRe
   return json.data;
 }
 
+async function deleteProduct(itemId: string): Promise<void> {
+  const res = await fetch(`/api/admin/items/${itemId}`, {
+    method: "DELETE",
+    credentials: "include",
+  });
+  const json = (await res.json()) as ApiResponse<unknown>;
+  if (!res.ok || !json.success) {
+    throw new Error(json.error ?? "Error al eliminar el producto");
+  }
+}
+
 function fmtDate(iso: string): string {
   if (!iso) return "-";
   return new Date(iso).toLocaleDateString("es-ES", {
@@ -134,6 +145,7 @@ function Products() {
   const [state, dispatch] = useReducer(productsReducer, initialState);
   const [rawQuery, setRawQuery] = useState("");
   const [filters, setFilters] = useState({ query: "", page: 1 });
+  const [pendingDelete, setPendingDelete] = useState<SearchItemResponse | null>(null);
 
   useEffect(() => {
     const id = setTimeout(() => {
@@ -156,6 +168,33 @@ function Products() {
 
   function handlePage(page: number) {
     setFilters((f) => ({ ...f, page }));
+  }
+
+  function refreshProducts() {
+    dispatch({ type: "fetch_start" });
+    fetchProducts(filters.query, filters.page)
+      .then((data) => dispatch({ type: "fetch_success", products: data.items, total: data.total }))
+      .catch((err: unknown) =>
+        dispatch({
+          type: "fetch_error",
+          error: err instanceof Error ? err.message : "Error desconocido",
+        })
+      );
+  }
+
+  async function handleConfirmDelete() {
+    if (!pendingDelete) return;
+    try {
+      await deleteProduct(pendingDelete.item_id);
+      setPendingDelete(null);
+      refreshProducts();
+    } catch (err) {
+      setPendingDelete(null);
+      dispatch({
+        type: "fetch_error",
+        error: err instanceof Error ? err.message : "Error al eliminar el producto",
+      });
+    }
   }
 
   const { products, total, loading, error } = state;
@@ -256,13 +295,23 @@ function Products() {
                       {fmtDate(product.published_at)}
                     </td>
                     <td className="px-5 py-3.5 text-right">
-                      <a
-                        href={`/product/${product.item_id}`}
-                        aria-label={`Ver ${product.title}`}
-                        className="inline-flex rounded p-1 text-neutral-400 hover:text-neutral-700"
-                      >
-                        <ExternalLink size={16} />
-                      </a>
+                      <div className="flex justify-end gap-1">
+                        <a
+                          href={`/product/${product.item_id}`}
+                          aria-label={`Ver ${product.title}`}
+                          className="inline-flex rounded p-1 text-neutral-400 hover:text-neutral-700"
+                        >
+                          <ExternalLink size={16} />
+                        </a>
+                        <button
+                          type="button"
+                          onClick={() => setPendingDelete(product)}
+                          aria-label={`Eliminar ${product.title}`}
+                          className="inline-flex rounded p-1 text-neutral-400 hover:text-red-600"
+                        >
+                          <Trash2 size={16} />
+                        </button>
+                      </div>
                     </td>
                   </tr>
                 ))}
@@ -309,6 +358,16 @@ function Products() {
           </div>
         )}
       </Card>
+
+      {pendingDelete && (
+        <ConfirmModal
+          dangerous
+          confirmLabel="Eliminar"
+          message={`Estas a punto de eliminar "${pendingDelete.title}" de la base de datos. Pulsa Eliminar para confirmarlo. Esta accion no se puede deshacer.`}
+          onCancel={() => setPendingDelete(null)}
+          onConfirm={handleConfirmDelete}
+        />
+      )}
     </div>
   );
 }

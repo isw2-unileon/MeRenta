@@ -5,19 +5,16 @@ import {
   LayoutDashboard,
   Package,
   Repeat,
-  Search,
   Settings as SettingsIcon,
   ShieldCheck,
   Users,
 } from "lucide-react";
 
-import { useAuth } from "@/hooks/useAuth";
 import type { ApiResponse } from "@/types/common";
 import type { AdminVerificationListResponse } from "@/types/admin";
 import type { IncidentListResponse, IncidentStatus } from "@/types/incident";
 import type { SearchItemsResponse } from "@/types/item";
 import { GREEN, MINT } from "@/components/admin/adminTokens";
-import { Avatar } from "@/components/admin/adminUi";
 import { Dashboard } from "@/pages/admin/views/Dashboard";
 import { Incidents } from "@/pages/admin/views/Incidents";
 import { Operations } from "@/pages/admin/views/Operations";
@@ -56,11 +53,10 @@ const NAV: NavItem[] = [
   { id: "products", label: "Productos", Icon: Package },
   { id: "payments", label: "Transacciones", Icon: CreditCard },
   { id: "verification", label: "Verificación", Icon: ShieldCheck, badge: 23 },
-  { id: "settings", label: "Auditoría y ajustes", Icon: SettingsIcon },
+  { id: "settings", label: "Auditoría", Icon: SettingsIcon },
 ];
 
-const VIEWS: Record<SectionId, React.ComponentType> = {
-  dashboard: Dashboard,
+const VIEWS: Record<Exclude<SectionId, "dashboard">, React.ComponentType> = {
   incidents: Incidents,
   operations: Operations,
   users: UsersView,
@@ -118,11 +114,9 @@ interface SidebarProps {
   active: SectionId;
   navItems: NavItem[];
   onSelect: (id: SectionId) => void;
-  userEmail: string;
-  userName: string;
 }
 
-function Sidebar({ active, navItems, onSelect, userEmail, userName }: SidebarProps) {
+function Sidebar({ active, navItems, onSelect }: SidebarProps) {
   return (
     <aside className="flex w-60 shrink-0 flex-col border-r border-neutral-200 bg-white">
       {/* Logo */}
@@ -130,19 +124,13 @@ function Sidebar({ active, navItems, onSelect, userEmail, userName }: SidebarPro
         <a
           href="/"
           aria-label="Ir a la página principal"
-          className="text-xl font-light text-neutral-900"
-          style={{ fontFamily: "Inter, ui-sans-serif, system-ui, sans-serif" }}
+          className="text-logo text-ink inline-flex items-baseline gap-0 font-bold tracking-normal whitespace-nowrap"
         >
-          Me
-          <span
-            className="font-bold"
-            style={{ color: GREEN }}
-          >
-            Renta
-          </span>
+          <span>Me</span>
+          <span className="text-primary">Renta</span>
         </a>
         <span
-          className="ml-2 rounded px-1.5 py-0.5 text-[10px] font-semibold tracking-wide uppercase"
+          className="ml-2 rounded-full px-2 py-0.5 text-[10px] font-semibold tracking-wide uppercase"
           style={{ backgroundColor: MINT, color: GREEN }}
         >
           Admin
@@ -177,18 +165,6 @@ function Sidebar({ active, navItems, onSelect, userEmail, userName }: SidebarPro
           );
         })}
       </nav>
-
-      {/* User footer */}
-      <div className="flex items-center gap-3 border-t border-neutral-100 p-3">
-        <Avatar
-          initials={userName.slice(0, 2).toUpperCase()}
-          size={34}
-        />
-        <div className="min-w-0 flex-1">
-          <p className="truncate text-sm font-medium">{userName}</p>
-          <p className="truncate text-xs text-neutral-400">{userEmail}</p>
-        </div>
-      </div>
     </aside>
   );
 }
@@ -204,9 +180,7 @@ function AdminPanel() {
   const [incidentBadge, setIncidentBadge] = useState<number | null>(null);
   const [productBadge, setProductBadge] = useState<number | null>(null);
   const [verificationBadge, setVerificationBadge] = useState<number | null>(null);
-  const { user } = useAuth();
 
-  const View = VIEWS[active];
   const navItems = useMemo(
     () =>
       NAV.map((item) => {
@@ -218,9 +192,6 @@ function AdminPanel() {
     [incidentBadge, productBadge, verificationBadge]
   );
   const current = navItems.find((n) => n.id === active) ?? DEFAULT_NAV_ITEM;
-
-  const userName = user ? `${user.first_name} ${user.last_name}` : "Admin";
-  const userEmail = user?.email ?? "";
 
   const refreshIncidentBadge = useCallback(() => {
     fetchUnresolvedIncidentTotal()
@@ -307,8 +278,6 @@ function AdminPanel() {
         active={active}
         navItems={navItems}
         onSelect={setActive}
-        userEmail={userEmail}
-        userName={userName}
       />
 
       <div className="flex min-w-0 flex-1 flex-col">
@@ -318,24 +287,15 @@ function AdminPanel() {
             <h1 className="text-lg leading-tight font-bold">{current.label}</h1>
             <p className="text-xs text-neutral-400">Panel de administración · MeRenta</p>
           </div>
-          <div className="ml-auto flex items-center gap-3">
-            <div className="relative hidden sm:block">
-              <Search
-                size={15}
-                className="absolute top-2.5 left-3 text-neutral-400"
-              />
-              <input
-                aria-label="Buscar en el panel de administración"
-                placeholder="Buscar..."
-                className="w-48 rounded-lg border border-neutral-200 py-2 pr-3 pl-9 text-sm outline-none focus:border-emerald-500"
-              />
-            </div>
-          </div>
         </header>
 
         {/* Section content */}
         <main className="flex-1 overflow-y-auto p-6">
-          <View />
+          {active === "dashboard" ? (
+            <Dashboard onViewAllIncidents={() => setActive("incidents")} />
+          ) : (
+            React.createElement(VIEWS[active])
+          )}
         </main>
       </div>
     </div>

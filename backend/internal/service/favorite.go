@@ -3,9 +3,11 @@ package service
 
 import (
 	"context"
+	"errors"
 	"fmt"
 
 	"github.com/google/uuid"
+	"github.com/jackc/pgx/v5"
 
 	"github.com/isw2-unileon/MeRenta/backend/internal/model"
 	"github.com/isw2-unileon/MeRenta/backend/internal/sqlcdb"
@@ -17,8 +19,11 @@ type favoriteQuerier interface {
 	RemoveFavorite(ctx context.Context, arg sqlcdb.RemoveFavoriteParams) error
 	IsFavorite(ctx context.Context, arg sqlcdb.IsFavoriteParams) (bool, error)
 	ListFavoriteItems(ctx context.Context, customerID uuid.UUID) ([]sqlcdb.ListFavoriteItemsRow, error)
-	ExistsItemByID(ctx context.Context, itemID uuid.UUID) (bool, error)
+	GetItemByID(ctx context.Context, itemID uuid.UUID) (sqlcdb.GetItemByIDRow, error)
 }
+
+// ErrOwnFavorite indicates users cannot save their own items.
+var ErrOwnFavorite = errors.New("cannot favorite your own item")
 
 // FavoriteService handles the favorites use cases.
 type FavoriteService struct {
@@ -33,12 +38,15 @@ func NewFavoriteService(q favoriteQuerier) *FavoriteService {
 // AddFavorite saves an item to the customer's favorites.
 // Returns ErrItemNotFound when the item does not exist.
 func (s *FavoriteService) AddFavorite(ctx context.Context, customerID, itemID uuid.UUID) error {
-	exists, err := s.q.ExistsItemByID(ctx, itemID)
+	item, err := s.q.GetItemByID(ctx, itemID)
 	if err != nil {
+		if errors.Is(err, pgx.ErrNoRows) {
+			return ErrItemNotFound
+		}
 		return err
 	}
-	if !exists {
-		return ErrItemNotFound
+	if item.OwnerID == customerID {
+		return ErrOwnFavorite
 	}
 	return s.q.AddFavorite(ctx, sqlcdb.AddFavoriteParams{
 		CustomerID: customerID,

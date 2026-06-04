@@ -61,7 +61,7 @@ type CreateBookingParams struct {
 // BookingRow is a raw row from the booking table.
 type BookingRow struct {
 	BookingID       uuid.UUID          `json:"booking_id"`
-	ItemID          uuid.UUID          `json:"item_id"`
+	ItemID          pgtype.UUID        `json:"item_id"`
 	RenterID        uuid.UUID          `json:"renter_id"`
 	StartDate       time.Time          `json:"start_date"`
 	EndDate         time.Time          `json:"end_date"`
@@ -76,14 +76,14 @@ type BookingRow struct {
 // BookingDetailRow is a booking joined with item and renter display data.
 type BookingDetailRow struct {
 	BookingID                uuid.UUID          `json:"booking_id"`
-	ItemID                   uuid.UUID          `json:"item_id"`
+	ItemID                   pgtype.UUID        `json:"item_id"`
 	ItemTitle                string             `json:"item_title"`
 	ItemImageURL             string             `json:"item_image_url"`
 	RenterID                 uuid.UUID          `json:"renter_id"`
 	RenterFirstName          string             `json:"renter_first_name"`
 	RenterLastName           string             `json:"renter_last_name"`
 	RenterVerificationStatus VerificationStatus `json:"renter_verification_status"`
-	OwnerID                  uuid.UUID          `json:"owner_id"`
+	OwnerID                  pgtype.UUID        `json:"owner_id"`
 	StartDate                time.Time          `json:"start_date"`
 	EndDate                  time.Time          `json:"end_date"`
 	RequestedAt              pgtype.Timestamptz `json:"requested_at"`
@@ -134,8 +134,17 @@ type AdminListBookingsParams struct {
 
 const createBooking = `
 INSERT INTO booking (item_id, renter_id, start_date, end_date, estimated_total, notes,
-                     payment_intent_id, expires_at)
-VALUES ($1, $2, $3, $4, $5, $6, $7, $8)
+                     payment_intent_id, expires_at, item_title_snapshot,
+                     item_image_url_snapshot, owner_id_snapshot)
+SELECT $1, $2, $3, $4, $5, $6, $7, $8, i.title, img.image_url, i.owner_id
+FROM item i
+LEFT JOIN LATERAL (
+    SELECT image_url FROM item_image
+    WHERE item_id = i.item_id
+    ORDER BY display_order, image_id
+    LIMIT 1
+) img ON true
+WHERE i.item_id = $1
 RETURNING booking_id, item_id, renter_id, start_date, end_date,
           requested_at, booking_status, estimated_total, notes,
           payment_intent_id, expires_at
@@ -145,13 +154,13 @@ const getBookingByID = `
 SELECT
     b.booking_id,
     b.item_id,
-    i.title                            AS item_title,
-    img.image_url                      AS item_image_url,
+    COALESCE(i.title, b.item_title_snapshot, 'Producto eliminado') AS item_title,
+    COALESCE(img.image_url, b.item_image_url_snapshot, '')         AS item_image_url,
     b.renter_id,
     c.first_name                       AS renter_first_name,
     c.last_name                        AS renter_last_name,
     c.verification_status              AS renter_verification_status,
-    i.owner_id,
+    COALESCE(i.owner_id, b.owner_id_snapshot) AS owner_id,
     b.start_date,
     b.end_date,
     b.requested_at,
@@ -162,7 +171,7 @@ SELECT
     b.expires_at,
     0::bigint                          AS total_count
 FROM booking  b
-JOIN item     i ON i.item_id     = b.item_id
+LEFT JOIN item i ON i.item_id = b.item_id
 JOIN customer c ON c.customer_id = b.renter_id
 LEFT JOIN LATERAL (
     SELECT image_url FROM item_image
@@ -177,13 +186,13 @@ const listBookingsByRenter = `
 SELECT
     b.booking_id,
     b.item_id,
-    i.title                            AS item_title,
-    img.image_url       			   AS item_image_url,
+    COALESCE(i.title, b.item_title_snapshot, 'Producto eliminado') AS item_title,
+    COALESCE(img.image_url, b.item_image_url_snapshot, '')         AS item_image_url,
     b.renter_id,
     c.first_name                       AS renter_first_name,
     c.last_name                        AS renter_last_name,
     c.verification_status              AS renter_verification_status,
-    i.owner_id,
+    COALESCE(i.owner_id, b.owner_id_snapshot) AS owner_id,
     b.start_date,
     b.end_date,
     b.requested_at,
@@ -194,7 +203,7 @@ SELECT
     b.expires_at,
     COUNT(*) OVER()                    AS total_count
 FROM booking  b
-JOIN item     i ON i.item_id     = b.item_id
+LEFT JOIN item i ON i.item_id = b.item_id
 JOIN customer c ON c.customer_id = b.renter_id
 LEFT JOIN LATERAL (
     SELECT image_url FROM item_image
@@ -211,13 +220,13 @@ const listBookingsByOwner = `
 SELECT
     b.booking_id,
     b.item_id,
-    i.title                            AS item_title,
-    img.image_url        			   AS item_image_url,
+    COALESCE(i.title, b.item_title_snapshot, 'Producto eliminado') AS item_title,
+    COALESCE(img.image_url, b.item_image_url_snapshot, '')         AS item_image_url,
     b.renter_id,
     c.first_name                       AS renter_first_name,
     c.last_name                        AS renter_last_name,
     c.verification_status              AS renter_verification_status,
-    i.owner_id,
+    COALESCE(i.owner_id, b.owner_id_snapshot) AS owner_id,
     b.start_date,
     b.end_date,
     b.requested_at,
@@ -228,7 +237,7 @@ SELECT
     b.expires_at,
     COUNT(*) OVER()                    AS total_count
 FROM booking  b
-JOIN item     i ON i.item_id     = b.item_id
+LEFT JOIN item i ON i.item_id = b.item_id
 JOIN customer c ON c.customer_id = b.renter_id
 LEFT JOIN LATERAL (
     SELECT image_url FROM item_image
@@ -236,7 +245,7 @@ LEFT JOIN LATERAL (
     ORDER BY display_order, image_id
     LIMIT 1
 ) img ON true
-WHERE i.owner_id = $1
+WHERE COALESCE(i.owner_id, b.owner_id_snapshot) = $1
 ORDER BY b.requested_at DESC
 LIMIT $2 OFFSET $3
 `
@@ -456,7 +465,7 @@ func buildAdminPaymentsSQL(arg AdminListPaymentsParams) (string, []interface{}) 
 	if arg.Query != "" {
 		like := "%" + arg.Query + "%"
 		sql += fmt.Sprintf(
-			"  AND (i.title ILIKE $%d OR c.first_name ILIKE $%d OR c.last_name ILIKE $%d)\n", n, n, n,
+			"  AND (COALESCE(i.title, b.item_title_snapshot, '') ILIKE $%d OR c.first_name ILIKE $%d OR c.last_name ILIKE $%d)\n", n, n, n,
 		)
 		args = append(args, like)
 		n++
@@ -585,13 +594,13 @@ const bookingListSelect = `
 SELECT
     b.booking_id,
     b.item_id,
-    i.title                            AS item_title,
-    img.image_url        			   AS item_image_url,
+    COALESCE(i.title, b.item_title_snapshot, 'Producto eliminado') AS item_title,
+    COALESCE(img.image_url, b.item_image_url_snapshot, '')         AS item_image_url,
     b.renter_id,
     c.first_name                       AS renter_first_name,
     c.last_name                        AS renter_last_name,
     c.verification_status              AS renter_verification_status,
-    i.owner_id,
+    COALESCE(i.owner_id, b.owner_id_snapshot) AS owner_id,
     b.start_date,
     b.end_date,
     b.requested_at,
@@ -602,7 +611,7 @@ SELECT
     b.expires_at,
     COUNT(*) OVER()                    AS total_count
 FROM booking  b
-JOIN item     i ON i.item_id     = b.item_id
+LEFT JOIN item i ON i.item_id = b.item_id
 JOIN customer c ON c.customer_id = b.renter_id
 LEFT JOIN LATERAL (
     SELECT image_url FROM item_image
@@ -642,7 +651,7 @@ func buildAdminBookingsSQL(arg AdminListBookingsParams) (string, []interface{}) 
 	if arg.Query != "" {
 		like := "%" + arg.Query + "%"
 		conds = append(conds, fmt.Sprintf(
-			"(i.title ILIKE $%d OR c.first_name ILIKE $%d OR c.last_name ILIKE $%d)", n, n, n,
+			"(COALESCE(i.title, b.item_title_snapshot, '') ILIKE $%d OR c.first_name ILIKE $%d OR c.last_name ILIKE $%d)", n, n, n,
 		))
 		args = append(args, like)
 		n++

@@ -171,6 +171,7 @@ func registerAdminRoutes(api *gin.RouterGroup, adminH *handler.AdminHandler, inc
 
 	items := admin.Group("/items")
 	items.GET("", adminH.ListProducts)
+	items.DELETE("/:id", adminH.DeleteProduct)
 
 	bookings := admin.Group("/bookings")
 	bookings.GET("", adminH.ListBookings)

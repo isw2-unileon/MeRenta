@@ -62,6 +62,10 @@ func (h *FavoriteHandler) Add(c *gin.Context) {
 			response.Error(c, http.StatusNotFound, err.Error())
 			return
 		}
+		if errors.Is(err, service.ErrOwnFavorite) {
+			response.Error(c, http.StatusForbidden, err.Error())
+			return
+		}
 		slog.Error("add favorite failed", "error", err)
 		response.Error(c, http.StatusInternalServerError, "internal server error")
 		return

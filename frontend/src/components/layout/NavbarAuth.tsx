@@ -43,10 +43,11 @@ function NavbarAuth() {
         <div className="flex items-center gap-8">
           <button
             type="button"
-            className="text-logo text-ink cursor-pointer border-none bg-transparent p-0 font-bold"
+            className="text-logo text-ink inline-flex cursor-pointer items-baseline gap-0 border-none bg-transparent p-0 font-bold tracking-normal whitespace-nowrap"
             onClick={() => navigate("/home")}
           >
-            Me<span className="text-primary">Renta</span>
+            <span>Me</span>
+            <span className="text-primary">Renta</span>
           </button>
 
           <ul className="nav-list">

@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useReducer, useState } from "react";
-import { useNavigate } from "react-router-dom";
+import { Link, useNavigate } from "react-router-dom";
 import { Heart, Star } from "lucide-react";
 
 import type { ApiResponse } from "@/types/common";
@@ -162,7 +162,7 @@ function StatusBadge({ item }: StatusBadgeProps) {
 
 interface ActionButtonProps {
   item: FavoriteItemResponse;
-  onRent: () => void;
+  onRent: (event: React.MouseEvent<HTMLButtonElement>) => void;
 }
 
 function ActionButton({ item, onRent }: ActionButtonProps) {
@@ -173,7 +173,7 @@ function ActionButton({ item, onRent }: ActionButtonProps) {
     return (
       <button
         type="button"
-        className="btn--sm min-w-23 cursor-default rounded-lg bg-[#f3f4f6] px-4 py-2 text-[13px] font-medium text-[#9ca3af]"
+        className="btn--sm relative z-20 min-w-23 cursor-default rounded-lg bg-[#f3f4f6] px-4 py-2 text-[13px] font-medium text-[#9ca3af]"
         disabled
       >
         Reservado
@@ -184,7 +184,7 @@ function ActionButton({ item, onRent }: ActionButtonProps) {
     return (
       <button
         type="button"
-        className="btn--sm min-w-23 cursor-default rounded-lg bg-[#f3f4f6] px-4 py-2 text-[13px] font-medium text-[#9ca3af]"
+        className="btn--sm relative z-20 min-w-23 cursor-default rounded-lg bg-[#f3f4f6] px-4 py-2 text-[13px] font-medium text-[#9ca3af]"
         disabled
       >
         No disponible
@@ -194,7 +194,7 @@ function ActionButton({ item, onRent }: ActionButtonProps) {
   return (
     <button
       type="button"
-      className="btn-primary btn--sm min-w-23"
+      className="btn-primary btn--sm relative z-20 min-w-23"
       onClick={onRent}
     >
       Alquilar
@@ -212,11 +212,8 @@ function FavCard({ item, onRemove }: FavCardProps) {
   const rating = seededRating(item.item_id);
   const categoryLabel = CATEGORY_LABELS[item.category] ?? item.category;
 
-  function handleRent() {
-    void navigate(`/product/${item.item_id}`);
-  }
-
-  function handleOpen() {
+  function handleRent(event: React.MouseEvent<HTMLButtonElement>) {
+    event.stopPropagation();
     void navigate(`/product/${item.item_id}`);
   }
 
@@ -226,7 +223,12 @@ function FavCard({ item, onRemove }: FavCardProps) {
   }
 
   return (
-    <article className="border-border-main bg-page overflow-hidden rounded-xl border">
+    <article className="border-border-main bg-page relative overflow-hidden rounded-xl border transition-shadow hover:shadow-md">
+      <Link
+        to={`/product/${item.item_id}`}
+        className="absolute inset-0 z-10 rounded-xl"
+        aria-label={`Abrir ${item.title}`}
+      />
       <div className="bg-primary-light relative h-42 overflow-hidden">
         {item.primary_image_url ? (
           <img
@@ -238,13 +240,14 @@ function FavCard({ item, onRemove }: FavCardProps) {
           <div className="h-full w-full bg-[linear-gradient(135deg,#e1f5ee_0%,#d7f1e9_55%,#dff6ed_100%)]" />
         )}
 
-        <span className="absolute top-3 left-4 rounded-full bg-white/90 px-3 py-1 text-[11px] font-medium text-[#374151]">
-          {categoryLabel}
-        </span>
+        <div className="absolute top-3 right-13 left-4 flex items-center gap-2">
+          <span className="product-estado-badge">{categoryLabel}</span>
+          <StatusBadge item={item} />
+        </div>
 
         <button
           type="button"
-          className="text-heart-active absolute top-3 right-3 flex size-8 items-center justify-center rounded-full bg-white p-0 shadow-sm"
+          className="text-heart-active absolute top-3 right-3 z-20 flex size-8 items-center justify-center rounded-full bg-white p-0 shadow-sm"
           aria-label="Quitar de favoritos"
           onClick={handleRemove}
         >
@@ -256,13 +259,7 @@ function FavCard({ item, onRemove }: FavCardProps) {
       </div>
 
       <div className="p-4">
-        <button
-          type="button"
-          className="mb-3 block h-auto w-full p-0 text-left"
-          onClick={handleOpen}
-        >
-          <h2 className="text-ink line-clamp-2 min-h-9.5 text-[15px] leading-snug font-medium">{item.title}</h2>
-        </button>
+        <h2 className="text-ink mb-3 line-clamp-2 min-h-9.5 text-[15px] leading-snug font-medium">{item.title}</h2>
 
         <div className="mb-1 flex items-center justify-between">
           <p className="text-card-loc text-subtle">{item.city || "Sin ubicación"}</p>
@@ -273,10 +270,6 @@ function FavCard({ item, onRemove }: FavCardProps) {
             />
             {rating}
           </p>
-        </div>
-
-        <div className="mb-2">
-          <StatusBadge item={item} />
         </div>
 
         <p className="text-subtle mb-4 text-[11px]">Guardado {timeAgo(item.saved_at)}</p>

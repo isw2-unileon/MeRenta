@@ -289,7 +289,7 @@ func (s *IncidentService) UpdatePriority(
 
 func (s *IncidentService) authoriseReporter(b sqlcdb.BookingDetailRow, reporterID uuid.UUID) error {
 	isRenter := b.RenterID == reporterID
-	isOwner := b.OwnerID == reporterID
+	isOwner := b.OwnerID.Valid && uuid.UUID(b.OwnerID.Bytes) == reporterID
 	if !isRenter && !isOwner {
 		return ErrIncidentForbidden
 	}

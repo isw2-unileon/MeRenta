@@ -14,6 +14,7 @@ interface AdminUser {
   last_name: string;
   email: string;
   phone: string;
+  avatar_url?: string;
   registration_date: string;
   account_status: AccountStatus;
   user_role: AdminUserRole;

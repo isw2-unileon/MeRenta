@@ -286,6 +286,29 @@ func (h *AdminHandler) ListProducts(c *gin.Context) {
 	response.OK(c, http.StatusOK, res)
 }
 
+// DeleteProduct handles DELETE /api/admin/items/:id.
+func (h *AdminHandler) DeleteProduct(c *gin.Context) {
+	itemID, ok := parseUUIDParam(c)
+	if !ok {
+		return
+	}
+
+	if err := h.svc.DeleteProduct(c.Request.Context(), itemID); err != nil {
+		switch {
+		case errors.Is(err, service.ErrAdminItemNotFound):
+			response.Error(c, http.StatusNotFound, err.Error())
+		case errors.Is(err, service.ErrAdminItemHasDependencies):
+			response.Error(c, http.StatusConflict, "product has related bookings or records")
+		default:
+			slog.Error("admin delete product failed", "item_id", itemID, "error", err)
+			response.Error(c, http.StatusInternalServerError, "internal server error")
+		}
+		return
+	}
+
+	response.OK(c, http.StatusOK, gin.H{"message": "product deleted"})
+}
+
 // UpdateUserStatus handles PATCH /api/admin/users/:id/status.
 // Body: { "status": "active"|"inactive"|"suspended"|"banned", "suspended_until": "2024-06-15T00:00:00Z" }.
 // suspended_until is required when status = "suspended".

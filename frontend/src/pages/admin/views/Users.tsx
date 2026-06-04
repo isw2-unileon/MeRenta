@@ -49,6 +49,27 @@ function userInitials(u: AdminUser): string {
   return `${u.first_name[0] ?? ""}${u.last_name[0] ?? ""}`.toUpperCase();
 }
 
+function UserAvatar({ user, index }: { user: AdminUser; index: number }) {
+  if (user.avatar_url) {
+    return (
+      <img
+        src={user.avatar_url}
+        alt=""
+        className="size-9 rounded-full object-cover"
+        loading="lazy"
+      />
+    );
+  }
+
+  return (
+    <Avatar
+      initials={userInitials(user)}
+      index={index}
+      size={36}
+    />
+  );
+}
+
 // ── Reducer ───────────────────────────────────────────────────────────────────
 
 interface UsersState {
@@ -380,8 +401,8 @@ function UsersView() {
                   >
                     <td className="px-5 py-3.5">
                       <div className="flex items-center gap-3">
-                        <Avatar
-                          initials={userInitials(u)}
+                        <UserAvatar
+                          user={u}
                           index={i}
                         />
                         <div>
