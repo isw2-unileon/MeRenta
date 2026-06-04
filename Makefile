@@ -105,16 +105,21 @@ run-frontend-prod: build-frontend
 
 ## Run backend tests
 test-backend:
-	go test -v -race -count=1 ./backend/...
+	CGO_ENABLED=1 go test -v -race -count=1 ./backend/...
 
 ## Run frontend tests
 test-frontend:
 	cd frontend && npm run test
 
+test-frontend-coverage:
+	cd frontend && npm run test:coverage
+
 ## Run backend tests with coverage
-test-coverage:
-	go test -v -race -count=1 -coverprofile=coverage.out -covermode=atomic ./backend/...
+test-backend-coverage:
+	CGO_ENABLED=1 go test -v -race -count=1 -coverprofile=coverage.out -covermode=atomic ./backend/...
 	go tool cover -func=coverage.out
+
+test-coverage: test-frontend-coverage test-backend-coverage
 
 ## Run all tests
 test: test-backend test-frontend
