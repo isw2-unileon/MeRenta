@@ -9,6 +9,7 @@ import (
 	"time"
 
 	"github.com/gin-gonic/gin"
+	"github.com/google/uuid"
 
 	"github.com/isw2-unileon/MeRenta/backend/internal/service"
 	"github.com/isw2-unileon/MeRenta/backend/internal/sqlcdb"
@@ -40,6 +41,28 @@ func (h *AdminHandler) ListUsers(c *gin.Context) {
 
 	res, err := h.svc.ListUsers(c.Request.Context(), query, status, page, limit)
 	if err != nil {
+		response.Error(c, http.StatusInternalServerError, "internal server error")
+		return
+	}
+
+	response.OK(c, http.StatusOK, res)
+}
+
+// ListAuditLog handles GET /api/admin/audit.
+// Query params: action (filter), page, limit.
+func (h *AdminHandler) ListAuditLog(c *gin.Context) {
+	action := strings.TrimSpace(c.Query("action"))
+	page := parsePositiveInt(c.DefaultQuery("page", "1"), 1, 500)
+	limit := parsePositiveInt(c.DefaultQuery("limit", "20"), 20, 100)
+
+	if action != "" && !isValidAuditAction(action) {
+		response.Error(c, http.StatusBadRequest, "invalid action value")
+		return
+	}
+
+	res, err := h.svc.ListAuditLog(c.Request.Context(), action, page, limit)
+	if err != nil {
+		slog.Error("admin list audit log failed", "error", err)
 		response.Error(c, http.StatusInternalServerError, "internal server error")
 		return
 	}
@@ -101,6 +124,21 @@ func (h *AdminHandler) UpdateVerification(c *gin.Context) {
 			response.Error(c, http.StatusInternalServerError, "internal server error")
 		}
 		return
+	}
+
+	adminID, adminEmail, ok := getAdminAuditIdentity(c)
+	if ok {
+		h.svc.LogAuditEntry(
+			c.Request.Context(),
+			adminID,
+			adminEmail,
+			"verification_updated",
+			"verification",
+			customerID.String(),
+			"",
+			string(status),
+			customerID.String()[:8],
+		)
 	}
 
 	response.OK(c, http.StatusOK, gin.H{
@@ -174,6 +212,14 @@ func isValidPaymentStatus(s string) bool {
 	return s == "paid" || s == "refunded"
 }
 
+func isValidAuditAction(s string) bool {
+	switch s {
+	case "user_status_changed", "booking_status_changed", "verification_updated":
+		return true
+	}
+	return false
+}
+
 // AdminUpdateBookingStatus handles PATCH /api/admin/bookings/:id/status.
 // Body: { "status": "pending"|"accepted"|"rejected"|"cancelled"|"completed" }.
 func (h *AdminHandler) AdminUpdateBookingStatus(c *gin.Context) {
@@ -204,6 +250,21 @@ func (h *AdminHandler) AdminUpdateBookingStatus(c *gin.Context) {
 			response.Error(c, http.StatusInternalServerError, "internal server error")
 		}
 		return
+	}
+
+	adminID, adminEmail, ok := getAdminAuditIdentity(c)
+	if ok {
+		h.svc.LogAuditEntry(
+			c.Request.Context(),
+			adminID,
+			adminEmail,
+			"booking_status_changed",
+			"booking",
+			bookingID.String(),
+			"",
+			body.Status,
+			bookingID.String()[:8],
+		)
 	}
 
 	response.OK(c, http.StatusOK, res)
@@ -272,10 +333,45 @@ func (h *AdminHandler) UpdateUserStatus(c *gin.Context) {
 		return
 	}
 
+	adminID, adminEmail, ok := getAdminAuditIdentity(c)
+	if ok {
+		h.svc.LogAuditEntry(
+			c.Request.Context(),
+			adminID,
+			adminEmail,
+			"user_status_changed",
+			"user",
+			customerID.String(),
+			"",
+			body.Status,
+			customerID.String()[:8],
+		)
+	}
+
 	response.OK(c, http.StatusOK, gin.H{
 		"customer_id": row.CustomerID,
 		"status":      row.AccountStatus,
 	})
+}
+
+func getAdminAuditIdentity(c *gin.Context) (uuid.UUID, string, bool) {
+	rawID, ok := c.Get("customer_id")
+	if !ok {
+		return uuid.UUID{}, "", false
+	}
+	customerID, ok := rawID.(uuid.UUID)
+	if !ok {
+		return uuid.UUID{}, "", false
+	}
+	rawEmail, ok := c.Get("email")
+	if !ok {
+		return uuid.UUID{}, "", false
+	}
+	email, ok := rawEmail.(string)
+	if !ok || email == "" {
+		return uuid.UUID{}, "", false
+	}
+	return customerID, email, true
 }
 
 func isValidAccountStatus(s string) bool {

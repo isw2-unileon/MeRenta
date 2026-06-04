@@ -45,6 +45,9 @@ type adminQuerier interface {
 	CountUnderReviewIncidents(ctx context.Context) (int64, error)
 	ListIncidentsAdmin(ctx context.Context, arg sqlcdb.ListIncidentsAdminParams) ([]sqlcdb.IncidentRow, error)
 	CountItemCardsByCategory(ctx context.Context, arg sqlcdb.CountItemCardsByCategoryParams) ([]sqlcdb.CountItemCardsByCategoryRow, error)
+	InsertAuditLog(ctx context.Context, p sqlcdb.InsertAuditLogParams) error
+	ListAuditLog(ctx context.Context, action string, adminID uuid.UUID, allAdmins bool, limit, offset int32) ([]sqlcdb.AuditLogRow, error)
+	CountAuditLog(ctx context.Context, action string, adminID uuid.UUID, allAdmins bool) (int64, error)
 }
 
 // AdminService provides admin-only business logic.
@@ -99,6 +102,27 @@ type AdminVerificationListResponse struct {
 	Total    int64                  `json:"total"`
 	Page     int                    `json:"page"`
 	Limit    int                    `json:"limit"`
+}
+
+// AuditEntry is one admin action in the audit log.
+type AuditEntry struct {
+	LogID      string `json:"log_id"`
+	AdminEmail string `json:"admin_email"`
+	Action     string `json:"action"`
+	EntityType string `json:"entity_type"`
+	EntityID   string `json:"entity_id"`
+	OldValue   string `json:"old_value,omitempty"`
+	NewValue   string `json:"new_value"`
+	Detail     string `json:"detail,omitempty"`
+	CreatedAt  string `json:"created_at"`
+}
+
+// AuditLogListResponse is the paginated audit log returned to admins.
+type AuditLogListResponse struct {
+	Entries []AuditEntry `json:"entries"`
+	Total   int64        `json:"total"`
+	Page    int          `json:"page"`
+	Limit   int          `json:"limit"`
 }
 
 // ListUsers returns a paginated customer list with optional search and status filter.
@@ -210,6 +234,57 @@ func (s *AdminService) ListProducts(ctx context.Context, query string, page, lim
 		CityCounts:      map[string]int64{},
 		ConditionCounts: map[string]int64{},
 	}, nil
+}
+
+// LogAuditEntry writes an audit log entry. Errors are warnings only.
+func (s *AdminService) LogAuditEntry(
+	ctx context.Context,
+	adminID uuid.UUID,
+	adminEmail, action, entityType, entityID, oldValue, newValue, detail string,
+) {
+	if err := s.q.InsertAuditLog(ctx, sqlcdb.InsertAuditLogParams{
+		AdminID:    adminID,
+		AdminEmail: adminEmail,
+		Action:     action,
+		EntityType: entityType,
+		EntityID:   entityID,
+		OldValue:   textOrNull(oldValue),
+		NewValue:   newValue,
+		Detail:     textOrNull(detail),
+	}); err != nil {
+		slog.Warn("admin audit log insert failed", "admin_id", adminID, "action", action, "error", err)
+	}
+}
+
+// ListAuditLog returns audit entries, newest first.
+func (s *AdminService) ListAuditLog(ctx context.Context, action string, page, limit int) (AuditLogListResponse, error) {
+	offset := int32((page - 1) * limit) //nolint:gosec
+	lim := int32(limit)                 //nolint:gosec
+
+	total, err := s.q.CountAuditLog(ctx, action, uuid.Nil, true)
+	if err != nil {
+		return AuditLogListResponse{}, err
+	}
+	list, err := s.q.ListAuditLog(ctx, action, uuid.Nil, true, lim, offset)
+	if err != nil {
+		return AuditLogListResponse{}, err
+	}
+
+	entries := make([]AuditEntry, len(list))
+	for i, row := range list {
+		entries[i] = AuditEntry{
+			LogID:      row.LogID.String(),
+			AdminEmail: row.AdminEmail,
+			Action:     row.Action,
+			EntityType: row.EntityType,
+			EntityID:   row.EntityID,
+			OldValue:   nullableStr(row.OldValue),
+			NewValue:   row.NewValue,
+			Detail:     nullableStr(row.Detail),
+			CreatedAt:  nullableTime(row.CreatedAt),
+		}
+	}
+	return AuditLogListResponse{Entries: entries, Total: total, Page: page, Limit: limit}, nil
 }
 
 func (s *AdminService) listByQuery(
@@ -563,4 +638,8 @@ func nullableTime(t pgtype.Timestamptz) string {
 		return t.Time.UTC().Format(time.RFC3339)
 	}
 	return ""
+}
+
+func textOrNull(value string) pgtype.Text {
+	return pgtype.Text{String: value, Valid: value != ""}
 }

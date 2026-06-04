@@ -1,0 +1,128 @@
+package sqlcdb
+
+import (
+	"context"
+
+	"github.com/google/uuid"
+	"github.com/jackc/pgx/v5/pgtype"
+)
+
+// InsertAuditLogParams holds the fields for a new audit entry.
+type InsertAuditLogParams struct {
+	AdminID    uuid.UUID
+	AdminEmail string
+	Action     string
+	EntityType string
+	EntityID   string
+	OldValue   pgtype.Text
+	NewValue   string
+	Detail     pgtype.Text
+}
+
+// AuditLogRow is one row from admin_audit_log.
+type AuditLogRow struct {
+	LogID      uuid.UUID
+	AdminID    pgtype.UUID
+	AdminEmail string
+	Action     string
+	EntityType string
+	EntityID   string
+	OldValue   pgtype.Text
+	NewValue   string
+	Detail     pgtype.Text
+	CreatedAt  pgtype.Timestamptz
+}
+
+// InsertAuditLog inserts one audit entry.
+func (q *Queries) InsertAuditLog(ctx context.Context, p InsertAuditLogParams) error {
+	const query = `
+INSERT INTO admin_audit_log (
+    admin_id,
+    admin_email,
+    action,
+    entity_type,
+    entity_id,
+    old_value,
+    new_value,
+    detail
+) VALUES ($1, $2, $3, $4, $5, $6, $7, $8)`
+	_, err := q.db.Exec(
+		ctx,
+		query,
+		p.AdminID,
+		p.AdminEmail,
+		p.Action,
+		p.EntityType,
+		p.EntityID,
+		p.OldValue,
+		p.NewValue,
+		p.Detail,
+	)
+	return err
+}
+
+// ListAuditLog returns paginated audit entries, newest first.
+func (q *Queries) ListAuditLog(
+	ctx context.Context,
+	action string,
+	adminID uuid.UUID,
+	allAdmins bool,
+	limit, offset int32,
+) ([]AuditLogRow, error) {
+	const query = `
+SELECT
+    log_id,
+    admin_id,
+    admin_email,
+    action,
+    entity_type,
+    entity_id,
+    old_value,
+    new_value,
+    detail,
+    created_at
+FROM admin_audit_log
+WHERE ($1 = '' OR action = $1)
+  AND ($3 OR admin_id = $2)
+ORDER BY created_at DESC
+LIMIT $4 OFFSET $5`
+
+	rows, err := q.db.Query(ctx, query, action, adminID, allAdmins, limit, offset)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+
+	items := []AuditLogRow{}
+	for rows.Next() {
+		var row AuditLogRow
+		if err := rows.Scan(
+			&row.LogID,
+			&row.AdminID,
+			&row.AdminEmail,
+			&row.Action,
+			&row.EntityType,
+			&row.EntityID,
+			&row.OldValue,
+			&row.NewValue,
+			&row.Detail,
+			&row.CreatedAt,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, row)
+	}
+	return items, rows.Err()
+}
+
+// CountAuditLog returns the total matching the same filters as ListAuditLog.
+func (q *Queries) CountAuditLog(ctx context.Context, action string, adminID uuid.UUID, allAdmins bool) (int64, error) {
+	const query = `
+SELECT COUNT(*)
+FROM admin_audit_log
+WHERE ($1 = '' OR action = $1)
+  AND ($3 OR admin_id = $2)`
+	var count int64
+	err := q.db.QueryRow(ctx, query, action, adminID, allAdmins).Scan(&count)
+	return count, err
+}

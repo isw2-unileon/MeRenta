@@ -170,6 +170,7 @@ func registerAdminRoutes(api *gin.RouterGroup, adminH *handler.AdminHandler, inc
 
 	admin.GET("/payments", adminH.ListPayments)
 	admin.GET("/stats", adminH.GetStats)
+	admin.GET("/audit", adminH.ListAuditLog)
 
 	incidents := admin.Group("/incidents")
 	incidents.GET("", incidentH.AdminList)
