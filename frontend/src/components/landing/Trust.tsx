@@ -10,15 +10,15 @@ const cards = [
   },
   {
     title: "Valoraciones reales",
-    desc: "Sistema de reputacion verificado.",
+    desc: "Sistema de reputación verificado.",
   },
   {
     title: "Pago seguro",
-    desc: "Integracion Stripe. Tu dinero protegido.",
+    desc: "Integración Stripe. Tu dinero protegido.",
   },
   {
     title: "Soporte directo",
-    desc: "Mensajeria integrada entre partes.",
+    desc: "Mensajería integrada entre partes.",
   },
 ];
 
@@ -31,7 +31,7 @@ function Trust() {
 
   return (
     <section className="px-layout-margin bg-trust py-profile-stats">
-      <div className="max-w-alert-width mx-auto flex items-start gap-18">
+      <div className="max-w-alert-width gap-error-icon mx-auto flex items-start">
         <div className="flex flex-1 flex-col gap-[24px]">
           <h2 className="heading-on-primary">Tu tranquilidad es nuestra prioridad</h2>
           <p className="on-primary">

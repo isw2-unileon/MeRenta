@@ -218,7 +218,7 @@ async function createAddress(req: CreateAddressRequest): Promise<AddressResponse
 
 /**
  * Full-page form for publishing a new product listing.
- * Left column contains the multi-section form; the right column shows a live preview.
+ * Left column contains the multisection form; the right column shows a live preview.
  */
 function ProductCreate() {
   const navigate = useNavigate();

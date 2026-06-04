@@ -138,9 +138,9 @@ func wirePaymentAndBooking(
 	return paymentSvc, bookingSvc, handler.NewPaymentHandler(paymentSvc), handler.NewBookingHandler(bookingSvc)
 }
 
-// startAutoExpireJob runs in a goroutine. On startup it reconciles item
+// startAutoExpireJob runs in a goroutine. On startup, it reconciles item
 // availability for all existing bookings. Every hour it auto-cancels pending
-// bookings whose 5-day window has elapsed and resynchronises availability.
+// bookings whose 5-day window has elapsed and resynchronizes availability.
 func startAutoExpireJob(ctx context.Context, svc *service.BookingService) {
 	if err := svc.SyncAllAvailabilities(ctx); err != nil {
 		slog.Error("startup availability sync failed", "error", err)

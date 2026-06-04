@@ -20,7 +20,7 @@ import (
 var (
 	// ErrBookingNotFound is returned when the requested booking does not exist.
 	ErrBookingNotFound = errors.New("booking not found")
-	// ErrBookingForbidden is returned when the user is not authorised to act on the booking.
+	// ErrBookingForbidden is returned when the user is not authorized to act on the booking.
 	ErrBookingForbidden = errors.New("not authorised to modify this booking")
 	// ErrBookingClosed is returned when the booking status does not allow the requested transition.
 	ErrBookingClosed = errors.New("booking cannot be modified in its current state")
@@ -198,7 +198,7 @@ func (s *BookingService) Reject(
 		[]sqlcdb.BookingStatus{sqlcdb.BookingStatusPending})
 }
 
-// Cancel marks a booking as cancelled and refunds the renter.
+// Cancel marks a booking as canceled and refunds the renter.
 func (s *BookingService) Cancel(
 	ctx context.Context,
 	renterID uuid.UUID,
@@ -517,7 +517,7 @@ func numericToOptionalFloat64(n pgtype.Numeric) (*float64, error) {
 	return &f, nil
 }
 
-// optionalTime formats a nullable timestamptz as RFC3339, or returns empty string.
+// optionalTime formats a nullable timestamp as RFC3339, or returns empty string.
 func optionalTime(t pgtype.Timestamptz) string {
 	if !t.Valid {
 		return ""

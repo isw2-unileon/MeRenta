@@ -137,7 +137,7 @@ func (h *ItemHandler) Get(c *gin.Context) {
 //
 // Request body: model.CreateItemRequest (JSON)
 // Response 201: model.ItemResponse
-// Response 400: invalid request body or unrecognised category
+// Response 400: invalid request body or unrecognized category
 // Response 422: address_id does not exist in the database
 func (h *ItemHandler) Create(c *gin.Context) {
 	var req model.CreateItemRequest

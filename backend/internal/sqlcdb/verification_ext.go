@@ -105,7 +105,7 @@ LIMIT $2 OFFSET $3`
 	}
 	defer rows.Close()
 
-	items := []AdminVerificationRow{}
+	var items []AdminVerificationRow
 	for rows.Next() {
 		var row AdminVerificationRow
 		if err := rows.Scan(

@@ -171,7 +171,7 @@ async function requestVerification(): Promise<VerificationStatus> {
   });
   const json = (await res.json()) as ApiResponse<{ verification_status: VerificationStatus }>;
   if (!res.ok || !json.success || !json.data) {
-    throw new Error(json.error ?? "Error al solicitar la verificacion");
+    throw new Error(json.error ?? "Error al solicitar la verificación");
   }
   return json.data.verification_status;
 }
@@ -426,7 +426,7 @@ function MyProfile() {
       setRequestedVerificationStatus(status);
       window.dispatchEvent(new Event("merenta:verification-updated"));
     } catch (err) {
-      setVerificationError(err instanceof Error ? err.message : "Error al solicitar la verificacion");
+      setVerificationError(err instanceof Error ? err.message : "Error al solicitar la verificación");
     } finally {
       setVerificationLoading(false);
     }

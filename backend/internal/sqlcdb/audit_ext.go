@@ -93,7 +93,7 @@ LIMIT $4 OFFSET $5`
 	}
 	defer rows.Close()
 
-	items := []AuditLogRow{}
+	var items []AuditLogRow
 	for rows.Next() {
 		var row AuditLogRow
 		if err := rows.Scan(

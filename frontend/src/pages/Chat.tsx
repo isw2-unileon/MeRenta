@@ -394,7 +394,7 @@ function buildWebSocketURL(conversationID: string): string {
   // In dev the Vite proxy (ws: true) forwards /api/* to the backend, so we connect
   // to the dev server origin and let the proxy handle the upgrade. This keeps the
   // connection same-origin and avoids a CSP violation for ws://localhost:8080.
-  // In production we use VITE_API_BASE_URL directly (cross-origin backend).
+  // In production, we use VITE_API_BASE_URL directly (cross-origin backend).
   // Authentication is handled via the HttpOnly cookie, which the browser sends
   // automatically on WebSocket connections — no token query-param needed.
   const apiBaseURL = import.meta.env.DEV

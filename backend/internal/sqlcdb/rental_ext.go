@@ -128,7 +128,7 @@ func scanRentalRow(row pgx.Row) (RentalRow, error) {
 	return r, err
 }
 
-// NullableDate converts a pgtype.Date to a *time.Time for JSON serialisation.
+// NullableDate converts a pgtype.Date to a *time.Time for JSON serialization.
 func NullableDate(d pgtype.Date) *time.Time {
 	if !d.Valid {
 		return nil

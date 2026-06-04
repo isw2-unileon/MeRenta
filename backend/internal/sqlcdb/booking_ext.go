@@ -21,7 +21,7 @@ const (
 	BookingStatusAccepted BookingStatus = "accepted"
 	// BookingStatusRejected means the owner declined the booking.
 	BookingStatusRejected BookingStatus = "rejected"
-	// BookingStatusCancelled means the booking was cancelled (by renter or auto-expired).
+	// BookingStatusCancelled means the booking was canceled (by renter or auto-expired).
 	BookingStatusCancelled BookingStatus = "cancelled"
 	// BookingStatusCompleted means the rental period ended successfully.
 	BookingStatusCompleted BookingStatus = "completed"
@@ -427,7 +427,7 @@ func collectBookingDetailRows(rows pgx.Rows) ([]BookingDetailRow, error) {
 // ─── Admin payments queries ───────────────────────────────────────────────────
 
 // AdminListPaymentsParams filters paginated payment records for admin use.
-// PaymentStatus: "" = all, "paid" = charged, "refunded" = cancelled/rejected.
+// PaymentStatus: "" = all, "paid" = charged, "refunded" = canceled/rejected.
 type AdminListPaymentsParams struct {
 	PaymentStatus string `json:"payment_status"`
 	Query         string `json:"query"` // product title or renter name
@@ -624,7 +624,7 @@ func adminBookingOrderBy(sort string) string {
 }
 
 // buildAdminBookingsSQL constructs the full query and argument list from params.
-// Status and query are parameterised; ORDER BY uses validated constant strings.
+// Status and query are parameterized; ORDER BY uses validated constant strings.
 func buildAdminBookingsSQL(arg AdminListBookingsParams) (string, []interface{}) {
 	var conds []string
 	var args []interface{}

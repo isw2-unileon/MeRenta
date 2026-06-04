@@ -30,7 +30,7 @@ interface PaymentFormProps {
   totalEUR: number;
   /**
    * Stripe PaymentIntent client secret obtained from the server.
-   * Passed to `stripe.confirmCardPayment` to authorise the charge.
+   * Passed to `stripe.confirmCardPayment` to authorize the charge.
    */
   clientSecret: string;
   /** Called when Stripe confirms the payment. Receives the PaymentIntent ID. */
@@ -99,7 +99,7 @@ function fmtTotal(value: number): string {
 
 /**
  * Stripe Elements payment form with card number, expiry, CVC, holder name,
- * and a terms checkbox. Calls `onSuccess` or `onError` after confirmation.
+ * and a terms' checkbox. Calls `onSuccess` or `onError` after confirmation.
  *
  * Must be mounted inside a Stripe `<Elements>` provider.
  *

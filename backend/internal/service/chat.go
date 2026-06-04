@@ -21,7 +21,7 @@ var (
 	ErrConversationNotFound = errors.New("conversation not found")
 	// ErrCannotMessageSelf prevents owners from opening a chat with themselves.
 	ErrCannotMessageSelf = errors.New("cannot message yourself")
-	// ErrConversationForbidden is returned when the caller is not authorised to start a conversation.
+	// ErrConversationForbidden is returned when the caller is not authorized to start a conversation.
 	ErrConversationForbidden = errors.New("not authorised to start this conversation")
 	// ErrEmptyMessage indicates the message body is blank after trimming.
 	ErrEmptyMessage = errors.New("message body is required")

@@ -32,8 +32,8 @@ const CATEGORY_LABELS: Record<string, string> = {
   electronics: "Electrónica",
   tools: "Herramientas",
   music: "Música",
-  photography: "Fotografia",
-  gardening: "Jardineria",
+  photography: "Fotografía",
+  gardening: "Jardinería",
   camping: "Camping",
   home: "Hogar",
   clothing: "Ropa",
@@ -319,7 +319,7 @@ function HomeProductCard({ item, isFavorite, reviewSummary, onToggleFavorite, ba
       <div className="p-4">
         <h3 className="text-ink line-clamp-2 min-h-9.5 text-[15px] leading-snug font-medium">{item.title}</h3>
         <div className="mt-2 flex items-center justify-between gap-3">
-          <p className="text-card-loc text-subtle truncate">{item.city || "Sin ubicacion"}</p>
+          <p className="text-card-loc text-subtle truncate">{item.city || "Sin ubicación"}</p>
           {rating && (
             <p className="text-card-loc text-rating flex shrink-0 items-center gap-1">
               <Star

@@ -150,7 +150,7 @@ interface StatusMenuProps {
 
 /**
  * Three-dot dropdown that shows allowed next states for a booking.
- * Returns null for terminal statuses (rejected, cancelled, completed).
+ * Returns null for terminal statuses (rejected, canceled, completed).
  */
 function StatusMenu({ booking, onUpdate }: StatusMenuProps) {
   const [open, setOpen] = useState(false);

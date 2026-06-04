@@ -184,8 +184,8 @@ function validateForm(data: ProductFormData): FormErrors {
 
   if (!data.title.trim()) errors.title = "El titulo es obligatorio";
   if (!data.category) errors.category = "Selecciona una categoria";
-  if (!data.condition) errors.condition = "Selecciona el estado de conservacion";
-  if (!data.description.trim()) errors.description = "La descripcion es obligatoria";
+  if (!data.condition) errors.condition = "Selecciona el estado de conservación";
+  if (!data.description.trim()) errors.description = "La descripción es obligatoria";
   if (!data.pricePerDay || Number.parseFloat(data.pricePerDay) <= 0) {
     errors.pricePerDay = "El precio por dia debe ser mayor que 0";
   }
@@ -193,12 +193,12 @@ function validateForm(data: ProductFormData): FormErrors {
   const minRentalPeriod = Number.parseInt(data.minRentalPeriod, 10);
   const maxRentalPeriod = Number.parseInt(data.maxRentalPeriod, 10);
   if (data.maxRentalPeriod !== "0" && minRentalPeriod > maxRentalPeriod) {
-    errors.minRentalPeriod = "El periodo minimo no puede superar el maximo";
-    errors.maxRentalPeriod = "El periodo maximo debe ser igual o mayor que el minimo";
+    errors.minRentalPeriod = "El periodo mínimo no puede superar el máximo";
+    errors.maxRentalPeriod = "El periodo máximo debe ser igual o mayor que el mínimo";
   }
 
-  if (!data.address) errors.address = "Selecciona una direccion de recogida";
-  if (data.photos.length === 0) errors.photos = "Anade al menos una foto del producto";
+  if (!data.address) errors.address = "Selecciona una dirección de recogida";
+  if (data.photos.length === 0) errors.photos = "Añade al menos una foto del producto";
 
   return errors;
 }
@@ -231,7 +231,7 @@ function formatRelativeDate(value?: string): string {
   const days = Math.max(0, Math.round((Date.now() - date.getTime()) / 86400000));
   if (days === 0) return "hoy";
   if (days === 1) return "hace 1 dia";
-  return `hace ${days} dias`;
+  return `hace ${days} días`;
 }
 
 async function fetchItem(itemId: string): Promise<ItemResponse> {
@@ -264,7 +264,7 @@ async function createAddress(req: CreateAddressRequest): Promise<AddressResponse
   });
   const json = (await res.json()) as ApiResponse<AddressResponse>;
   if (!res.ok || !json.success || !json.data) {
-    throw new Error(json.message ?? json.error ?? "Error al guardar la direccion");
+    throw new Error(json.message ?? json.error ?? "Error al guardar la dirección");
   }
   return json.data;
 }
@@ -305,7 +305,7 @@ async function uploadItemImages(itemId: string, photos: File[]): Promise<ItemIma
   });
   const json = (await res.json()) as ApiResponse<ItemImageResponse[]>;
   if (!res.ok || !json.success || !json.data) {
-    throw new Error(json.message ?? json.error ?? "Error al subir las imagenes");
+    throw new Error(json.message ?? json.error ?? "Error al subir las imágenes");
   }
   return json.data;
 }
@@ -366,7 +366,7 @@ function DeleteProductConfirmModal({ deleting, productTitle, onClose, onConfirm 
             disabled={deleting}
           >
             <Trash2 size={14} />
-            {deleting ? "Eliminando…" : "Confirmar eliminacion"}
+            {deleting ? "Eliminando…" : "Confirmar eliminación"}
           </button>
         </div>
       </div>
@@ -389,7 +389,7 @@ function useProductEditController() {
 
   useEffect(() => {
     if (!id) {
-      dispatch({ type: "load-error", message: "No se encontro el identificador del anuncio" });
+      dispatch({ type: "load-error", message: "No se encontró el identificador del anuncio" });
       return;
     }
 

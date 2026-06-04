@@ -204,7 +204,7 @@ function ProductCard({ item, reviewSummary, isFavorite, onToggleFavorite, to }: 
   const reviewsLabel = reviewSummary ? String(reviewSummary.total) : "--";
   const isReserved = item.item_status === "rented";
   const isAvailable = item.is_available && !isReserved;
-  const locationLabel = [item.city, item.postal_code].filter(Boolean).join(", ") || "Sin ubicacion";
+  const locationLabel = [item.city, item.postal_code].filter(Boolean).join(", ") || "Sin ubicación";
 
   function handleToggle(event: React.MouseEvent) {
     event.preventDefault();

@@ -1,4 +1,4 @@
-/** Formats a Date as a short Spanish date string, e.g. "15 may 2025". */
+/** Formats a Date as a short Spanish date string, e.g. "15 May 2025". */
 function fmtDateEs(date: Date): string {
   return date.toLocaleDateString("es-ES", { day: "numeric", month: "short", year: "numeric" });
 }
@@ -32,7 +32,7 @@ interface RentalSummaryProps {
 }
 
 /**
- * Right-column card that summarises what the renter is paying for.
+ * Right-column card that summarizes what the renter is paying for.
  * Mirrors the breakdown computed by the booking card and repeated server-side.
  *
  * @param itemTitle Listing title.
@@ -106,7 +106,7 @@ function RentalSummary({
         </div>
         <div className="flex items-center justify-between">
           <p className="summary-row-label">
-            {days} {days === 1 ? "dia" : "dias"} de alquiler
+            {days} {days === 1 ? "dia" : "días"} de alquiler
           </p>
           <p className="summary-row-value">{fmtPrice(subtotal)} EUR</p>
         </div>

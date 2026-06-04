@@ -77,8 +77,8 @@ async function patchBookingStatus(
 // ── Incident helpers ──────────────────────────────────────────────────────────
 
 const INCIDENT_TYPE_LABELS: Record<IncidentType, string> = {
-  damage: "Producto danado",
-  late_return: "Devolucion tardia",
+  damage: "Producto dañado",
+  late_return: "Devolución tardía",
   item_mismatch: "Producto no coincide",
   not_delivered: "No entregado",
   other: "Otra incidencia",

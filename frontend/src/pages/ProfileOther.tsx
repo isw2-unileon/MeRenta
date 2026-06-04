@@ -46,13 +46,13 @@ const productTones: Record<string, string> = {
 
 const categoryLabels: Record<string, string> = {
   sports: "Deporte",
-  photography: "Fotografia",
+  photography: "Fotografía",
   camping: "Camping",
   tools: "Herramientas",
   electronics: "Electronica",
   home: "Hogar",
-  gardening: "Jardineria",
-  vehicles: "Vehiculos",
+  gardening: "Jardinería",
+  vehicles: "Vehículos",
   clothing: "Ropa",
   music: "Musica",
   leisure: "Ocio",
@@ -106,7 +106,7 @@ type UserIncidentType = "not_delivered" | "late_return" | "other";
 
 const userIncidentOptions: { value: UserIncidentType; label: string }[] = [
   { value: "not_delivered", label: "No entrego el articulo" },
-  { value: "late_return", label: "Devolucion tardia" },
+  { value: "late_return", label: "Devolución tardía" },
   { value: "other", label: "Otra incidencia" },
 ];
 
@@ -207,7 +207,7 @@ async function createReview(reviewedId: string, rating: number, comment: string)
   });
   const json = (await res.json()) as ApiResponse<ReceivedReview>;
   if (!res.ok || !json.success || !json.data) {
-    throw new Error(json.message ?? json.error ?? "Error al guardar la valoracion");
+    throw new Error(json.message ?? json.error ?? "Error al guardar la valoración");
   }
   return json.data;
 }
@@ -258,7 +258,7 @@ function formatRelativeDate(value: string) {
   const diffDays = Math.floor((Date.now() - created.getTime()) / 86_400_000);
   if (diffDays <= 0) return "Hoy";
   if (diffDays === 1) return "Hace 1 dia";
-  if (diffDays < 7) return `Hace ${diffDays} dias`;
+  if (diffDays < 7) return `Hace ${diffDays} días`;
 
   const weeks = Math.floor(diffDays / 7);
   if (weeks === 1) return "Hace 1 semana";
@@ -325,7 +325,7 @@ function ProductCard({ product, ownerRating }: { product: SearchItemResponse; ow
         </button>
 
         <div className="mt-3 flex items-center justify-between gap-3">
-          <p className="location truncate">{product.city || "Sin ubicacion"}</p>
+          <p className="location truncate">{product.city || "Sin ubicación"}</p>
           <p className="text-card-loc text-rating flex items-center gap-1">
             <Star
               size={12}
@@ -359,7 +359,7 @@ function RatingSummary({ summary }: { summary: ReviewSummary }) {
       <div>
         <p className="rating-big-number leading-none">{summary.average_rating.toFixed(1)}</p>
         <p className="rating-count-label mt-2">
-          de 5 - {summary.total} {summary.total === 1 ? "valoracion" : "valoraciones"}
+          de 5 - {summary.total} {summary.total === 1 ? "valoración" : "valoraciones"}
         </p>
         <StarRating
           rating={summary.average_rating}
@@ -506,7 +506,7 @@ function ReviewForm({
           className="btn-primary btn--sm min-w-36"
           disabled={submitting || rating === 0}
         >
-          {submitting ? "Enviando..." : "Publicar valoracion"}
+          {submitting ? "Enviando..." : "Publicar valoración"}
         </button>
       </div>
     </form>
@@ -548,7 +548,7 @@ function reviewDraftReducer(state: ReviewDraftState, action: ReviewDraftAction):
     case "submit_start":
       return { ...state, profileId: action.profileId, submitting: true, error: "", success: "" };
     case "submit_success":
-      return { ...state, submitting: false, rating: 0, comment: "", success: "Valoracion publicada correctamente." };
+      return { ...state, submitting: false, rating: 0, comment: "", success: "Valoración publicada correctamente." };
     case "submit_error":
       return { ...state, submitting: false, error: action.error };
     default:
@@ -694,7 +694,7 @@ function UserReportModal({
   );
 }
 
-// ── Shared data/action shapes passed to sub-sections ─────────────
+// ── Shared data/action shapes passed to subsections ─────────────
 interface ProfileViewData {
   fullName: string;
   initials: string;
@@ -872,7 +872,7 @@ function ProfileSidebar({
 
         <div className="divide-border-main my-5 divide-y">
           {[
-            ["Valoracion media", data.summary.average_rating.toFixed(1)],
+            ["Valoración media", data.summary.average_rating.toFixed(1)],
             ["Valoraciones recibidas", String(data.summary.total)],
             ["Opiniones positivas", `${data.positivePercent}%`],
             ["Valoraciones de 5 estrellas", `${data.fiveStarPercent}%`],
@@ -1148,7 +1148,7 @@ function ProfileOther() {
   const fullName = profile ? `${profile.first_name} ${profile.last_name}`.trim() : "";
   const initials = profile ? getInitials(profile.first_name, profile.last_name) : "";
   const cities = uniqueProductCities(products);
-  const cityLabel = cities.join(", ") || "Ubicacion no disponible";
+  const cityLabel = cities.join(", ") || "Ubicación no disponible";
   const memberSince = formatCompactMemberSince(profile?.registration_date);
   const activeProducts = products.filter((product) => product.is_available && product.item_status !== "retired").length;
   const messageProduct = products.find(
@@ -1178,20 +1178,20 @@ function ProfileOther() {
     } catch (err: unknown) {
       dispatchReviewDraft({
         type: "submit_error",
-        error: err instanceof Error ? err.message : "Error al guardar la valoracion",
+        error: err instanceof Error ? err.message : "Error al guardar la valoración",
       });
     }
   };
 
   const handleOpenMessage = async () => {
     if (isOwnProfile) {
-      dispatchMsgFlow({ type: "open_error", error: "No puedes abrir una conversacion contigo." });
+      dispatchMsgFlow({ type: "open_error", error: "No puedes abrir una conversación contigo." });
       return;
     }
     if (!messageProduct) {
       dispatchMsgFlow({
         type: "open_error",
-        error: "Este usuario no tiene productos disponibles para iniciar una conversacion.",
+        error: "Este usuario no tiene productos disponibles para iniciar una conversación.",
       });
       return;
     }
@@ -1230,7 +1230,7 @@ function ProfileOther() {
       { value: productsState.loading ? "..." : activeProducts, label: "Productos activos" },
       {
         value: reviewsState.loading ? "..." : summary.average_rating.toFixed(1),
-        label: "Valoracion media",
+        label: "Valoración media",
         rating: true,
       },
       { value: reviewsState.loading ? "..." : summary.total, label: "Valoraciones" },

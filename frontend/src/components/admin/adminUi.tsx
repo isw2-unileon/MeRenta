@@ -62,7 +62,7 @@ interface AvatarProps {
 }
 
 /**
- * Coloured initials avatar.
+ * Colored initials' avatar.
  */
 function Avatar({ initials, index = 0, size = 36 }: AvatarProps) {
   return (
@@ -89,7 +89,7 @@ interface SectionTitleProps {
 }
 
 /**
- * Section heading with optional sub-title and action slot.
+ * Section heading with optional subtitle and action slot.
  */
 function SectionTitle({ title, sub, action }: SectionTitleProps) {
   return (

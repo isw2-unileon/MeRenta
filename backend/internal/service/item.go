@@ -18,13 +18,13 @@ import (
 )
 
 var (
-	// ErrInvalidCategory indicates the category value is not recognised.
+	// ErrInvalidCategory indicates the category value is not recognized.
 	ErrInvalidCategory = errors.New("invalid category")
 	// ErrAddressNotFound indicates the provided address_id does not exist.
 	ErrAddressNotFound = errors.New("address not found")
 	// ErrInvalidRentalPeriod indicates an invalid min/max rental-day range.
 	ErrInvalidRentalPeriod = errors.New("invalid rental period")
-	// ErrInvalidCondition indicates the condition value is not recognised.
+	// ErrInvalidCondition indicates the condition value is not recognized.
 	ErrInvalidCondition = errors.New("invalid condition")
 	// ErrInvalidItemStatus indicates the item status cannot be set through editing.
 	ErrInvalidItemStatus = errors.New("invalid item status")
