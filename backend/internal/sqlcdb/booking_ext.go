@@ -71,23 +71,24 @@ type BookingRow struct {
 
 // BookingDetailRow is a booking joined with item and renter display data.
 type BookingDetailRow struct {
-	BookingID       uuid.UUID          `json:"booking_id"`
-	ItemID          uuid.UUID          `json:"item_id"`
-	ItemTitle       string             `json:"item_title"`
-	ItemImageURL    string             `json:"item_image_url"`
-	RenterID        uuid.UUID          `json:"renter_id"`
-	RenterFirstName string             `json:"renter_first_name"`
-	RenterLastName  string             `json:"renter_last_name"`
-	OwnerID         uuid.UUID          `json:"owner_id"`
-	StartDate       time.Time          `json:"start_date"`
-	EndDate         time.Time          `json:"end_date"`
-	RequestedAt     pgtype.Timestamptz `json:"requested_at"`
-	BookingStatus   BookingStatus      `json:"booking_status"`
-	EstimatedTotal  pgtype.Numeric     `json:"estimated_total"`
-	Notes           pgtype.Text        `json:"notes"`
-	PaymentIntentID pgtype.Text        `json:"payment_intent_id"`
-	ExpiresAt       pgtype.Timestamptz `json:"expires_at"`
-	TotalCount      int64              `json:"total_count"`
+	BookingID                uuid.UUID          `json:"booking_id"`
+	ItemID                   uuid.UUID          `json:"item_id"`
+	ItemTitle                string             `json:"item_title"`
+	ItemImageURL             string             `json:"item_image_url"`
+	RenterID                 uuid.UUID          `json:"renter_id"`
+	RenterFirstName          string             `json:"renter_first_name"`
+	RenterLastName           string             `json:"renter_last_name"`
+	RenterVerificationStatus VerificationStatus `json:"renter_verification_status"`
+	OwnerID                  uuid.UUID          `json:"owner_id"`
+	StartDate                time.Time          `json:"start_date"`
+	EndDate                  time.Time          `json:"end_date"`
+	RequestedAt              pgtype.Timestamptz `json:"requested_at"`
+	BookingStatus            BookingStatus      `json:"booking_status"`
+	EstimatedTotal           pgtype.Numeric     `json:"estimated_total"`
+	Notes                    pgtype.Text        `json:"notes"`
+	PaymentIntentID          pgtype.Text        `json:"payment_intent_id"`
+	ExpiresAt                pgtype.Timestamptz `json:"expires_at"`
+	TotalCount               int64              `json:"total_count"`
 }
 
 // BookingDateRange is a booked date interval for an item.
@@ -145,6 +146,7 @@ SELECT
     b.renter_id,
     c.first_name                       AS renter_first_name,
     c.last_name                        AS renter_last_name,
+    c.verification_status              AS renter_verification_status,
     i.owner_id,
     b.start_date,
     b.end_date,
@@ -176,6 +178,7 @@ SELECT
     b.renter_id,
     c.first_name                       AS renter_first_name,
     c.last_name                        AS renter_last_name,
+    c.verification_status              AS renter_verification_status,
     i.owner_id,
     b.start_date,
     b.end_date,
@@ -209,6 +212,7 @@ SELECT
     b.renter_id,
     c.first_name                       AS renter_first_name,
     c.last_name                        AS renter_last_name,
+    c.verification_status              AS renter_verification_status,
     i.owner_id,
     b.start_date,
     b.end_date,
@@ -402,7 +406,7 @@ func scanBookingDetailRow(row pgx.Row) (BookingDetailRow, error) {
 	var b BookingDetailRow
 	err := row.Scan(
 		&b.BookingID, &b.ItemID, &b.ItemTitle, &b.ItemImageURL,
-		&b.RenterID, &b.RenterFirstName, &b.RenterLastName, &b.OwnerID,
+		&b.RenterID, &b.RenterFirstName, &b.RenterLastName, &b.RenterVerificationStatus, &b.OwnerID,
 		&b.StartDate, &b.EndDate, &b.RequestedAt, &b.BookingStatus,
 		&b.EstimatedTotal, &b.Notes, &b.PaymentIntentID, &b.ExpiresAt,
 		&b.TotalCount,
@@ -415,7 +419,7 @@ func collectBookingDetailRows(rows pgx.Rows) ([]BookingDetailRow, error) {
 		var b BookingDetailRow
 		err := row.Scan(
 			&b.BookingID, &b.ItemID, &b.ItemTitle, &b.ItemImageURL,
-			&b.RenterID, &b.RenterFirstName, &b.RenterLastName, &b.OwnerID,
+			&b.RenterID, &b.RenterFirstName, &b.RenterLastName, &b.RenterVerificationStatus, &b.OwnerID,
 			&b.StartDate, &b.EndDate, &b.RequestedAt, &b.BookingStatus,
 			&b.EstimatedTotal, &b.Notes, &b.PaymentIntentID, &b.ExpiresAt,
 			&b.TotalCount,
@@ -586,6 +590,7 @@ SELECT
     b.renter_id,
     c.first_name                       AS renter_first_name,
     c.last_name                        AS renter_last_name,
+    c.verification_status              AS renter_verification_status,
     i.owner_id,
     b.start_date,
     b.end_date,

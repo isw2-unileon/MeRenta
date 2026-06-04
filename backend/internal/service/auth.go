@@ -490,12 +490,18 @@ func (s *AuthService) GetPublicProfile(ctx context.Context, id uuid.UUID) (*mode
 		return nil, err
 	}
 
+	verificationStatus, err := s.q.GetCustomerVerificationStatus(ctx, id)
+	if err != nil {
+		verificationStatus = sqlcdb.VerificationStatusNone
+	}
+
 	return &model.CustomerProfileResponse{
-		CustomerID:       c.CustomerID.String(),
-		FirstName:        c.FirstName,
-		LastName:         c.LastName,
-		AvatarURL:        c.AvatarUrl.String,
-		RegistrationDate: c.RegistrationDate.Time,
+		CustomerID:         c.CustomerID.String(),
+		FirstName:          c.FirstName,
+		LastName:           c.LastName,
+		AvatarURL:          c.AvatarUrl.String,
+		RegistrationDate:   c.RegistrationDate.Time,
+		VerificationStatus: string(verificationStatus),
 	}, nil
 }
 

@@ -23,6 +23,7 @@ export interface BookingDetailResponse {
   renter_id: string;
   renter_first_name: string;
   renter_last_name: string;
+  renter_verification_status: string;
   owner_id: string;
   start_date: string;
   end_date: string;

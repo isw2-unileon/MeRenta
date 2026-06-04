@@ -41,17 +41,18 @@ type ItemChatInfoRow struct {
 
 // ConversationRow contains all fields needed by the conversation list UI.
 type ConversationRow struct {
-	ConversationID uuid.UUID          `json:"conversation_id"`
-	ItemID         uuid.UUID          `json:"item_id"`
-	ItemTitle      string             `json:"item_title"`
-	ItemPrice      pgtype.Numeric     `json:"item_price"`
-	OtherUserID    uuid.UUID          `json:"other_user_id"`
-	OtherUserName  string             `json:"other_user_name"`
-	OtherAvatarURL string             `json:"other_avatar_url"`
-	LastMessage    string             `json:"last_message"`
-	LastMessageAt  pgtype.Timestamptz `json:"last_message_at"`
-	UpdatedAt      pgtype.Timestamptz `json:"updated_at"`
-	UnreadCount    int64              `json:"unread_count"`
+	ConversationID              uuid.UUID          `json:"conversation_id"`
+	ItemID                      uuid.UUID          `json:"item_id"`
+	ItemTitle                   string             `json:"item_title"`
+	ItemPrice                   pgtype.Numeric     `json:"item_price"`
+	OtherUserID                 uuid.UUID          `json:"other_user_id"`
+	OtherUserName               string             `json:"other_user_name"`
+	OtherAvatarURL              string             `json:"other_avatar_url"`
+	OtherUserVerificationStatus VerificationStatus `json:"other_user_verification_status"`
+	LastMessage                 string             `json:"last_message"`
+	LastMessageAt               pgtype.Timestamptz `json:"last_message_at"`
+	UpdatedAt                   pgtype.Timestamptz `json:"updated_at"`
+	UnreadCount                 int64              `json:"unread_count"`
 }
 
 // MessageRow contains a message and its timestamps.
@@ -105,6 +106,7 @@ SELECT
     other_user.customer_id AS other_user_id,
     other_user.first_name || ' ' || other_user.last_name AS other_user_name,
     COALESCE(other_user.avatar_url, '') AS other_avatar_url,
+    other_user.verification_status AS other_user_verification_status,
     COALESCE(last_msg.content, '') AS last_message,
     last_msg.sent_at AS last_message_at,
     c.created_at,
@@ -158,6 +160,7 @@ func (q *Queries) ListConversations(ctx context.Context, customerID uuid.UUID) (
 			&row.OtherUserID,
 			&row.OtherUserName,
 			&row.OtherAvatarURL,
+			&row.OtherUserVerificationStatus,
 			&row.LastMessage,
 			&row.LastMessageAt,
 			&row.UpdatedAt,
@@ -180,6 +183,7 @@ SELECT
     other_user.customer_id AS other_user_id,
     other_user.first_name || ' ' || other_user.last_name AS other_user_name,
     COALESCE(other_user.avatar_url, '') AS other_avatar_url,
+    other_user.verification_status AS other_user_verification_status,
     COALESCE(last_msg.content, '') AS last_message,
     last_msg.sent_at AS last_message_at,
     c.created_at,
@@ -227,6 +231,7 @@ func (q *Queries) GetConversation(ctx context.Context, conversationID, customerI
 		&c.OtherUserID,
 		&c.OtherUserName,
 		&c.OtherAvatarURL,
+		&c.OtherUserVerificationStatus,
 		&c.LastMessage,
 		&c.LastMessageAt,
 		&c.UpdatedAt,

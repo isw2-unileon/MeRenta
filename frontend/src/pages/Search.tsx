@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useMemo, useReducer, useState, type FormEvent, type ReactNode } from "react";
 import { Link, useSearchParams } from "react-router-dom";
-import { ChevronLeft, ChevronRight, Heart, Search as SearchIcon, Star, X } from "lucide-react";
+import { BadgeCheck, ChevronLeft, ChevronRight, Heart, Search as SearchIcon, Star, X } from "lucide-react";
 
 import { useFavorites } from "@/hooks/useFavorites";
 
@@ -269,9 +269,18 @@ function ProductCard({ item, reviewSummary, isFavorite, onToggleFavorite, to }: 
                 {item.owner_last_name.charAt(0).toUpperCase()}
               </span>
             )}
-            <p className="text-card-loc text-subtle truncate">
-              {item.owner_first_name} {item.owner_last_name}
-            </p>
+            <span className="flex min-w-0 items-center gap-1">
+              <p className="text-card-loc text-subtle truncate">
+                {item.owner_first_name} {item.owner_last_name}
+              </p>
+              {item.owner_verification_status === "verified" && (
+                <BadgeCheck
+                  size={14}
+                  className="text-primary shrink-0"
+                  aria-label="Perfil verificado"
+                />
+              )}
+            </span>
           </div>
 
           <div className="mb-5 flex items-center justify-between gap-3">

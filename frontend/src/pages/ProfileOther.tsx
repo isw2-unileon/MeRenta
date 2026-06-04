@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useReducer, useState, type FormEvent } from "react";
 import { useNavigate, useParams } from "react-router-dom";
-import { Heart, Mail, Star, X } from "lucide-react";
+import { BadgeCheck, Heart, Mail, Star, X } from "lucide-react";
 
 import { StarRating } from "@/components/product/detail/StarRating";
 import type { ApiResponse } from "@/types/common";
@@ -705,6 +705,7 @@ interface ProfileViewData {
   activeProducts: number;
   positivePercent: number;
   fiveStarPercent: number;
+  isVerified: boolean;
 }
 
 interface ProfileActionProps {
@@ -743,7 +744,16 @@ function ProfileHero({
             <div className="profile-avatar-hero bg-avatar-blue text-avatar-text-blue">{data.initials || "?"}</div>
           )}
           <div>
-            <p className="profile-name">{profileLoading ? "Cargando perfil..." : data.fullName}</p>
+            <div className="flex flex-wrap items-center gap-2">
+              <p className="profile-name">{profileLoading ? "Cargando perfil..." : data.fullName}</p>
+              {data.isVerified && (
+                <BadgeCheck
+                  size={26}
+                  className="text-primary shrink-0"
+                  aria-label="Perfil verificado"
+                />
+              )}
+            </div>
             <p className="profile-meta mt-1">
               {data.cityLabel} - {data.memberSince}
             </p>
@@ -841,7 +851,16 @@ function ProfileSidebar({
             <div className="owner-avatar bg-avatar-blue text-avatar-text-blue">{data.initials || "?"}</div>
           )}
           <div>
-            <p className="text-owner-name font-bold">{data.fullName || "Perfil publico"}</p>
+            <div className="flex flex-wrap items-center gap-1.5">
+              <p className="text-owner-name font-bold">{data.fullName || "Perfil publico"}</p>
+              {data.isVerified && (
+                <BadgeCheck
+                  size={18}
+                  className="text-primary shrink-0"
+                  aria-label="Perfil verificado"
+                />
+              )}
+            </div>
             <p className="text-card-loc text-subtle">
               {data.memberSince} - {data.cityLabel}
             </p>
@@ -1241,6 +1260,7 @@ function ProfileOther() {
     activeProducts,
     positivePercent,
     fiveStarPercent,
+    isVerified: profile?.verification_status === "verified",
   };
 
   const actionProps: ProfileActionProps = {

@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useMemo, useReducer, useRef, useState, type FormEvent } from "react";
 import { useNavigate, useParams } from "react-router-dom";
-import { ArrowRight, CheckCheck, Search, SendHorizontal, Trash2, X } from "lucide-react";
+import { ArrowRight, BadgeCheck, CheckCheck, Search, SendHorizontal, Trash2, X } from "lucide-react";
 
 import type { ApiResponse } from "@/types/common";
 import { useAuth } from "@/hooks/useAuth";
@@ -14,6 +14,7 @@ interface ConversationResponse {
   other_user_id: string;
   other_user_name: string;
   other_avatar_url?: string;
+  other_user_verification_status: string;
   last_message?: string;
   last_message_at?: string;
   updated_at: string;
@@ -472,7 +473,16 @@ function ConversationRow({
           image={conversation.other_avatar_url}
         />
         <span className="min-w-0">
-          <span className="text-ink block truncate text-[15px] font-bold">{conversation.other_user_name}</span>
+          <span className="flex items-center gap-1">
+            <span className="text-ink block truncate text-[15px] font-bold">{conversation.other_user_name}</span>
+            {conversation.other_user_verification_status === "verified" && (
+              <BadgeCheck
+                size={14}
+                className="text-primary shrink-0"
+                aria-label="Perfil verificado"
+              />
+            )}
+          </span>
           <span className="text-primary block truncate text-[11px] font-medium">{conversation.item_title}</span>
           <span className={`${unread ? "text-ink font-medium" : "text-subtle"} text-card-loc block truncate`}>
             {conversation.last_message ?? "Sin mensajes todavía"}
@@ -654,7 +664,16 @@ function ChatHeader({
           image={conversation.other_avatar_url}
         />
         <div>
-          <h2 className="text-[17px] font-semibold">{conversation.other_user_name}</h2>
+          <div className="flex items-center gap-1.5">
+            <h2 className="text-[17px] font-semibold">{conversation.other_user_name}</h2>
+            {conversation.other_user_verification_status === "verified" && (
+              <BadgeCheck
+                size={18}
+                className="text-primary shrink-0"
+                aria-label="Perfil verificado"
+              />
+            )}
+          </div>
           <p className="bg-primary-light text-primary inline-flex max-w-90 truncate rounded-full px-2.5 py-0.5 text-[10px] font-medium">
             {conversation.item_title} · {Math.round(conversation.item_price)} EUR/dia
           </p>

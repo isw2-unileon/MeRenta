@@ -64,9 +64,10 @@ type AuthResponse struct {
 // (e.g. the owner card on a product detail page). It deliberately omits
 // sensitive fields such as email, phone and stripe_customer_id.
 type CustomerProfileResponse struct {
-	CustomerID       string    `json:"customer_id"`
-	FirstName        string    `json:"first_name"`
-	LastName         string    `json:"last_name"`
-	AvatarURL        string    `json:"avatar_url,omitempty"`
-	RegistrationDate time.Time `json:"registration_date"`
+	CustomerID         string    `json:"customer_id"`
+	FirstName          string    `json:"first_name"`
+	LastName           string    `json:"last_name"`
+	AvatarURL          string    `json:"avatar_url,omitempty"`
+	RegistrationDate   time.Time `json:"registration_date"`
+	VerificationStatus string    `json:"verification_status"`
 }

@@ -289,17 +289,18 @@ func (s *ChatService) toConversationResponse(row sqlcdb.ConversationRow) (model.
 	}
 
 	return model.ConversationResponse{
-		ConversationID: row.ConversationID.String(),
-		ItemID:         row.ItemID.String(),
-		ItemTitle:      row.ItemTitle,
-		ItemPrice:      itemPrice,
-		OtherUserID:    row.OtherUserID.String(),
-		OtherUserName:  row.OtherUserName,
-		OtherAvatarURL: row.OtherAvatarURL,
-		LastMessage:    lastMessage,
-		LastMessageAt:  timestamptzPtr(row.LastMessageAt),
-		UpdatedAt:      row.UpdatedAt.Time,
-		UnreadCount:    int(row.UnreadCount),
+		ConversationID:              row.ConversationID.String(),
+		ItemID:                      row.ItemID.String(),
+		ItemTitle:                   row.ItemTitle,
+		ItemPrice:                   itemPrice,
+		OtherUserID:                 row.OtherUserID.String(),
+		OtherUserName:               row.OtherUserName,
+		OtherAvatarURL:              row.OtherAvatarURL,
+		OtherUserVerificationStatus: string(row.OtherUserVerificationStatus),
+		LastMessage:                 lastMessage,
+		LastMessageAt:               timestamptzPtr(row.LastMessageAt),
+		UpdatedAt:                   row.UpdatedAt.Time,
+		UnreadCount:                 int(row.UnreadCount),
 	}, nil
 }
 

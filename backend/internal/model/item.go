@@ -57,21 +57,22 @@ type ItemResponse struct {
 
 // SearchItemResponse is the compact item shape used by the search results UI.
 type SearchItemResponse struct {
-	ItemID          string    `json:"item_id"`
-	OwnerID         string    `json:"owner_id"`
-	AddressID       string    `json:"address_id"`
-	Category        string    `json:"category"`
-	Title           string    `json:"title"`
-	ItemStatus      string    `json:"item_status"`
-	PricePerDay     float64   `json:"price_per_day"`
-	IsAvailable     bool      `json:"is_available"`
-	PublishedAt     time.Time `json:"published_at"`
-	City            string    `json:"city"`
-	PostalCode      string    `json:"postal_code"`
-	PrimaryImageURL string    `json:"primary_image_url,omitempty"`
-	OwnerFirstName  string    `json:"owner_first_name"`
-	OwnerLastName   string    `json:"owner_last_name"`
-	OwnerAvatarURL  string    `json:"owner_avatar_url,omitempty"`
+	ItemID                  string    `json:"item_id"`
+	OwnerID                 string    `json:"owner_id"`
+	AddressID               string    `json:"address_id"`
+	Category                string    `json:"category"`
+	Title                   string    `json:"title"`
+	ItemStatus              string    `json:"item_status"`
+	PricePerDay             float64   `json:"price_per_day"`
+	IsAvailable             bool      `json:"is_available"`
+	PublishedAt             time.Time `json:"published_at"`
+	City                    string    `json:"city"`
+	PostalCode              string    `json:"postal_code"`
+	PrimaryImageURL         string    `json:"primary_image_url,omitempty"`
+	OwnerFirstName          string    `json:"owner_first_name"`
+	OwnerLastName           string    `json:"owner_last_name"`
+	OwnerAvatarURL          string    `json:"owner_avatar_url,omitempty"`
+	OwnerVerificationStatus string    `json:"owner_verification_status"`
 }
 
 // SearchItemsResponse wraps paginated search results.

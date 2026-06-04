@@ -1,6 +1,6 @@
 import { useNavigate } from "react-router-dom";
 import { useAuth } from "@/hooks/useAuth";
-import { CalendarDays, Heart, LayoutDashboard, LogOut, MessageSquare } from "lucide-react";
+import { BadgeCheck, CalendarDays, Heart, LayoutDashboard, LogOut, MessageSquare } from "lucide-react";
 
 /**
  * Renders the authenticated navigation bar with profile shortcuts.
@@ -131,7 +131,16 @@ function NavbarAuth() {
               <div className="avatar-initials">{initials}</div>
             )}
 
-            <span className="text-body text-ink font-medium">{displayName}</span>
+            <span className="flex items-center gap-1">
+              <span className="text-body text-ink font-medium">{displayName}</span>
+              {user.verification_status === "verified" && (
+                <BadgeCheck
+                  size={16}
+                  className="text-primary shrink-0"
+                  aria-label="Perfil verificado"
+                />
+              )}
+            </span>
           </button>
 
           <button

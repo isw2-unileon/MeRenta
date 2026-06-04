@@ -1,6 +1,6 @@
 import { useEffect, useReducer, useState } from "react";
 import { useNavigate } from "react-router-dom";
-import { AlertTriangle, ArrowRight, CalendarDays, Package, X } from "lucide-react";
+import { AlertTriangle, ArrowRight, BadgeCheck, CalendarDays, Package, X } from "lucide-react";
 
 import { useAuth } from "@/hooks/useAuth";
 import type { ApiResponse } from "@/types/common";
@@ -339,8 +339,16 @@ function BookingCard({
         </div>
 
         {viewMode === "owner" && (
-          <p className="text-subtle mb-1 text-[13px]">
-            Solicitante: <span className="text-ink font-medium">{renterName}</span>
+          <p className="text-subtle mb-1 flex items-center gap-1 text-[13px]">
+            Solicitante:&nbsp;
+            <span className="text-ink font-medium">{renterName}</span>
+            {booking.renter_verification_status === "verified" && (
+              <BadgeCheck
+                size={14}
+                className="text-primary shrink-0"
+                aria-label="Perfil verificado"
+              />
+            )}
           </p>
         )}
 

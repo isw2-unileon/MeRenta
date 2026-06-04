@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useReducer, useState } from "react";
-import { ArrowRight, Check, Circle, ShieldCheck, Star } from "lucide-react";
+import { ArrowRight, BadgeCheck, Check, Circle, ShieldCheck, Star } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 
 import { StarRating } from "@/components/product/detail/StarRating";
@@ -480,13 +480,11 @@ function MyProfile() {
                 <div className="flex flex-wrap items-center gap-2">
                   <p className="profile-name">{fullName}</p>
                   {verificationStatus === "verified" && (
-                    <span
-                      className="bg-primary inline-flex size-6 items-center justify-center rounded-full text-white"
-                      title="Perfil verificado"
+                    <BadgeCheck
+                      size={26}
+                      className="text-primary shrink-0"
                       aria-label="Perfil verificado"
-                    >
-                      <Check size={15} />
-                    </span>
+                    />
                   )}
                 </div>
                 {profileMeta && <p className="profile-meta mt-1">{profileMeta}</p>}

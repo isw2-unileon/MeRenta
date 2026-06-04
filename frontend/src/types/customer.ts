@@ -53,6 +53,7 @@ interface CustomerProfile {
   last_name: string;
   avatar_url: string | null;
   registration_date: string;
+  verification_status: VerificationStatus;
 }
 
 /**
