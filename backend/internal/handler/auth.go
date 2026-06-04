@@ -44,6 +44,8 @@ func (h *AuthHandler) Register(c *gin.Context) {
 		switch {
 		case errors.Is(err, service.ErrEmailExists):
 			response.Error(c, http.StatusConflict, err.Error())
+		case errors.Is(err, service.ErrRegistrationDisabled):
+			response.Error(c, http.StatusForbidden, err.Error())
 		default:
 			response.Error(c, http.StatusInternalServerError, "internal server error")
 		}

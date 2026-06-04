@@ -48,6 +48,8 @@ type adminQuerier interface {
 	InsertAuditLog(ctx context.Context, p sqlcdb.InsertAuditLogParams) error
 	ListAuditLog(ctx context.Context, action string, adminID uuid.UUID, allAdmins bool, limit, offset int32) ([]sqlcdb.AuditLogRow, error)
 	CountAuditLog(ctx context.Context, action string, adminID uuid.UUID, allAdmins bool) (int64, error)
+	GetPlatformConfig(ctx context.Context) (sqlcdb.PlatformConfig, error)
+	SetPlatformConfig(ctx context.Context, allowReg bool, adminID uuid.UUID) (sqlcdb.PlatformConfig, error)
 }
 
 // AdminService provides admin-only business logic.
@@ -62,7 +64,7 @@ func NewAdminService(q adminQuerier, refunder PaymentRefunder) *AdminService {
 	return &AdminService{q: q, refunder: refunder}
 }
 
-// AdminUserRow is a normalised customer row for the admin panel.
+// AdminUserRow is a normalized customer row for the admin panel.
 type AdminUserRow struct {
 	CustomerID       uuid.UUID            `json:"customer_id"`
 	FirstName        string               `json:"first_name"`
@@ -132,8 +134,8 @@ func (s *AdminService) ListUsers(
 	query, status string,
 	page, limit int,
 ) (AdminUserListResponse, error) {
-	offset := int32((page - 1) * limit) //nolint:gosec
-	lim := int32(limit)                 //nolint:gosec
+	offset := int32((page - 1) * limit)
+	lim := int32(limit)
 
 	switch {
 	case query != "":
@@ -151,8 +153,8 @@ func (s *AdminService) ListVerification(
 	status string,
 	page, limit int,
 ) (AdminVerificationListResponse, error) {
-	offset := int32((page - 1) * limit) //nolint:gosec
-	lim := int32(limit)                 //nolint:gosec
+	offset := int32((page - 1) * limit)
+	lim := int32(limit)
 	verificationStatus := sqlcdb.VerificationStatus(status)
 
 	if err := s.q.EnsureCustomerVerificationSchema(ctx); err != nil {
@@ -258,8 +260,8 @@ func (s *AdminService) LogAuditEntry(
 
 // ListAuditLog returns audit entries, newest first.
 func (s *AdminService) ListAuditLog(ctx context.Context, action string, page, limit int) (AuditLogListResponse, error) {
-	offset := int32((page - 1) * limit) //nolint:gosec
-	lim := int32(limit)                 //nolint:gosec
+	offset := int32((page - 1) * limit)
+	lim := int32(limit)
 
 	total, err := s.q.CountAuditLog(ctx, action, uuid.Nil, true)
 	if err != nil {
@@ -417,7 +419,7 @@ func (s *AdminService) ListPayments(ctx context.Context, paymentStatus, query st
 }
 
 // AdminUpdateBookingStatus sets a booking to any valid status (admin override).
-// When the new status is cancelled or rejected, a Stripe refund is issued
+// When the new status is canceled or rejected, a Stripe refund is issued
 // automatically if the booking has a payment_intent_id.
 func (s *AdminService) AdminUpdateBookingStatus(
 	ctx context.Context,
@@ -642,4 +644,50 @@ func nullableTime(t pgtype.Timestamptz) string {
 
 func textOrNull(value string) pgtype.Text {
 	return pgtype.Text{String: value, Valid: value != ""}
+}
+
+// ─── Platform config ──────────────────────────────────────────────────────────
+
+// PlatformConfigResponse is the full config payload returned to the admin UI.
+// Editable fields come from the DB; read-only constants come from the service layer.
+type PlatformConfigResponse struct {
+	AllowNewRegistrations bool    `json:"allow_new_registrations"`
+	ServiceFeeEUR         float64 `json:"service_fee_eur"`
+	InsuranceDailyRateEUR float64 `json:"insurance_daily_rate_eur"`
+	BookingExpiryDays     int     `json:"booking_expiry_days"`
+	UpdatedAt             string  `json:"updated_at,omitempty"`
+	UpdatedByEmail        string  `json:"updated_by_email,omitempty"`
+}
+
+// GetPlatformConfig returns the current platform settings.
+func (s *AdminService) GetPlatformConfig(ctx context.Context) (PlatformConfigResponse, error) {
+	cfg, err := s.q.GetPlatformConfig(ctx)
+	if err != nil {
+		return PlatformConfigResponse{}, err
+	}
+	return platformConfigToResponse(cfg), nil
+}
+
+// UpdatePlatformConfig saves the allow_new_registrations flag and records the editor.
+func (s *AdminService) UpdatePlatformConfig(
+	ctx context.Context,
+	allowReg bool,
+	adminID uuid.UUID,
+) (PlatformConfigResponse, error) {
+	cfg, err := s.q.SetPlatformConfig(ctx, allowReg, adminID)
+	if err != nil {
+		return PlatformConfigResponse{}, err
+	}
+	return platformConfigToResponse(cfg), nil
+}
+
+func platformConfigToResponse(cfg sqlcdb.PlatformConfig) PlatformConfigResponse {
+	return PlatformConfigResponse{
+		AllowNewRegistrations: cfg.AllowNewRegistrations,
+		ServiceFeeEUR:         serviceFeeEUR,
+		InsuranceDailyRateEUR: insuranceDailyRateEUR,
+		BookingExpiryDays:     bookingExpiryDays,
+		UpdatedAt:             cfg.UpdatedAt.UTC().Format(time.RFC3339),
+		UpdatedByEmail:        cfg.UpdatedByEmail,
+	}
 }

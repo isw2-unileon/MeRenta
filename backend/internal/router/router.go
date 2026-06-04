@@ -70,7 +70,7 @@ func registerPublicRoutes(api *gin.RouterGroup, authH *handler.AuthHandler) {
 	auth.POST("/logout", authH.Logout)
 }
 
-//nolint:funlen // centralizes protected API wiring for readability.
+// centralizes protected API wiring for readability.
 func registerProtectedRoutes(
 	protected *gin.RouterGroup,
 	authH *handler.AuthHandler,
@@ -171,6 +171,8 @@ func registerAdminRoutes(api *gin.RouterGroup, adminH *handler.AdminHandler, inc
 	admin.GET("/payments", adminH.ListPayments)
 	admin.GET("/stats", adminH.GetStats)
 	admin.GET("/audit", adminH.ListAuditLog)
+	admin.GET("/config", adminH.GetPlatformConfig)
+	admin.PATCH("/config", adminH.UpdatePlatformConfig)
 
 	incidents := admin.Group("/incidents")
 	incidents.GET("", incidentH.AdminList)

@@ -221,7 +221,6 @@ func isValidAuditAction(s string) bool {
 }
 
 // AdminUpdateBookingStatus handles PATCH /api/admin/bookings/:id/status.
-// Body: { "status": "pending"|"accepted"|"rejected"|"cancelled"|"completed" }.
 func (h *AdminHandler) AdminUpdateBookingStatus(c *gin.Context) {
 	bookingID, ok := parseUUIDParam(c)
 	if !ok {
@@ -352,6 +351,43 @@ func (h *AdminHandler) UpdateUserStatus(c *gin.Context) {
 		"customer_id": row.CustomerID,
 		"status":      row.AccountStatus,
 	})
+}
+
+// GetPlatformConfig handles GET /api/admin/config.
+// Returns editable flags (from DB) and read-only constants (from service layer).
+func (h *AdminHandler) GetPlatformConfig(c *gin.Context) {
+	cfg, err := h.svc.GetPlatformConfig(c.Request.Context())
+	if err != nil {
+		slog.Error("admin get platform config failed", "error", err)
+		response.Error(c, http.StatusInternalServerError, "internal server error")
+		return
+	}
+	response.OK(c, http.StatusOK, cfg)
+}
+
+// UpdatePlatformConfig handles PATCH /api/admin/config.
+// Body: { "allow_new_registrations": bool }.
+func (h *AdminHandler) UpdatePlatformConfig(c *gin.Context) {
+	adminID, ok := getCustomerID(c)
+	if !ok {
+		return
+	}
+
+	var body struct {
+		AllowNewRegistrations bool `json:"allow_new_registrations"`
+	}
+	if err := c.ShouldBindJSON(&body); err != nil {
+		response.Error(c, http.StatusBadRequest, "allow_new_registrations is required")
+		return
+	}
+
+	cfg, err := h.svc.UpdatePlatformConfig(c.Request.Context(), body.AllowNewRegistrations, adminID)
+	if err != nil {
+		slog.Error("admin update platform config failed", "error", err)
+		response.Error(c, http.StatusInternalServerError, "internal server error")
+		return
+	}
+	response.OK(c, http.StatusOK, cfg)
 }
 
 func getAdminAuditIdentity(c *gin.Context) (uuid.UUID, string, bool) {

@@ -47,11 +47,11 @@ func (s *PaymentService) CreatePaymentIntent(
 	}
 
 	subtotal := req.PricePerDay * float64(days)
-	insurance := math.Round(insuranceDailyRateEUR*float64(days)*100) / 100 //nolint:mnd // rounding to cents
+	insurance := math.Round(insuranceDailyRateEUR*float64(days)*100) / 100
 	total := subtotal + serviceFeeEUR + insurance
 
 	// Stripe amounts are in the smallest currency unit (cents for EUR).
-	amountCents := int64(math.Round(total * 100)) //nolint:mnd
+	amountCents := int64(math.Round(total * 100))
 
 	params := &stripe.PaymentIntentParams{
 		Amount:   stripe.Int64(amountCents),

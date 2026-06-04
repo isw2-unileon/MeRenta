@@ -37,6 +37,8 @@ var (
 	ErrEmailMismatch = errors.New("email confirmation does not match")
 	// ErrPasswordMismatch indicates the password confirmation does not match.
 	ErrPasswordMismatch = errors.New("password confirmation does not match")
+	// ErrRegistrationDisabled is returned when an admin has closed new sign-ups.
+	ErrRegistrationDisabled = errors.New("new registrations are currently disabled")
 )
 
 // ErrAccountSuspended is returned when the account is temporarily suspended.
@@ -53,13 +55,15 @@ func (e *ErrAccountSuspended) Error() string {
 	return "account is suspended"
 }
 
-// authQuerier extends sqlcdb.Querier with hand-written customer ext queries.
+// authQuerier extends sqlcdb.Querier with handwritten customer ext queries.
 type authQuerier interface {
 	sqlcdb.Querier
 	GetCustomerSuspendedUntil(ctx context.Context, customerID uuid.UUID) (pgtype.Timestamptz, error)
 	EnsureCustomerVerificationSchema(ctx context.Context) error
 	GetCustomerVerificationStatus(ctx context.Context, customerID uuid.UUID) (sqlcdb.VerificationStatus, error)
 	RequestCustomerVerification(ctx context.Context, customerID uuid.UUID) (sqlcdb.VerificationStatus, error)
+	// GetAllowNewRegistrations returns the platform flag that gates new sign-ups.
+	GetAllowNewRegistrations(ctx context.Context) (bool, error)
 }
 
 // AuthService handles authentication use cases.
@@ -76,7 +80,12 @@ func NewAuthService(q authQuerier, jwt *jwt.Manager, storageClient storage.Clien
 }
 
 // Register creates a new customer account and returns an auth response.
+// Returns ErrRegistrationDisabled when an admin has closed new sign-ups.
 func (s *AuthService) Register(ctx context.Context, req model.RegisterRequest) (*model.AuthResponse, error) {
+	if allowed, checkErr := s.q.GetAllowNewRegistrations(ctx); checkErr == nil && !allowed {
+		return nil, ErrRegistrationDisabled
+	}
+
 	exists, err := s.q.ExistsCustomerByEmail(ctx, req.Email)
 	if err != nil {
 		return nil, err

@@ -23,8 +23,7 @@ func NewIncidentHandler(svc *service.IncidentService) *IncidentHandler {
 }
 
 // Create handles POST /api/incidents.
-//
-//nolint:dupl // structurally mirrors BookingHandler.Create; intentional by design
+// structurally mirrors BookingHandler.Create; intentional by design
 func (h *IncidentHandler) Create(c *gin.Context) {
 	reporterID, ok := getCustomerID(c)
 	if !ok {
@@ -47,7 +46,7 @@ func (h *IncidentHandler) Create(c *gin.Context) {
 
 // CreateProductReport handles POST /api/items/:id/reports.
 //
-//nolint:dupl // mirrors CreateUserReport while binding a different request/service method.
+// mirrors CreateUserReport while binding a different request/service method.
 func (h *IncidentHandler) CreateProductReport(c *gin.Context) {
 	reporterID, ok := getCustomerID(c)
 	if !ok {
@@ -74,7 +73,7 @@ func (h *IncidentHandler) CreateProductReport(c *gin.Context) {
 
 // CreateUserReport handles POST /api/customers/:id/reports.
 //
-//nolint:dupl // mirrors CreateProductReport while binding a different request/service method.
+// mirrors CreateProductReport while binding a different request/service method.
 func (h *IncidentHandler) CreateUserReport(c *gin.Context) {
 	reporterID, ok := getCustomerID(c)
 	if !ok {
