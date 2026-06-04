@@ -68,6 +68,7 @@ const ChartsImpl = lazy(async () => {
     label?: string;
   }) {
     if (!active || !payload?.length) return null;
+    const revenue = payload[0]?.value ?? 0;
     return (
       <div className="rounded-lg border border-neutral-200 bg-white px-3 py-2 text-xs shadow-md">
         <p className="font-medium text-neutral-700">{label}</p>
@@ -75,7 +76,7 @@ const ChartsImpl = lazy(async () => {
           className="font-bold"
           style={{ color: GREEN }}
         >
-          {EUR_FULL.format(payload[0].value)}
+          {EUR_FULL.format(revenue)}
         </p>
       </div>
     );
@@ -197,7 +198,7 @@ const ChartsImpl = lazy(async () => {
               <Tooltip
                 cursor={{ fill: "#f9fafb" }}
                 contentStyle={{ borderRadius: 10, border: "1px solid #e5e7eb", fontSize: 12 }}
-                formatter={(value: number) => [value, "productos"]}
+                formatter={(value) => [typeof value === "number" ? value : Number(value ?? 0), "productos"]}
               />
               <Bar
                 dataKey="count"
