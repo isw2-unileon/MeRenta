@@ -4,144 +4,50 @@ import { AlertTriangle, X } from "lucide-react";
 
 import { ProductCalendar } from "@/components/product/detail/ProductCalendar";
 import { StarRating } from "@/components/product/detail/StarRating";
+import {
+  bookingAvailability,
+  fmtPrice,
+  formReducer,
+  formatDateEs,
+  formatRating,
+  hasDateConflict,
+  initialFormState,
+  priceBreakdown,
+  rentalDays,
+  toISODateStr,
+} from "@/components/product/detail/BookingCard.logic";
 import type { ApiResponse } from "@/types/common";
-
-/** Fixed service fee applied to every rental (EUR). */
-const SERVICE_FEE = 5;
-
-/** Per-day insurance rate (EUR). */
-const INSURANCE_DAILY_RATE = 2.3;
-
-interface BookingCardProps {
-  /** The item UUID, used to build the checkout URL. */
-  itemId: string;
-  /** Human-readable listing title. */
-  itemTitle: string;
-  /** Name of the user viewing the listing. */
-  reporterName: string;
-  /** User id of the customer viewing the listing. */
-  reporterId: string;
-  /** Base rental price per day in EUR. */
-  pricePerDay: number;
-  /** Average rating for the listing (0 – 5). */
-  rating: number;
-  /** Total number of reviews. */
-  reviewCount: number;
-  /** Currently selected rental start date. */
-  selectedStart: Date | null;
-  /** Currently selected rental end date. */
-  selectedEnd: Date | null;
-  /** Minimum number of rental days configured by the owner. */
-  minDays: number;
-  /** Maximum number of rental days configured by the owner. Null means unlimited. */
-  maxDay?: number | null;
-  /** Whether the authenticated user owns this listing. */
-  isOwner?: boolean;
-  /** Set of "YYYY-MM-DD" strings already occupied by active bookings. */
-  occupiedDates?: Set<string>;
-  /**
-   * Callback fired when the user changes a date from the booking card inputs.
-   * Receives the new start and end dates (either may be null).
-   */
-  onDateChange?: (start: Date | null, end: Date | null) => void;
-}
 
 interface ConversationResponse {
   conversation_id: string;
 }
 
+interface BookingCardProps {
+  itemId: string;
+  itemTitle: string;
+  reporterName: string;
+  reporterId: string;
+  pricePerDay: number;
+  rating: number;
+  reviewCount: number;
+  selectedStart: Date | null;
+  selectedEnd: Date | null;
+  minDays: number;
+  maxDay?: number | null;
+  isOwner?: boolean;
+  occupiedDates?: Set<string>;
+  onDateChange?: (start: Date | null, end: Date | null) => void;
+}
+
 type ProductIncidentType = "item_mismatch" | "damage" | "forbidden_item" | "not_available" | "other";
 
 const PRODUCT_INCIDENT_LABELS: Record<ProductIncidentType, string> = {
-  item_mismatch: "Información incorrecta",
+  item_mismatch: "InformaciÃ³n incorrecta",
   damage: "Producto en mal estado",
   forbidden_item: "Producto no permitido",
   not_available: "No disponible",
   other: "Otra incidencia",
 };
-
-/** Formats a Date as "YYYY-MM-DD" (the value format required by input[type="date"]). */
-function toISODateStr(date: Date): string {
-  const y = date.getFullYear();
-  const m = String(date.getMonth() + 1).padStart(2, "0");
-  const d = String(date.getDate()).padStart(2, "0");
-  return `${y}-${m}-${d}`;
-}
-
-/** Formats a Date as localized Spanish short date, e.g. "28 May 2026". */
-function formatDateEs(date: Date): string {
-  return date.toLocaleDateString("es-ES", {
-    day: "numeric",
-    month: "short",
-    year: "numeric",
-  });
-}
-
-/** Formats a number as a price string with comma decimal, e.g. "6,90". */
-function fmtPrice(value: number): string {
-  return value.toFixed(2).replace(".", ",");
-}
-
-function formatRating(value: number): string {
-  return value.toFixed(2);
-}
-
-// ── BookingCard local state ───────────────────────────────────────────────────
-
-interface BookingCardFormState {
-  messageLoading: boolean;
-  messageError: string;
-  bookingError: string;
-  calendarOpen: boolean;
-}
-
-type BookingCardFormAction =
-  | { type: "message:start" }
-  | { type: "message:done" }
-  | { type: "message:error"; error: string }
-  | { type: "booking:error"; error: string }
-  | { type: "booking:clear" }
-  | { type: "calendar:toggle" }
-  | { type: "calendar:close" };
-
-const initialFormState: BookingCardFormState = {
-  messageLoading: false,
-  messageError: "",
-  bookingError: "",
-  calendarOpen: false,
-};
-
-function formReducer(state: BookingCardFormState, action: BookingCardFormAction): BookingCardFormState {
-  switch (action.type) {
-    case "message:start":
-      return { ...state, messageLoading: true, messageError: "" };
-    case "message:done":
-      return { ...state, messageLoading: false };
-    case "message:error":
-      return { ...state, messageLoading: false, messageError: action.error };
-    case "booking:error":
-      return { ...state, bookingError: action.error };
-    case "booking:clear":
-      return { ...state, bookingError: "" };
-    case "calendar:toggle":
-      return { ...state, calendarOpen: !state.calendarOpen };
-    case "calendar:close":
-      return { ...state, calendarOpen: false };
-    default:
-      return state;
-  }
-}
-
-/** Returns true if any day in [start, end] appears in the occupied set. */
-function hasDateConflict(start: Date, end: Date, occupied: Set<string>): boolean {
-  const cur = new Date(start);
-  cur.setHours(0, 0, 0, 0);
-  while (cur <= end) {
-    if (occupied.has(toISODateStr(cur))) return true;
-    cur.setDate(cur.getDate() + 1);
-  }
-  return false;
-}
 
 async function startConversation(itemId: string): Promise<ConversationResponse> {
   const res = await fetch("/api/conversations", {
@@ -347,17 +253,9 @@ function BookingCard({
     dispatchForm({ type: "calendar:close" });
   };
 
-  const days =
-    selectedStart && selectedEnd
-      ? Math.round((selectedEnd.getTime() - selectedStart.getTime()) / (1000 * 60 * 60 * 24))
-      : 0;
-
-  const subtotal = pricePerDay * days;
-  const insurance = Math.round(INSURANCE_DAILY_RATE * days * 100) / 100;
-  const total = subtotal + SERVICE_FEE + insurance;
-  const isBelowMinimum = days > 0 && days < minDays;
-  const isAboveMaximum = days > 0 && maxDay !== null && maxDay !== undefined && days > maxDay;
-  const canBook = days > 0 && !isBelowMinimum && !isAboveMaximum;
+  const days = rentalDays(selectedStart, selectedEnd);
+  const { subtotal, insurance, serviceFee, total } = priceBreakdown(pricePerDay, days);
+  const { isBelowMinimum, isAboveMaximum, canBook } = bookingAvailability(days, minDays, maxDay);
   const periodHint = maxDay ? `Mín. ${minDays} días · Máx. ${maxDay} días` : `Mín. ${minDays} días`;
   const ratingLabel = formatRating(rating);
 
@@ -463,7 +361,7 @@ function BookingCard({
           </div>
           <div className="flex items-center justify-between">
             <p className="booking-row-label">Tarifa de servicio</p>
-            <p className="booking-row-value">{SERVICE_FEE} EUR</p>
+            <p className="booking-row-value">{serviceFee} EUR</p>
           </div>
           <div className="flex items-center justify-between">
             <p className="booking-row-label">Seguro obligatorio</p>
