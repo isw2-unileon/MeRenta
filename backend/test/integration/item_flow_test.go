@@ -38,7 +38,7 @@ func TestItemFlowCreateSearchUpdateForbiddenAndImages(t *testing.T) {
 	w, res := doJSON(t, app, http.MethodGet, "/api/items?q=Patinete&city=Leon&page=1&limit=10", ownerCookie, nil)
 	requireStatus(t, w, http.StatusOK)
 	search := decodeData[model.SearchItemsResponse](t, res)
-	if search.Total < 1 || !searchContains(search, item.ItemID) {
+	if search.Total < 1 || !searchContains(search.Items, item.ItemID) {
 		t.Fatalf("search = %+v", search)
 	}
 
@@ -119,8 +119,8 @@ func uploadImage(t *testing.T, app *testApp, cookie *http.Cookie, itemID string)
 	return w, res
 }
 
-func searchContains(res model.SearchItemsResponse, itemID string) bool {
-	for _, item := range res.Items {
+func searchContains(items []model.SearchItemResponse, itemID string) bool {
+	for _, item := range items {
 		if item.ItemID == itemID {
 			return true
 		}

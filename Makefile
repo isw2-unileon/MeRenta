@@ -7,7 +7,7 @@ BACKEND_COVERAGE := tmp/backend-coverage.out
         run-backend run-frontend run \
         build-backend build-frontend build \
         run-backend-prod run-frontend-prod \
-        test test-backend test-backend-race test-frontend test-coverage \
+        test test-backend test-backend-race test-frontend test-integration-docker test-coverage \
         lint lint-backend lint-frontend doctor \
         e2e \
         fmt fmt-backend fmt-frontend \
@@ -118,6 +118,10 @@ test-backend-race:
 ## Run frontend tests
 test-frontend:
 	cd frontend && npm run test
+
+## Recreate a local Docker PostgreSQL test DB and run backend integration tests
+test-integration-docker:
+	powershell -NoProfile -ExecutionPolicy Bypass -File backend/test/integration/run_docker_integration.ps1
 
 test-frontend-coverage:
 	cd frontend && npm run test:coverage

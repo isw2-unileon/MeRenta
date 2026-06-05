@@ -91,6 +91,8 @@ func registerProtectedRoutes(
 	addresses := protected.Group("/addresses")
 	addresses.GET("", addrH.List)
 	addresses.POST("", addrH.Create)
+	addresses.PATCH("/:id", addrH.Update)
+	addresses.DELETE("/:id", addrH.Delete)
 
 	customers := protected.Group("/customers")
 	customers.GET("/:id/profile", authH.ProfileByID)
