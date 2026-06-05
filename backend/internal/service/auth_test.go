@@ -67,7 +67,7 @@ func (s *authQuerierStub) UpdateCustomerEmail(
 	arg sqlcdb.UpdateCustomerEmailParams,
 ) (sqlcdb.UpdateCustomerEmailRow, error) {
 	s.updateEmailArg = arg
-	return sqlcdb.UpdateCustomerEmailRow{CustomerID: arg.CustomerID, Email: arg.Email}, nil
+	return sqlcdb.UpdateCustomerEmailRow(arg), nil
 }
 
 func (s *authQuerierStub) UpdateCustomerPassword(context.Context, sqlcdb.UpdateCustomerPasswordParams) error {

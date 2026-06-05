@@ -107,7 +107,7 @@ func (s *bookingQuerierStub) UpdateItemAvailability(_ context.Context, arg sqlcd
 
 func (s *bookingQuerierStub) UpdateItemStatus(_ context.Context, arg sqlcdb.UpdateItemStatusParams) (sqlcdb.UpdateItemStatusRow, error) {
 	s.updateItemStatusArg = arg
-	return sqlcdb.UpdateItemStatusRow{ItemID: arg.ItemID, ItemStatus: arg.ItemStatus}, nil
+	return sqlcdb.UpdateItemStatusRow(arg), nil
 }
 
 func (s *bookingQuerierStub) SyncAllItemAvailabilities(context.Context) error {

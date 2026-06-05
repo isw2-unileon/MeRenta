@@ -48,10 +48,17 @@ function render(ui: ReactNode) {
   return container;
 }
 
+function requiredElement<T extends Element>(container: Element, selector: string): T {
+  const element = container.querySelector<T>(selector);
+  if (!element) {
+    throw new Error(`Expected element ${selector} to exist`);
+  }
+  return element;
+}
+
 function change(input: HTMLInputElement, value: string) {
   act(() => {
-    const setter = Object.getOwnPropertyDescriptor(HTMLInputElement.prototype, "value")?.set;
-    setter?.call(input, value);
+    setInputValue(input, value);
     input.dispatchEvent(new Event("input", { bubbles: true }));
     input.dispatchEvent(new Event("change", { bubbles: true }));
   });
@@ -59,11 +66,18 @@ function change(input: HTMLInputElement, value: string) {
 
 function toggle(input: HTMLInputElement) {
   act(() => {
-    const setter = Object.getOwnPropertyDescriptor(HTMLInputElement.prototype, "checked")?.set;
-    setter?.call(input, !input.checked);
+    setInputChecked(input, !input.checked);
     input.dispatchEvent(new Event("click", { bubbles: true }));
     input.dispatchEvent(new Event("change", { bubbles: true }));
   });
+}
+
+function setInputValue(input: HTMLInputElement, value: string) {
+  Object.getOwnPropertyDescriptor(HTMLInputElement.prototype, "value")?.set?.call(input, value);
+}
+
+function setInputChecked(input: HTMLInputElement, checked: boolean) {
+  Object.getOwnPropertyDescriptor(HTMLInputElement.prototype, "checked")?.set?.call(input, checked);
 }
 
 async function submit(form: HTMLFormElement) {
@@ -83,8 +97,8 @@ describe("PaymentForm", () => {
         onError={vi.fn()}
       />
     );
-    const terms = container.querySelector<HTMLInputElement>("#terms-checkout")!;
-    const form = container.querySelector<HTMLFormElement>("form")!;
+    const terms = requiredElement<HTMLInputElement>(container, "#terms-checkout");
+    const form = requiredElement<HTMLFormElement>(container, "form");
 
     toggle(terms);
     await submit(form);
@@ -110,9 +124,9 @@ describe("PaymentForm", () => {
       />
     );
 
-    change(container.querySelector<HTMLInputElement>("#card-holder-name")!, "Lucia Perez");
-    toggle(container.querySelector<HTMLInputElement>("#terms-checkout")!);
-    await submit(container.querySelector<HTMLFormElement>("form")!);
+    change(requiredElement<HTMLInputElement>(container, "#card-holder-name"), "Lucia Perez");
+    toggle(requiredElement<HTMLInputElement>(container, "#terms-checkout"));
+    await submit(requiredElement<HTMLFormElement>(container, "form"));
 
     expect(stripeMocks.confirmCardPayment).toHaveBeenCalledWith("pi_secret", {
       payment_method: {
@@ -139,9 +153,9 @@ describe("PaymentForm", () => {
       />
     );
 
-    change(container.querySelector<HTMLInputElement>("#card-holder-name")!, "Lucia Perez");
-    toggle(container.querySelector<HTMLInputElement>("#terms-checkout")!);
-    await submit(container.querySelector<HTMLFormElement>("form")!);
+    change(requiredElement<HTMLInputElement>(container, "#card-holder-name"), "Lucia Perez");
+    toggle(requiredElement<HTMLInputElement>(container, "#terms-checkout"));
+    await submit(requiredElement<HTMLFormElement>(container, "form"));
 
     expect(onError).toHaveBeenCalledWith("incorrect_cvc", "El código CVC es incorrecto.");
   });

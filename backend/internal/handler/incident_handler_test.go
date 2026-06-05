@@ -88,8 +88,8 @@ func TestIncidentHandlerHappyPaths(t *testing.T) {
 		body   string
 		status int
 	}{
-		{http.MethodPost, "/incidents", `{"booking_id":"` + bookingID + `","type":"damage","description":"Producto danado"}`, http.StatusCreated},
-		{http.MethodPost, "/items/" + targetID + "/reports", `{"type":"damage","description":"Producto danado"}`, http.StatusCreated},
+		{http.MethodPost, "/incidents", `{"booking_id":"` + bookingID + `","type":"damage","description":"Articulo danado"}`, http.StatusCreated},
+		{http.MethodPost, "/items/" + targetID + "/reports", `{"type":"damage","description":"Articulo danado"}`, http.StatusCreated},
 		{http.MethodPost, "/customers/" + targetID + "/reports", `{"type":"other","description":"Mal comportamiento"}`, http.StatusCreated},
 		{http.MethodGet, "/incidents/mine", "", http.StatusOK},
 		{http.MethodGet, "/admin/incidents?status=open&type=damage", "", http.StatusOK},
@@ -122,7 +122,7 @@ func TestIncidentHandlerErrors(t *testing.T) {
 	}{
 		{"missing auth", &incidentServiceStub{}, http.MethodGet, "/incidents/mine", "", http.StatusUnauthorized},
 		{"bad target", &incidentServiceStub{}, http.MethodPost, "/items/bad/reports", `{}`, http.StatusBadRequest},
-		{"invalid type", &incidentServiceStub{err: service.ErrIncidentInvalidType}, http.MethodPost, "/incidents", `{"booking_id":"33333333-3333-3333-3333-333333333333","type":"bad","description":"Descripcion valida"}`, http.StatusUnprocessableEntity},
+		{"invalid type", &incidentServiceStub{err: service.ErrIncidentInvalidType}, http.MethodPost, "/incidents", `{"booking_id":"33333333-3333-3333-3333-333333333333","type":"bad","description":"Texto valido"}`, http.StatusUnprocessableEntity},
 		{"admin get not found", &incidentServiceStub{err: service.ErrIncidentNotFound}, http.MethodGet, "/admin/incidents/" + incidentID, "", http.StatusNotFound},
 		{"bad status body", &incidentServiceStub{}, http.MethodPatch, "/admin/incidents/" + incidentID + "/status", `{}`, http.StatusBadRequest},
 		{"invalid status", &incidentServiceStub{err: service.ErrIncidentInvalidStatus}, http.MethodPatch, "/admin/incidents/" + incidentID + "/status", `{"status":"bad"}`, http.StatusBadRequest},
@@ -163,7 +163,7 @@ func sampleIncidentResponse() model.IncidentResponse {
 		ItemID:      "22222222-2222-2222-2222-222222222222",
 		BookingID:   "33333333-3333-3333-3333-333333333333",
 		Type:        "damage",
-		Description: "Producto danado",
+		Description: "Articulo danado",
 		Status:      "open",
 		Priority:    "medium",
 		ReportedAt:  &now,

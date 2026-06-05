@@ -32,6 +32,14 @@ function render(ui: ReactNode) {
   return container;
 }
 
+function requiredElement<T extends Element>(container: Element, selector: string): T {
+  const element = container.querySelector<T>(selector);
+  if (!element) {
+    throw new Error(`Expected element ${selector} to exist`);
+  }
+  return element;
+}
+
 function click(element: Element) {
   act(() => {
     element.dispatchEvent(new MouseEvent("click", { bubbles: true }));
@@ -58,7 +66,7 @@ describe("ProductCalendar", () => {
     expect(occupiedDay?.disabled).toBe(true);
     expect(availableDay?.disabled).toBe(false);
 
-    click(availableDay!);
+    click(requiredElement<HTMLButtonElement>(container, 'button[aria-label="7 de Junio"]'));
 
     expect(onDateSelect).toHaveBeenCalledTimes(1);
     expect(onDateSelect.mock.calls[0][0]).toEqual(new Date(2026, 5, 7));
@@ -96,14 +104,13 @@ describe("ProductCalendar", () => {
       />
     );
 
-    const next = container.querySelector<HTMLButtonElement>('button[aria-label="Mes siguiente"]');
-    click(next!);
+    click(requiredElement<HTMLButtonElement>(container, 'button[aria-label="Mes siguiente"]'));
 
     expect(container.textContent).toContain("Julio 2026");
     const previous = container.querySelector<HTMLButtonElement>('button[aria-label="Mes anterior"]');
     expect(previous?.disabled).toBe(false);
 
-    click(previous!);
+    click(requiredElement<HTMLButtonElement>(container, 'button[aria-label="Mes anterior"]'));
 
     expect(container.textContent).toContain("Junio 2026");
     expect(previous?.disabled).toBe(true);
