@@ -218,7 +218,6 @@ function AuthProvider({ children }: { children: React.ReactNode }) {
    * @throws Error when the API returns a non-OK response.
    */
   const login = useCallback(async (credentials: LoginRequest) => {
-    dispatch({ type: "load_start" });
     try {
       const response = await fetch(`${API_BASE_URL}/auth/login`, {
         method: "POST",
@@ -256,7 +255,6 @@ function AuthProvider({ children }: { children: React.ReactNode }) {
    * @throws Error when the API returns a non-OK response.
    */
   const register = useCallback(async (data: RegisterRequest) => {
-    dispatch({ type: "load_start" });
     try {
       const response = await fetch(`${API_BASE_URL}/auth/register`, {
         method: "POST",
