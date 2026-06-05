@@ -30,6 +30,27 @@ jobs:
             frontend/package-lock.json
             e2e/package-lock.json
 
+      - name: Create .env files
+        run: |
+          cat << EOF > .env
+          PORT=${{ secrets.PORT }}
+          GIN_MODE=${{ secrets.GIN_MODE }}
+          CORS_ALLOW_ORIGIN=${{ secrets.CORS_ALLOW_ORIGIN }}
+          DATABASE_URL=${{ secrets.DATABASE_URL }}
+          SUPABASE_URL=${{ secrets.SUPABASE_URL }}
+          SUPABASE_SERVICE_ROLE_KEY=${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
+          JWT_SECRET=${{ secrets.JWT_SECRET }}
+          MESSAGE_ENCRYPTION_KEY=${{ secrets.MESSAGE_ENCRYPTION_KEY }}
+          JWT_ISSUER=${{ secrets.JWT_ISSUER }}
+          JWT_AUDIENCE=${{ secrets.JWT_AUDIENCE }}
+          JWT_EXPIRES_IN=${{ secrets.JWT_EXPIRES_IN }}
+          JWT_LEEWAY=${{ secrets.JWT_LEEWAY }}
+          STRIPE_SECRET_KEY=${{ secrets.STRIPE_SECRET_KEY }}
+          VITE_STRIPE_PUBLISHABLE_KEY=${{ secrets.VITE_STRIPE_PUBLISHABLE_KEY }}
+          VITE_API_BASE_URL=${{ secrets.VITE_API_BASE_URL }}
+          VITE_DEV_BASE_URL=${{ secrets.VITE_DEV_BASE_URL }}
+          EOF
+
       - name: Install dependencies
         run: make install-e2e
 
@@ -44,7 +65,6 @@ jobs:
         env:
           CI: true
           PORT: 8080
-          GIN_MODE: release
 
       - name: Upload test report
         if: always()
