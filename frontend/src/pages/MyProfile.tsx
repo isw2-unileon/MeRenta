@@ -197,7 +197,7 @@ function ProfileProductCard({ product }: ProductCardProps) {
           </button>
         </div>
 
-        <p className="text-primary mt-2 text-[15px] font-bold">{Math.round(product.price_per_day)} EUR/dia</p>
+        <p className="text-primary mt-2 text-[15px] font-bold">{Math.round(product.price_per_day)} EUR/día</p>
       </div>
     </article>
   );
@@ -262,7 +262,7 @@ function ReviewsSection({ state }: ReviewsSectionProps) {
 
       {!state.loading && !state.error && total === 0 && (
         <div className="profile-info-panel mt-3 flex min-h-36 flex-col items-center justify-center p-6 text-center">
-          <p className="text-ink font-medium">Todavia no hay valoraciones</p>
+          <p className="text-ink font-medium">Todavía no hay valoraciones</p>
           <p className="text-subtle mt-1 text-[13px]">Cuando otros usuarios valoren tus alquileres apareceran aqui.</p>
         </div>
       )}
@@ -544,7 +544,7 @@ function MyProfile() {
           </section>
 
           <section className="mt-5">
-            <h2 className="heading-panel--sm">Articulos en alquiler</h2>
+            <h2 className="heading-panel--sm">Artículos en alquiler</h2>
             <p className="profile-products-sub mt-1">
               {productsState.loading
                 ? "Cargando tus productos..."
@@ -569,14 +569,14 @@ function MyProfile() {
             </div>
             {!productsState.loading && productsState.items.length === 0 && !productsState.error && (
               <div className="profile-info-panel mt-3 flex min-h-36 flex-col items-center justify-center p-6 text-center">
-                <p className="text-ink font-medium">Todavia no has publicado productos</p>
-                <p className="text-subtle mt-1 text-[13px]">Cuando publiques articulos apareceran aqui.</p>
+                <p className="text-ink font-medium">Todavía no has publicado productos</p>
+                <p className="text-subtle mt-1 text-[13px]">Cuando publiques artículos aparecerán aquí.</p>
                 <button
                   type="button"
                   className="btn-primary btn--sm mt-4"
                   onClick={() => navigate("/product/new")}
                 >
-                  Publicar articulo
+                  Publicar artículo
                 </button>
               </div>
             )}

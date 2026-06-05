@@ -535,7 +535,7 @@ function PersonalInfoSection({
 }: PersonalInfoSectionProps) {
   return (
     <section>
-      <h2 className="heading-panel">Informacion personal</h2>
+      <h2 className="heading-panel">Información personal</h2>
       <p className="text-subtle mt-1">Actualiza tus datos personales y como te ven otros usuarios</p>
 
       <div className="mt-6 grid grid-cols-1 gap-5 sm:grid-cols-2">
@@ -708,13 +708,13 @@ function AddressesSection({
                 className={`mt-1 ${state.fieldErrors.street ? "border-red-400" : ""}`}
                 value={state.draft.street}
                 onChange={onFieldChange}
-                placeholder="Calle Gran Via"
+                placeholder="Calle Gran Vía"
               />
               {state.fieldErrors.street && <p className="mt-1 text-xs text-red-500">{state.fieldErrors.street}</p>}
             </label>
 
             <label className="mb-0">
-              Numero
+              Número
               <input
                 type="text"
                 name="number"
@@ -741,7 +741,7 @@ function AddressesSection({
             </label>
 
             <label className="mb-0">
-              Codigo postal
+              Código postal
               <input
                 type="text"
                 name="postal_code"
@@ -875,7 +875,7 @@ function DangerZoneSection({ onDeleteClick }: DangerZoneSectionProps) {
         <div>
           <p className="text-report font-medium">Eliminar cuenta</p>
           <p className="text-subtle mt-2 text-[13px]">
-            Esta accion es irreversible. Se eliminaran tus datos y publicaciones.
+            Esta acción es irreversible. Se eliminarán tus datos y publicaciones.
           </p>
         </div>
         <button

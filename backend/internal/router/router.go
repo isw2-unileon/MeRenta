@@ -26,6 +26,7 @@ func Setup(
 	bookingH *handler.BookingHandler,
 	incidentH *handler.IncidentHandler,
 	adminH *handler.AdminHandler,
+	landingH *handler.LandingHandler,
 	jwtMgr *jwt.Manager,
 	corsAllowOrigin string,
 	readiness func(context.Context) error,
@@ -36,7 +37,7 @@ func Setup(
 	addCoreRoutes(r, readiness)
 
 	api := r.Group("/api")
-	registerPublicRoutes(api, authH)
+	registerPublicRoutes(api, authH, landingH)
 	api.GET("/conversations/:id/ws", chatH.WebSocket)
 
 	protected := api.Group("/")
@@ -63,11 +64,13 @@ func addCoreRoutes(r *gin.Engine, readiness func(context.Context) error) {
 	})
 }
 
-func registerPublicRoutes(api *gin.RouterGroup, authH *handler.AuthHandler) {
+func registerPublicRoutes(api *gin.RouterGroup, authH *handler.AuthHandler, landingH *handler.LandingHandler) {
 	auth := api.Group("/auth")
 	auth.POST("/register", authH.Register)
 	auth.POST("/login", authH.Login)
 	auth.POST("/logout", authH.Logout)
+
+	api.GET("/landing", landingH.Get)
 }
 
 // centralizes protected API wiring for readability.

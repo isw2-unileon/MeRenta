@@ -176,7 +176,7 @@ function PaymentForm({ totalEUR, clientSecret, onSuccess, onError }: PaymentForm
         <span className="badge-stripe">Powered by Stripe</span>
       </div>
 
-      <p className="checkout-ssl mb-5">🔒 Conexion segura SSL. MeRenta nunca almacena los datos de tu tarjeta.</p>
+      <p className="checkout-ssl mb-5">🔒 Conexión segura SSL. MeRenta nunca almacena los datos de tu tarjeta.</p>
 
       {/* ── Card visual + brand badges ── */}
       <div className="mb-5 flex items-center gap-4">
@@ -204,7 +204,7 @@ function PaymentForm({ totalEUR, clientSecret, onSuccess, onError }: PaymentForm
           htmlFor="stripe-card-number"
           className="checkout-label text-form mb-1.5 block text-[13px] font-medium"
         >
-          Numero de tarjeta
+          Número de tarjeta
         </label>
         <div
           className="bg-section-alt relative flex items-center rounded-md border border-(--color-border-input) px-4 focus-within:border-[1.5px] focus-within:border-(--color-checkout-focus)"
@@ -220,7 +220,7 @@ function PaymentForm({ totalEUR, clientSecret, onSuccess, onError }: PaymentForm
           <span className="card-brand-badge ml-2 shrink-0">{brandLabel}</span>
         </div>
         <p className="checkout-hint mt-1">
-          Este campo es gestionado por Stripe Elements y se inyecta en tiempo de ejecucion
+          Este campo es gestionado por Stripe Elements y se inyecta en tiempo de ejecución
         </p>
       </div>
 
@@ -272,7 +272,7 @@ function PaymentForm({ totalEUR, clientSecret, onSuccess, onError }: PaymentForm
         </div>
       </div>
       <p className="checkout-hint -mt-3 mb-4">
-        Campos gestionados por Stripe Elements, inyectados en tiempo de ejecucion
+        Campos gestionados por Stripe Elements, inyectados en tiempo de ejecución
       </p>
 
       {/* ── Holder name ── */}
@@ -308,7 +308,7 @@ function PaymentForm({ totalEUR, clientSecret, onSuccess, onError }: PaymentForm
           htmlFor="terms-checkout"
           className="checkout-terms cursor-pointer"
         >
-          Acepto los terminos del alquiler, la politica de cancelacion y el seguro obligatorio
+          Acepto los términos del alquiler, la política de cancelación y el seguro obligatorio
         </label>
       </div>
 

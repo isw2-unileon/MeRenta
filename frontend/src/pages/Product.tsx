@@ -19,9 +19,9 @@ import type { ReviewSummary } from "@/types/review";
 
 const CATEGORY_LABELS: Record<string, string> = {
   sports: "Deportes",
-  electronics: "Electronica",
+  electronics: "Electrónica",
   tools: "Herramientas",
-  music: "Musica",
+  music: "Música",
   photography: "Fotografía",
   camping: "Camping",
   home: "Hogar",
@@ -404,7 +404,7 @@ function Product() {
               {item.description && (
                 <>
                   <div>
-                    <h3 className="heading-section mb-3">Descripcion</h3>
+                    <h3 className="heading-section mb-3">Descripción</h3>
                     <p className="product-desc">{item.description}</p>
                   </div>
                   <hr className="divider-product" />

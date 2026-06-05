@@ -186,11 +186,11 @@ function validateForm(data: ProductFormData): FormErrors {
   const errors: FormErrors = {};
 
   if (!data.title.trim()) errors.title = "El titulo es obligatorio";
-  if (!data.category) errors.category = "Selecciona una categoria";
+  if (!data.category) errors.category = "Selecciona una categoría";
   if (!data.condition) errors.condition = "Selecciona el estado de conservación";
   if (!data.description.trim()) errors.description = "La descripción es obligatoria";
   if (!data.pricePerDay || Number.parseFloat(data.pricePerDay) <= 0) {
-    errors.pricePerDay = "El precio por dia debe ser mayor que 0";
+    errors.pricePerDay = "El precio por día debe ser mayor que 0";
   }
 
   const minRentalPeriod = Number.parseInt(data.minRentalPeriod, 10);

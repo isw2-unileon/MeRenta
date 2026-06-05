@@ -101,7 +101,7 @@ function RentalSummary({
       {/* ── Price breakdown ── */}
       <div className="flex flex-col gap-3">
         <div className="flex items-center justify-between">
-          <p className="summary-row-label">Precio por dia</p>
+          <p className="summary-row-label">Precio por día</p>
           <p className="summary-row-value">{fmtPrice(pricePerDay)} EUR</p>
         </div>
         <div className="flex items-center justify-between">

@@ -33,13 +33,13 @@ const STATUS_BADGE_COLORS: Record<string, "green" | "gray" | "amber" | "red" | "
 
 const CATEGORY_LABELS: Record<string, string> = {
   tools: "Herramientas",
-  electronics: "Electronica",
+  electronics: "Electrónica",
   sports: "Deporte",
   vehicles: "Vehículos",
   home: "Hogar",
   gardening: "Jardinería",
   clothing: "Ropa",
-  music: "Musica",
+  music: "Música",
   photography: "Fotografía",
   camping: "Camping",
   leisure: "Ocio",
@@ -234,7 +234,7 @@ function Products() {
               <tr className="border-b border-neutral-100 text-left text-xs text-neutral-400">
                 <th className="px-5 py-3 font-medium">Producto</th>
                 <th className="hidden px-5 py-3 font-medium md:table-cell">Propietario</th>
-                <th className="hidden px-5 py-3 font-medium lg:table-cell">Categoria</th>
+                <th className="hidden px-5 py-3 font-medium lg:table-cell">Categoría</th>
                 <th className="px-5 py-3 font-medium">Precio</th>
                 <th className="px-5 py-3 font-medium">Estado</th>
                 <th className="hidden px-5 py-3 font-medium xl:table-cell">Publicado</th>

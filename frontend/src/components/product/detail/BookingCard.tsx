@@ -247,7 +247,7 @@ function ProductReportModal({ itemId, onClose, onSuccess }: ProductReportModalPr
               htmlFor="product-report-description"
               className="mb-1.5 block text-sm font-medium text-neutral-700"
             >
-              Descripcion
+              Descripción
             </label>
             <textarea
               id="product-report-description"
@@ -358,7 +358,7 @@ function BookingCard({
   const isBelowMinimum = days > 0 && days < minDays;
   const isAboveMaximum = days > 0 && maxDay !== null && maxDay !== undefined && days > maxDay;
   const canBook = days > 0 && !isBelowMinimum && !isAboveMaximum;
-  const periodHint = maxDay ? `Min. ${minDays} días · Max. ${maxDay} días` : `Min. ${minDays} días`;
+  const periodHint = maxDay ? `Mín. ${minDays} días · Máx. ${maxDay} días` : `Mín. ${minDays} días`;
   const ratingLabel = formatRating(rating);
 
   const handleBook = () => {

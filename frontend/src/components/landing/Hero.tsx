@@ -1,11 +1,76 @@
 import { useNavigate } from "react-router-dom";
 
+import type { SearchItemResponse } from "@/types/item";
+
+interface HeroProps {
+  featured: SearchItemResponse[];
+}
+
+/** Formats a daily price as a rounded euro amount. */
+function priceLabel(item: SearchItemResponse): string {
+  return `${Math.round(item.price_per_day)} EUR/día`;
+}
+
+/** Large showcase card for the first featured listing. */
+function FeaturedHeadline({ item }: { item: SearchItemResponse }) {
+  return (
+    <div className="bg-page border-border-main overflow-hidden rounded-xl border">
+      {item.primary_image_url ? (
+        <img
+          src={item.primary_image_url}
+          alt={item.title}
+          className="h-45 w-full object-cover"
+        />
+      ) : (
+        <div className="bg-ghost h-45 w-full" />
+      )}
+      <div className="flex flex-col gap-2.5 p-4">
+        <div className="flex items-center justify-between">
+          <div>
+            <p className="card-title">{item.title}</p>
+            <p className="card-location mt-0.5">
+              {item.city || "Sin ubicación"} · {priceLabel(item)}
+            </p>
+          </div>
+          <div className="product-status-badge">Disponible</div>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+/** Compact showcase card for a secondary featured listing. */
+function FeaturedCard({ item }: { item: SearchItemResponse }) {
+  return (
+    <div className="bg-page border-border-main overflow-hidden rounded-xl border">
+      {item.primary_image_url ? (
+        <img
+          src={item.primary_image_url}
+          alt={item.title}
+          className="h-[100px] w-full object-cover"
+        />
+      ) : (
+        <div className="bg-primary-light h-[100px] w-full" />
+      )}
+      <div className="flex flex-col gap-1 p-3">
+        <p className="card-title">{item.title}</p>
+        <p className="card-location">{item.city || "Sin ubicación"}</p>
+        <p className="card-price">{priceLabel(item)}</p>
+      </div>
+    </div>
+  );
+}
+
 /**
- * Highlights the main value proposition and primary calls to action.
- * @returns The landing hero section with CTA buttons and sample listings.
+ * Highlights the main value proposition and primary calls to action,
+ * showcasing real recently published listings.
+ * @returns The landing hero section with CTA buttons and featured listings.
  */
-function Hero() {
+function Hero({ featured }: HeroProps) {
   const navigate = useNavigate();
+
+  const headline = featured[0];
+  const secondary = featured.slice(1, 3);
 
   return (
     <section className="px-layout-margin pt-[64px] pb-[80px]">
@@ -20,13 +85,8 @@ function Hero() {
           </h1>
 
           <p className="subtitle mb-[40px]">
-            Conectamos personas que quieren sacar partido a sus
-            <br />
-            objetos
-            <br />
-            con quienes los necesitan por dias. Sin intermediarios, con
-            <br />
-            total seguridad.
+            Conectamos personas que quieren sacar partido a sus objetos con quienes los necesitan por días. Sin
+            intermediarios, con total seguridad.
           </p>
 
           <div className="flex items-center gap-3">
@@ -47,47 +107,22 @@ function Hero() {
           </div>
         </div>
 
-        <div className="flex flex-1 flex-col gap-4">
-          <div className="bg-page border-border-main overflow-hidden rounded-xl border">
-            <div className="bg-ghost h-45 w-full" />
-            <div className="flex flex-col gap-2.5 p-4">
-              <div className="flex items-center justify-between">
-                <div>
-                  <p className="card-title">Bicicleta de Montaña Trek</p>
-                  <p className="card-location mt-0.5">Madrid · Estado excelente</p>
-                </div>
-                <div className="product-status-badge">Disponible</div>
-              </div>
-            </div>
-          </div>
+        {headline && (
+          <div className="flex flex-1 flex-col gap-4">
+            <FeaturedHeadline item={headline} />
 
-          <div className="grid grid-cols-2 gap-4">
-            {[
-              {
-                name: "Camara Sony A7",
-                location: "Barcelona",
-                price: "35 EUR/dia",
-              },
-              {
-                name: "Tienda de campaña",
-                location: "Valencia",
-                price: "12 EUR/dia",
-              },
-            ].map((item) => (
-              <div
-                key={item.name}
-                className="bg-page border-border-main overflow-hidden rounded-xl border"
-              >
-                <div className="bg-primary-light h-[100px] w-full" />
-                <div className="flex flex-col gap-1 p-3">
-                  <p className="card-title">{item.name}</p>
-                  <p className="card-location">{item.location}</p>
-                  <p className="card-price">{item.price}</p>
-                </div>
+            {secondary.length > 0 && (
+              <div className="grid grid-cols-2 gap-4">
+                {secondary.map((item) => (
+                  <FeaturedCard
+                    key={item.item_id}
+                    item={item}
+                  />
+                ))}
               </div>
-            ))}
+            )}
           </div>
-        </div>
+        )}
       </div>
     </section>
   );

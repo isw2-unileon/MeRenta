@@ -13,13 +13,13 @@ import * as React from "react";
 const PAGE_SIZE = 12;
 
 const CATEGORY_LABELS: Record<string, string> = {
-  electronics: "Electronica",
+  electronics: "Electrónica",
   tools: "Herramientas",
   sports: "Deportes",
   vehicles: "Vehículos",
   home: "Hogar",
   gardening: "Jardinería",
-  music: "Musica",
+  music: "Música",
   photography: "Fotografía",
   camping: "Camping",
   clothing: "Ropa",
@@ -53,10 +53,10 @@ const CONDITION_LABELS: Record<string, string> = {
 const CONDITION_ORDER = ["new", "like_new", "good", "fair", "poor"];
 
 const SORT_OPTIONS = [
-  { value: "recent", label: "Mas recientes" },
+  { value: "recent", label: "Más recientes" },
   { value: "price_asc", label: "Precio: menor a mayor" },
   { value: "price_desc", label: "Precio: mayor a menor" },
-  { value: "oldest", label: "Mas antiguos" },
+  { value: "oldest", label: "Más antiguos" },
 ];
 const SEARCH_SKELETON_IDS = [
   "search-skel-1",
@@ -299,7 +299,7 @@ function ProductCard({ item, reviewSummary, isFavorite, isOwnItem, onToggleFavor
           </div>
 
           <div className="flex items-center justify-between gap-3">
-            <p className="text-primary text-[17px] font-bold">{Math.round(item.price_per_day)} EUR/dia</p>
+            <p className="text-primary text-[17px] font-bold">{Math.round(item.price_per_day)} EUR/día</p>
             <button
               type="button"
               className="btn-primary btn--sm min-w-23"
@@ -377,7 +377,7 @@ function SearchHeader({ initialQuery, resultLabel, sort, updateParam }: SearchHe
             type="search"
             value={draftQuery}
             onChange={(event) => setDraftQuery(event.target.value)}
-            placeholder="Buscar productos, categorias o marcas"
+            placeholder="Buscar productos, categorías o marcas"
             className="h-full flex-1 border-0 bg-transparent px-0 text-[15px] outline-none focus:border-0"
             aria-label="Buscar productos"
           />
@@ -494,7 +494,7 @@ function SearchSidebar({
 }: SearchSidebarProps) {
   return (
     <aside className="border-border-main bg-page border-r">
-      <FilterSection title="Categoria">
+      <FilterSection title="Categoría">
         <div className="space-y-2">
           {categoryOptions.map((option) => (
             <label
@@ -511,15 +511,15 @@ function SearchSidebar({
             </label>
           ))}
           {!state.loading && categoryOptions.length === 0 && (
-            <p className="text-card-loc text-subtle">Sin categorias disponibles</p>
+            <p className="text-card-loc text-subtle">Sin categorías disponibles</p>
           )}
         </div>
       </FilterSection>
 
-      <FilterSection title="Precio por dia">
+      <FilterSection title="Precio por día">
         <div className="grid grid-cols-2 gap-3">
           <label className="text-card-loc text-subtle mb-0">
-            Min
+            Mín.
             <input
               type="number"
               aria-label="Precio mínimo"
@@ -531,7 +531,7 @@ function SearchSidebar({
             />
           </label>
           <label className="text-card-loc text-subtle mb-0">
-            Max
+            Máx.
             <input
               type="number"
               aria-label="Precio máximo"
@@ -545,7 +545,7 @@ function SearchSidebar({
         </div>
       </FilterSection>
 
-      <FilterSection title="Ubicacion">
+      <FilterSection title="Ubicación">
         <div className="space-y-2">
           {cityOptions.map((option) => (
             <label

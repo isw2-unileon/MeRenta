@@ -28,9 +28,9 @@ function NavbarPublic() {
                 <li>
                   <a
                     className="link-nav"
-                    href="#categorias"
+                    href="#categorías"
                   >
-                    Categorias
+                    Categorías
                   </a>
                 </li>
                 <li>
@@ -38,7 +38,7 @@ function NavbarPublic() {
                     className="link-nav"
                     href="#como-funciona"
                   >
-                    Como funciona
+                    Cómo funciona
                   </a>
                 </li>
               </ul>
@@ -50,7 +50,7 @@ function NavbarPublic() {
                 className="btn-secondary btn--md"
                 onClick={() => navigate("/auth", { state: { view: "login" } })}
               >
-                Iniciar sesion
+                Iniciar sesión
               </button>
               <button
                 type="button"

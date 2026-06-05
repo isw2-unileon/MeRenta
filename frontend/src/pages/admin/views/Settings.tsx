@@ -377,7 +377,7 @@ function ConfigPanel({ state, onToggle }: ConfigPanelProps) {
             value={`${config.booking_expiry_days} días sin pago`}
           />
           <ReadOnlyRow
-            label="Auto-completar alquileres pasados"
+            label="Autocompletar alquileres pasados"
             value={`${config.booking_expiry_days} días tras fin del periodo`}
           />
         </div>

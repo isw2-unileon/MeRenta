@@ -88,8 +88,8 @@ func TestIncidentHandlerHappyPaths(t *testing.T) {
 		body   string
 		status int
 	}{
-		{http.MethodPost, "/incidents", `{"booking_id":"` + bookingID + `","type":"damage","description":"Articulo danado"}`, http.StatusCreated},
-		{http.MethodPost, "/items/" + targetID + "/reports", `{"type":"damage","description":"Articulo danado"}`, http.StatusCreated},
+		{http.MethodPost, "/incidents", `{"booking_id":"` + bookingID + `","type":"damage","description":"Artículo dañado"}`, http.StatusCreated},
+		{http.MethodPost, "/items/" + targetID + "/reports", `{"type":"damage","description":"Artículo dañado"}`, http.StatusCreated},
 		{http.MethodPost, "/customers/" + targetID + "/reports", `{"type":"other","description":"Mal comportamiento"}`, http.StatusCreated},
 		{http.MethodGet, "/incidents/mine", "", http.StatusOK},
 		{http.MethodGet, "/admin/incidents?status=open&type=damage", "", http.StatusOK},
