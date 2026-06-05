@@ -86,11 +86,18 @@ func registerProtectedRoutes(
 ) {
 	protected.GET("/session", authH.Session)
 	protected.GET("/me", authH.Me)
+	protected.PATCH("/me", authH.UpdateMe)
+	protected.DELETE("/me", authH.DeleteMe)
+	protected.PATCH("/me/email", authH.UpdateEmail)
+	protected.PATCH("/me/password", authH.UpdatePassword)
+	protected.POST("/me/avatar", authH.UploadAvatar)
 	protected.POST("/me/verification-request", authH.RequestVerification)
 
 	addresses := protected.Group("/addresses")
 	addresses.GET("", addrH.List)
 	addresses.POST("", addrH.Create)
+	addresses.PATCH("/:id", addrH.Update)
+	addresses.DELETE("/:id", addrH.Delete)
 
 	customers := protected.Group("/customers")
 	customers.GET("/:id/profile", authH.ProfileByID)
