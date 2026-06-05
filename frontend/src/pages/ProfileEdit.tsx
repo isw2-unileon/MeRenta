@@ -35,7 +35,6 @@ import {
   type ReviewsState,
 } from "./ProfileEdit.logic";
 
-
 async function fetchAddresses(signal: AbortSignal): Promise<AddressResponse[]> {
   const res = await fetch("/api/addresses", {
     credentials: "include",

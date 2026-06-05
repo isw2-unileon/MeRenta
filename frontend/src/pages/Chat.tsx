@@ -16,7 +16,6 @@ import {
 } from "./Chat.logic";
 import * as React from "react";
 
-
 const chatTimeFormatter = new Intl.DateTimeFormat("es-ES", {
   hour: "2-digit",
   minute: "2-digit",
@@ -27,7 +26,6 @@ const dayLabelFormatter = new Intl.DateTimeFormat("es-ES", {
   month: "long",
 });
 const CHAT_SKELETON_IDS = ["chat-skel-1", "chat-skel-2", "chat-skel-3", "chat-skel-4", "chat-skel-5"];
-
 
 function formatChatTime(iso?: string): string {
   if (!iso) return "";

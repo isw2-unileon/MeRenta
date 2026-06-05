@@ -1,11 +1,6 @@
 import { describe, expect, it } from "vitest";
 
-import {
-  normalizeLoginPayload,
-  normalizeRegisterPayload,
-  validateLogin,
-  validateRegister,
-} from "./authForms.logic";
+import { normalizeLoginPayload, normalizeRegisterPayload, validateLogin, validateRegister } from "./authForms.logic";
 
 describe("authForms logic", () => {
   it("validates login required fields and normalizes credentials", () => {

@@ -31,7 +31,6 @@ import {
   type ReceivedReview,
 } from "@/components/profile/profileShared";
 
-
 function handleAbortable<T>(
   promise: Promise<T>,
   onSuccess: (data: T) => void,

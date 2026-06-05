@@ -29,13 +29,7 @@ import {
 } from "./ProductEdit.logic";
 import type { AddressResponse, CreateAddressRequest } from "@/types/address";
 import type { ApiResponse } from "@/types/common";
-import type {
-  ItemImageResponse,
-  ItemResponse,
-  ProductFormData,
-  UpdateItemRequest,
-} from "@/types/item";
-
+import type { ItemImageResponse, ItemResponse, ProductFormData, UpdateItemRequest } from "@/types/item";
 
 async function fetchItem(itemId: string): Promise<ItemResponse> {
   const res = await fetch(`/api/items/${itemId}`, { credentials: "include" });

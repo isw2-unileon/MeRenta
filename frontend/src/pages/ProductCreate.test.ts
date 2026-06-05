@@ -9,7 +9,8 @@ function validForm(overrides: Partial<ProductFormData> = {}): ProductFormData {
     title: "Taladro percutor Bosch",
     category: "tools",
     condition: "good",
-    description: "Taladro percutor en buen estado, con maletin, brocas y bateria cargada para trabajos de bricolaje domestico.",
+    description:
+      "Taladro percutor en buen estado, con maletin, brocas y bateria cargada para trabajos de bricolaje domestico.",
     photos: [new File(["photo"], "taladro.jpg", { type: "image/jpeg" })],
     pricePerDay: "12.5",
     minRentalPeriod: "1",

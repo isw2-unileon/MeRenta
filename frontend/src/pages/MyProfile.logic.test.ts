@@ -1,11 +1,6 @@
 import { describe, expect, it } from "vitest";
 
-import {
-  distributionPercent,
-  getStatusLabel,
-  initialReviewsState,
-  reviewsReducer,
-} from "./MyProfile.logic";
+import { distributionPercent, getStatusLabel, initialReviewsState, reviewsReducer } from "./MyProfile.logic";
 
 describe("MyProfile logic", () => {
   it("reduces received reviews loading, success and error states", () => {

@@ -1,12 +1,6 @@
 import { describe, expect, it } from "vitest";
 
-import {
-  getPageWindow,
-  humanizeCategory,
-  humanizeCondition,
-  initialSearchState,
-  searchReducer,
-} from "./Search.logic";
+import { getPageWindow, humanizeCategory, humanizeCondition, initialSearchState, searchReducer } from "./Search.logic";
 
 describe("Search logic", () => {
   it("hydrates search results and facet counts", () => {

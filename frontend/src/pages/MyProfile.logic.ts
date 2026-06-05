@@ -1,10 +1,6 @@
 import type { VerificationStatus } from "@/types/customer";
 import type { SearchItemResponse } from "@/types/item";
-import type {
-  ReceivedReview,
-  ReceivedReviewsResponseBase,
-  ReviewsSummary,
-} from "@/components/profile/profileShared";
+import type { ReceivedReview, ReceivedReviewsResponseBase, ReviewsSummary } from "@/components/profile/profileShared";
 
 type ReceivedReviewsResponse = ReceivedReviewsResponseBase<ReceivedReview>;
 

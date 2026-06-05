@@ -27,7 +27,6 @@ import type { ReviewSummary } from "@/types/review";
 
 // ── Label maps ──────────────────────────────────────────────────────────────
 
-
 // ── API helpers ──────────────────────────────────────────────────────────────
 
 async function fetchItem(id: string): Promise<ItemResponse> {
@@ -75,7 +74,6 @@ async function fetchReviewSummary(ownerId: string): Promise<ReviewSummary> {
 }
 
 // ── Date range state type ────────────────────────────────────────────────────
-
 
 // ── Skeleton ─────────────────────────────────────────────────────────────────
 
