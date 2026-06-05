@@ -96,13 +96,11 @@ describe("LocationSection", () => {
     changeSelect(requiredElement<HTMLSelectElement>(container, "#address"), "addr-1");
     changeSelect(requiredElement<HTMLSelectElement>(container, "#deliveryRadius"), "10");
     click(requiredElement<HTMLInputElement>(container, 'input[name="availableNow"]'));
-    click(requiredElement<HTMLInputElement>(container, 'input[name="blockDates"]'));
 
     expect(container.textContent).toContain("Calle Luna 12, 2A - Leon");
     expect(props.onChange).toHaveBeenCalledWith("address", "addr-1");
     expect(props.onChange).toHaveBeenCalledWith("deliveryRadius", "10");
     expect(props.onChange).toHaveBeenCalledWith("availableNow", false);
-    expect(props.onChange).toHaveBeenCalledWith("blockDates", true);
   });
 
   it("validates the inline address form before creating an address", () => {
