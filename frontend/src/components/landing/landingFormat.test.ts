@@ -42,7 +42,7 @@ describe("buildStatTiles", () => {
 
     expect(tiles).toHaveLength(4);
     expect(tiles[0]).toEqual({ value: "42", label: "Productos disponibles" });
-    expect(tiles[2].value).toBe("—");
+    expect(tiles[2]?.value).toBe("—");
   });
 
   it("shows the rating once reviews exist", () => {
@@ -53,7 +53,7 @@ describe("buildStatTiles", () => {
       total_reviews: 9,
     });
 
-    expect(tiles[2].value).toBe("4.8 ★");
+    expect(tiles[2]?.value).toBe("4.8 ★");
     expect(tiles[3]).toEqual({ value: "9", label: "Valoraciones" });
   });
 });
