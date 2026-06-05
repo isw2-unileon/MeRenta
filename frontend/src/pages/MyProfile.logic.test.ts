@@ -10,6 +10,8 @@ describe("MyProfile logic", () => {
       payload: {
         items: [],
         total: 2,
+        page: 1,
+        limit: 10,
         summary: { average_rating: 4.5, total: 2, distribution: { "5": 1, "4": 1 } },
       },
     });
