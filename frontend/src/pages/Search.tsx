@@ -4,143 +4,24 @@ import { BadgeCheck, ChevronLeft, ChevronRight, Heart, Search as SearchIcon, Sta
 
 import { useFavorites } from "@/hooks/useFavorites";
 import { useAuth } from "@/hooks/useAuth";
+import {
+  CATEGORY_ORDER,
+  CONDITION_ORDER,
+  PAGE_SIZE,
+  SEARCH_SKELETON_IDS,
+  SORT_OPTIONS,
+  emptyReviewSummary,
+  getPageWindow,
+  humanizeCategory,
+  humanizeCondition,
+  initialSearchState,
+  searchReducer,
+  type SearchState,
+} from "./Search.logic";
 
 import type { ApiResponse } from "@/types/common";
 import type { SearchItemResponse, SearchItemsResponse } from "@/types/item";
 import type { ReviewSummary } from "@/types/review";
-import * as React from "react";
-
-const PAGE_SIZE = 12;
-
-const CATEGORY_LABELS: Record<string, string> = {
-  electronics: "Electrónica",
-  tools: "Herramientas",
-  sports: "Deportes",
-  vehicles: "Vehículos",
-  home: "Hogar",
-  gardening: "Jardinería",
-  music: "Música",
-  photography: "Fotografía",
-  camping: "Camping",
-  clothing: "Ropa",
-  leisure: "Ocio",
-  other: "Otros",
-};
-
-const CATEGORY_ORDER = [
-  "electronics",
-  "tools",
-  "sports",
-  "vehicles",
-  "home",
-  "gardening",
-  "music",
-  "photography",
-  "camping",
-  "clothing",
-  "leisure",
-  "other",
-];
-
-const CONDITION_LABELS: Record<string, string> = {
-  new: "Nuevo",
-  like_new: "Excelente",
-  good: "Muy bueno",
-  fair: "Bueno",
-  poor: "Aceptable",
-};
-
-const CONDITION_ORDER = ["new", "like_new", "good", "fair", "poor"];
-
-const SORT_OPTIONS = [
-  { value: "recent", label: "Más recientes" },
-  { value: "price_asc", label: "Precio: menor a mayor" },
-  { value: "price_desc", label: "Precio: mayor a menor" },
-  { value: "oldest", label: "Más antiguos" },
-];
-const SEARCH_SKELETON_IDS = [
-  "search-skel-1",
-  "search-skel-2",
-  "search-skel-3",
-  "search-skel-4",
-  "search-skel-5",
-  "search-skel-6",
-  "search-skel-7",
-  "search-skel-8",
-  "search-skel-9",
-  "search-skel-10",
-  "search-skel-11",
-  "search-skel-12",
-];
-
-interface SearchState {
-  items: SearchItemResponse[];
-  total: number;
-  categoryCounts: Record<string, number>;
-  cityCounts: Record<string, number>;
-  conditionCounts: Record<string, number>;
-  loading: boolean;
-  error: string;
-}
-
-type SearchAction =
-  | { type: "FETCH_START" }
-  | { type: "FETCH_SUCCESS"; payload: SearchItemsResponse }
-  | { type: "FETCH_ERROR"; error: string };
-
-const initialSearchState: SearchState = {
-  items: [],
-  total: 0,
-  categoryCounts: {},
-  cityCounts: {},
-  conditionCounts: {},
-  loading: true,
-  error: "",
-};
-
-function searchReducer(state: SearchState, action: SearchAction): SearchState {
-  switch (action.type) {
-    case "FETCH_START":
-      return { ...state, loading: true, error: "" };
-    case "FETCH_SUCCESS":
-      return {
-        ...state,
-        items: action.payload.items,
-        total: action.payload.total,
-        categoryCounts: action.payload.category_counts,
-        cityCounts: action.payload.city_counts,
-        conditionCounts: action.payload.condition_counts,
-        loading: false,
-        error: "",
-      };
-    case "FETCH_ERROR":
-      return {
-        ...state,
-        items: [],
-        total: 0,
-        categoryCounts: {},
-        cityCounts: {},
-        conditionCounts: {},
-        loading: false,
-        error: action.error,
-      };
-    default:
-      return state;
-  }
-}
-
-function humanizeCategory(value: string): string {
-  return CATEGORY_LABELS[value] ?? value.replaceAll("_", " ");
-}
-
-function humanizeCondition(value: string): string {
-  return CONDITION_LABELS[value] ?? value.replaceAll("_", " ");
-}
-
-function getPageWindow(page: number, totalPages: number): number[] {
-  const pages = new Set<number>([1, page, page + 1, page + 2, totalPages].filter((p) => p >= 1 && p <= totalPages));
-  return Array.from(pages).sort((a, b) => a - b);
-}
 
 // Función extraída para aislar el fetch del useEffect y complacer al linter
 async function fetchItemsData(url: string, signal: AbortSignal): Promise<SearchItemsResponse> {
@@ -154,12 +35,6 @@ async function fetchItemsData(url: string, signal: AbortSignal): Promise<SearchI
   }
   return json.data;
 }
-
-const emptyReviewSummary: ReviewSummary = {
-  average_rating: 0,
-  total: 0,
-  distribution: {},
-};
 
 async function fetchReviewSummary(ownerId: string, signal: AbortSignal): Promise<ReviewSummary> {
   const res = await fetch(`/api/reviews/summary/${ownerId}`, {

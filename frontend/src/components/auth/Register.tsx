@@ -2,6 +2,7 @@ import { type ChangeEvent, type FormEvent, useState } from "react";
 import { Eye, EyeOff } from "lucide-react";
 import { useAuth } from "@/hooks/useAuth";
 import { useNavigate } from "react-router-dom";
+import { normalizeRegisterPayload, validateRegister } from "@/components/auth/authForms.logic";
 
 type AuthView = "login" | "register" | "forgot";
 
@@ -56,39 +57,14 @@ function Register({ onSwitch }: { onSwitch: (v: AuthView) => void }) {
     e.preventDefault();
     setError("");
 
-    const firstName = formData.firstName.trim();
-    const lastName = formData.lastName.trim();
-    const email = formData.email.trim();
-
-    if (!firstName || !lastName) {
-      setError("El nombre es requerido");
-      return;
-    }
-
-    if (!email) {
-      setError("El email es requerido");
-      return;
-    }
-
-    if (formData.password.length < 8) {
-      setError("La contraseña debe tener al menos 8 caracteres");
-      return;
-    }
-
-    if (formData.password !== formData.repeatPassword) {
-      setError("Las contraseñas no coinciden");
+    const validationError = validateRegister(formData);
+    if (validationError) {
+      setError(validationError);
       return;
     }
 
     try {
-      await register({
-        first_name: firstName,
-        last_name: lastName,
-        email,
-        password: formData.password,
-        confirm_password: formData.repeatPassword,
-      });
-
+      await register(normalizeRegisterPayload(formData));
       setError("");
       setFormData({
         firstName: "",
