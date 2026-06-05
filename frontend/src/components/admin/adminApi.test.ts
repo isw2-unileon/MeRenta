@@ -33,7 +33,9 @@ describe("adminApi", () => {
   it("sends JSON mutations with credentials", async () => {
     const fetchMock = mockFetch({ success: true });
 
-    await expect(sendAdminMutation("/api/admin/users/1/status", "PATCH", { status: "active" }, "fallback")).resolves.toBeUndefined();
+    await expect(
+      sendAdminMutation("/api/admin/users/1/status", "PATCH", { status: "active" }, "fallback")
+    ).resolves.toBeUndefined();
     expect(fetchMock).toHaveBeenCalledWith("/api/admin/users/1/status", {
       method: "PATCH",
       credentials: "include",

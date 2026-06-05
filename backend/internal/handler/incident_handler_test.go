@@ -122,7 +122,11 @@ func TestIncidentHandlerErrors(t *testing.T) {
 	}{
 		{"missing auth", &incidentServiceStub{}, http.MethodGet, "/incidents/mine", "", http.StatusUnauthorized},
 		{"bad target", &incidentServiceStub{}, http.MethodPost, "/items/bad/reports", `{}`, http.StatusBadRequest},
+<<<<<<< HEAD
 		{"invalid type", &incidentServiceStub{err: service.ErrIncidentInvalidType}, http.MethodPost, "/incidents", `{"booking_id":"33333333-3333-3333-3333-333333333333","type":"bad","description":"Texto valido"}`, http.StatusUnprocessableEntity},
+=======
+		{"invalid type", &incidentServiceStub{err: service.ErrIncidentInvalidType}, http.MethodPost, "/incidents", `{"booking_id":"33333333-3333-3333-3333-333333333333","type":"bad","description":"Valid description"}`, http.StatusUnprocessableEntity},
+>>>>>>> 7a1dbe6ed1582e7124c9a51eac6b8847120ee622
 		{"admin get not found", &incidentServiceStub{err: service.ErrIncidentNotFound}, http.MethodGet, "/admin/incidents/" + incidentID, "", http.StatusNotFound},
 		{"bad status body", &incidentServiceStub{}, http.MethodPatch, "/admin/incidents/" + incidentID + "/status", `{}`, http.StatusBadRequest},
 		{"invalid status", &incidentServiceStub{err: service.ErrIncidentInvalidStatus}, http.MethodPatch, "/admin/incidents/" + incidentID + "/status", `{"status":"bad"}`, http.StatusBadRequest},
@@ -163,7 +167,11 @@ func sampleIncidentResponse() model.IncidentResponse {
 		ItemID:      "22222222-2222-2222-2222-222222222222",
 		BookingID:   "33333333-3333-3333-3333-333333333333",
 		Type:        "damage",
+<<<<<<< HEAD
 		Description: "Articulo danado",
+=======
+		Description: "Product damaged",
+>>>>>>> 7a1dbe6ed1582e7124c9a51eac6b8847120ee622
 		Status:      "open",
 		Priority:    "medium",
 		ReportedAt:  &now,

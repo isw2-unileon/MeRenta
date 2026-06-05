@@ -86,7 +86,10 @@ describe("profileShared", () => {
     await expect(fetchMyItems(signal)).resolves.toMatchObject({ total: 0 });
     expect(fetchMock).toHaveBeenCalledWith("/api/items/mine?limit=48", { credentials: "include", signal });
 
-    mockFetch({ success: true, data: { items: [], total: 0, page: 1, limit: 4, summary: { average_rating: 0, total: 0, distribution: {} } } });
+    mockFetch({
+      success: true,
+      data: { items: [], total: 0, page: 1, limit: 4, summary: { average_rating: 0, total: 0, distribution: {} } },
+    });
     await expect(fetchReceivedReviews(signal)).resolves.toMatchObject({ summary: { total: 0 } });
   });
 
