@@ -257,64 +257,39 @@ function DeliveryRadiusSelect({ value, onChange }: DeliveryRadiusSelectProps) {
 
 interface AvailabilityTogglesProps {
   availableNow: boolean;
-  blockDates: boolean;
   onChange: (e: ChangeEvent<HTMLInputElement>) => void;
 }
 
-function AvailabilityToggles({ availableNow, blockDates, onChange }: AvailabilityTogglesProps) {
+function AvailabilityToggles({ availableNow, onChange }: AvailabilityTogglesProps) {
   return (
     <div className="border-border-main rounded-lg border p-4">
       <p className="text-ink mb-3 text-[13px] font-medium">Disponibilidad</p>
-      <div className="grid grid-cols-2 gap-4">
-        <label className="flex cursor-pointer items-start gap-3">
-          <input
-            type="checkbox"
-            name="availableNow"
-            checked={availableNow}
-            onChange={onChange}
-            aria-label="Disponible ahora"
-            className="mt-0.5"
-          />
-          <div>
-            <p className="text-ink text-[13px] font-medium">Disponible ahora</p>
-            <p className="field-hint mt-0.5">El anuncio se publica activo inmediatamente</p>
-          </div>
-        </label>
-
-        <label className="flex cursor-pointer items-start gap-3">
-          <input
-            type="checkbox"
-            name="blockDates"
-            checked={blockDates}
-            onChange={onChange}
-            aria-label="Bloquear fechas"
-            className="mt-0.5"
-          />
-          <div>
-            <p className="text-ink text-[13px] font-medium">Bloquear fechas</p>
-            <p className="field-hint mt-0.5">Añadir períodos en los que no está disponible</p>
-          </div>
-        </label>
-      </div>
+      <label className="flex cursor-pointer items-start gap-3">
+        <input
+          type="checkbox"
+          name="availableNow"
+          checked={availableNow}
+          onChange={onChange}
+          aria-label="Disponible ahora"
+          className="mt-0.5"
+        />
+        <div>
+          <p className="text-ink text-[13px] font-medium">Disponible ahora</p>
+          <p className="field-hint mt-0.5">El anuncio se publica activo inmediatamente</p>
+        </div>
+      </label>
     </div>
   );
 }
 
 interface LocationSectionProps {
-  data: Pick<ProductFormData, "address" | "deliveryRadius" | "availableNow" | "blockDates">;
+  data: Pick<ProductFormData, "address" | "deliveryRadius" | "availableNow">;
   errors: Partial<Record<keyof ProductFormData, string>>;
   addresses: AddressResponse[];
   onChange: (field: keyof ProductFormData, value: string | boolean) => void;
   onAddressCreated: (req: CreateAddressRequest) => Promise<void>;
 }
 
-/**
- * Form section for pick-up address, delivery radius and availability toggles.
- *
- * The address dropdown lists the customer's saved home addresses.
- * A collapsible inline form lets the user add a new address without leaving
- * the page.
- */
 function LocationSection({ data, errors, addresses, onChange, onAddressCreated }: LocationSectionProps) {
   const [showNewForm, setShowNewForm] = useState(false);
   const [newAddr, setNewAddr] = useState<CreateAddressRequest>(EMPTY_NEW_ADDRESS);
@@ -326,13 +301,14 @@ function LocationSection({ data, errors, addresses, onChange, onAddressCreated }
   };
 
   const updateToggleField = (e: ChangeEvent<HTMLInputElement>) => {
-    onChange(e.target.name as keyof ProductFormData, e.target.checked);
+    onChange("availableNow", e.target.checked);
   };
 
   const updateNewAddressField = (e: ChangeEvent<HTMLInputElement>) => {
     const { name, value } = e.target;
-    setNewAddr((prev) => ({ ...prev, [name]: value }));
-    setNewAddrErrors((prev) => ({ ...prev, [name]: undefined }));
+    const field = name as keyof CreateAddressRequest;
+    setNewAddr((prev) => ({ ...prev, [field]: value }));
+    setNewAddrErrors((prev) => ({ ...prev, [field]: undefined }));
   };
 
   const validateNewAddr = (): boolean => {
@@ -362,8 +338,6 @@ function LocationSection({ data, errors, addresses, onChange, onAddressCreated }
       });
   };
 
-  const addressError = errors.address;
-
   return (
     <section className="border-border-main rounded-xl border bg-white p-6">
       <h4 className="heading-content mb-1">Ubicación y disponibilidad</h4>
@@ -372,12 +346,11 @@ function LocationSection({ data, errors, addresses, onChange, onAddressCreated }
       <div className="flex flex-col gap-5">
         <AddressSelect
           value={data.address}
-          error={addressError}
+          error={errors.address}
           addresses={addresses}
           onChange={updateSelectField}
         />
 
-        {/* Add new address toggle */}
         {!showNewForm ? (
           <button
             type="button"
@@ -401,16 +374,13 @@ function LocationSection({ data, errors, addresses, onChange, onAddressCreated }
           />
         )}
 
-        {/* Delivery radius */}
         <DeliveryRadiusSelect
           value={data.deliveryRadius}
           onChange={updateSelectField}
         />
 
-        {/* Availability toggles */}
         <AvailabilityToggles
           availableNow={data.availableNow}
-          blockDates={data.blockDates}
           onChange={updateToggleField}
         />
       </div>
