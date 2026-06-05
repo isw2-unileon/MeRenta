@@ -2,6 +2,7 @@
 package handler
 
 import (
+	"context"
 	"errors"
 	"net/http"
 
@@ -13,13 +14,20 @@ import (
 	"github.com/isw2-unileon/MeRenta/backend/pkg/response"
 )
 
+type addressService interface {
+	ListAddresses(ctx context.Context, customerID uuid.UUID) ([]model.AddressResponse, error)
+	CreateAddress(ctx context.Context, customerID uuid.UUID, req model.CreateAddressRequest) (*model.AddressResponse, error)
+	UpdateAddress(ctx context.Context, customerID uuid.UUID, addressID uuid.UUID, req model.CreateAddressRequest) (*model.AddressResponse, error)
+	DeleteAddress(ctx context.Context, customerID uuid.UUID, addressID uuid.UUID) error
+}
+
 // AddressHandler wires address endpoints to the address service.
 type AddressHandler struct {
-	svc *service.AddressService
+	svc addressService
 }
 
 // NewAddressHandler builds a new AddressHandler.
-func NewAddressHandler(svc *service.AddressService) *AddressHandler {
+func NewAddressHandler(svc addressService) *AddressHandler {
 	return &AddressHandler{svc: svc}
 }
 

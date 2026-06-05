@@ -2,22 +2,26 @@
 package handler
 
 import (
+	"context"
 	"net/http"
 
 	"github.com/gin-gonic/gin"
 
 	"github.com/isw2-unileon/MeRenta/backend/internal/model"
-	"github.com/isw2-unileon/MeRenta/backend/internal/service"
 	"github.com/isw2-unileon/MeRenta/backend/pkg/response"
 )
 
+type paymentService interface {
+	CreatePaymentIntent(ctx context.Context, req model.CreatePaymentIntentRequest) (model.CreatePaymentIntentResponse, error)
+}
+
 // PaymentHandler exposes payment-related endpoints.
 type PaymentHandler struct {
-	svc *service.PaymentService
+	svc paymentService
 }
 
 // NewPaymentHandler builds a new PaymentHandler.
-func NewPaymentHandler(svc *service.PaymentService) *PaymentHandler {
+func NewPaymentHandler(svc paymentService) *PaymentHandler {
 	return &PaymentHandler{svc: svc}
 }
 

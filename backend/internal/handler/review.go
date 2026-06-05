@@ -1,6 +1,7 @@
 package handler
 
 import (
+	"context"
 	"errors"
 	"log/slog"
 	"net/http"
@@ -13,13 +14,19 @@ import (
 	"github.com/isw2-unileon/MeRenta/backend/pkg/response"
 )
 
+type reviewService interface {
+	CreateReview(ctx context.Context, reviewerID uuid.UUID, req model.CreateReviewRequest) (*model.ReceivedReviewResponse, error)
+	ListReceivedReviews(ctx context.Context, reviewedID uuid.UUID, page int, limit int) (*model.ReceivedReviewsResponse, error)
+	GetReceivedReviewSummary(ctx context.Context, reviewedID uuid.UUID) (*model.ReviewSummaryResponse, error)
+}
+
 // ReviewHandler wires review endpoints to the review service.
 type ReviewHandler struct {
-	svc *service.ReviewService
+	svc reviewService
 }
 
 // NewReviewHandler builds a new ReviewHandler.
-func NewReviewHandler(svc *service.ReviewService) *ReviewHandler {
+func NewReviewHandler(svc reviewService) *ReviewHandler {
 	return &ReviewHandler{svc: svc}
 }
 

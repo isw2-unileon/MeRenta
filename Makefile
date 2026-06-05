@@ -1,11 +1,13 @@
 GOPATH := $(shell go env GOPATH)
 BACKEND_BIN := backend/bin/server
+GO_TEST_TMP := tmp/go-test
+BACKEND_COVERAGE := tmp/backend-coverage.out
 
 .PHONY: install install-backend install-frontend install-e2e clean \
         run-backend run-frontend run \
         build-backend build-frontend build \
         run-backend-prod run-frontend-prod \
-        test test-backend test-frontend test-coverage \
+        test test-backend test-backend-race test-frontend test-coverage \
         lint lint-backend lint-frontend doctor \
         e2e \
         fmt fmt-backend fmt-frontend \
@@ -105,16 +107,28 @@ run-frontend-prod: build-frontend
 
 ## Run backend tests
 test-backend:
-	go test -v -race -count=1 ./backend/...
+	mkdir -p $(GO_TEST_TMP)
+	GOTMPDIR=$(CURDIR)/$(GO_TEST_TMP) go test -v -count=1 ./backend/...
+
+## Run backend tests with the race detector (requires gcc/MinGW in PATH on Windows)
+test-backend-race:
+	mkdir -p $(GO_TEST_TMP)
+	GOTMPDIR=$(CURDIR)/$(GO_TEST_TMP) CGO_ENABLED=1 go test -v -race -count=1 ./backend/...
 
 ## Run frontend tests
 test-frontend:
 	cd frontend && npm run test
 
+test-frontend-coverage:
+	cd frontend && npm run test:coverage
+
 ## Run backend tests with coverage
-test-coverage:
-	go test -v -race -count=1 -coverprofile=coverage.out -covermode=atomic ./backend/...
-	go tool cover -func=coverage.out
+test-backend-coverage:
+	mkdir -p $(GO_TEST_TMP)
+	GOTMPDIR=$(CURDIR)/$(GO_TEST_TMP) go test -v -count=1 -coverprofile=$(BACKEND_COVERAGE) -covermode=atomic ./backend/...
+	go tool cover -func=$(BACKEND_COVERAGE)
+
+test-coverage: test-frontend-coverage test-backend-coverage
 
 ## Run all tests
 test: test-backend test-frontend

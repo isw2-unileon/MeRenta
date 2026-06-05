@@ -2,6 +2,7 @@
 package handler
 
 import (
+	"context"
 	"errors"
 	"net/http"
 	"strconv"
@@ -14,6 +15,17 @@ import (
 	"github.com/isw2-unileon/MeRenta/backend/pkg/response"
 )
 
+type bookingService interface {
+	Create(ctx context.Context, renterID uuid.UUID, req model.CreateBookingRequest) (model.BookingResponse, error)
+	ListMine(ctx context.Context, renterID uuid.UUID, page, limit int) (model.BookingListResponse, error)
+	ListAsOwner(ctx context.Context, ownerID uuid.UUID, page, limit int) (model.BookingListResponse, error)
+	GetUnavailableDates(ctx context.Context, itemID uuid.UUID) ([]model.DateRangeResponse, error)
+	Accept(ctx context.Context, ownerID uuid.UUID, bookingID uuid.UUID) (model.BookingResponse, error)
+	Reject(ctx context.Context, ownerID uuid.UUID, bookingID uuid.UUID) (model.BookingResponse, error)
+	Cancel(ctx context.Context, renterID uuid.UUID, bookingID uuid.UUID) (model.BookingResponse, error)
+	Complete(ctx context.Context, userID uuid.UUID, bookingID uuid.UUID) (model.BookingResponse, error)
+}
+
 // bookingAction distinguishes the three status-change operations.
 type bookingAction int
 
@@ -25,11 +37,11 @@ const (
 
 // BookingHandler exposes booking-related endpoints.
 type BookingHandler struct {
-	svc *service.BookingService
+	svc bookingService
 }
 
 // NewBookingHandler builds a new BookingHandler.
-func NewBookingHandler(svc *service.BookingService) *BookingHandler {
+func NewBookingHandler(svc bookingService) *BookingHandler {
 	return &BookingHandler{svc: svc}
 }
 
