@@ -116,6 +116,7 @@ func setupTestApp(t *testing.T) *testApp {
 	bookingSvc := service.NewBookingService(q, refunder)
 	adminSvc := service.NewAdminService(q, refunder)
 	incidentSvc := service.NewIncidentService(q)
+	landingSvc := service.NewLandingService(q)
 
 	r := router.Setup(
 		handler.NewAuthHandler(authSvc),
@@ -129,6 +130,7 @@ func setupTestApp(t *testing.T) *testApp {
 		handler.NewBookingHandler(bookingSvc),
 		handler.NewIncidentHandler(incidentSvc),
 		handler.NewAdminHandler(adminSvc),
+		handler.NewLandingHandler(landingSvc),
 		jwtMgr,
 		"http://localhost:5173",
 		pool.Ping,
@@ -302,8 +304,8 @@ func createItem(t *testing.T, app *testApp, cookie *http.Cookie, addressID strin
 	w, res := doJSON(t, app, http.MethodPost, "/api/items", cookie, map[string]any{
 		"address_id":    addressID,
 		"category":      "vehicles",
-		"title":         "Patinete electrico urbano",
-		"description":   "Patinete plegable con bateria revisada.",
+		"title":         "Patinete eléctrico urbano",
+		"description":   "Patinete plegable con batería revisada.",
 		"usage_rules":   usageRules,
 		"condition":     "good",
 		"price_per_day": 18.5,
