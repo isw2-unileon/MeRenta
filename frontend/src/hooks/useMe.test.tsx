@@ -72,7 +72,11 @@ describe("useMe", () => {
     mockFetch({ success: false, error: "account_banned" }, false, 403);
     await expect(api?.getMe()).rejects.toMatchObject({ reason: "banned" } satisfies Partial<BlockedAccountError>);
 
-    mockFetch({ success: false, error: "account_suspended", data: { suspended_until: "2026-07-01T00:00:00Z" } }, false, 403);
+    mockFetch(
+      { success: false, error: "account_suspended", data: { suspended_until: "2026-07-01T00:00:00Z" } },
+      false,
+      403
+    );
     await expect(api?.getMe()).rejects.toMatchObject({
       reason: "suspended",
       suspendedUntil: "2026-07-01T00:00:00Z",

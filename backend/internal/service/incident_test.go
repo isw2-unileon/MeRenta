@@ -114,7 +114,7 @@ func TestIncidentServiceCreateReportsAndList(t *testing.T) {
 	svc := NewIncidentService(stub)
 
 	created, err := svc.Create(context.Background(), reporterID, model.CreateIncidentRequest{
-		BookingID: bookingID.String(), Type: string(sqlcdb.IncidentTypeDamage), Description: "Producto danado", Cost: 12.5,
+		BookingID: bookingID.String(), Type: string(sqlcdb.IncidentTypeDamage), Description: "Product damaged", Cost: 12.5,
 	})
 	if err != nil {
 		t.Fatalf("Create returned error: %v", err)
@@ -124,7 +124,7 @@ func TestIncidentServiceCreateReportsAndList(t *testing.T) {
 	}
 
 	product, err := svc.CreateProductReport(context.Background(), reporterID, itemID, model.CreateProductReportRequest{
-		Type: string(sqlcdb.IncidentTypeForbiddenItem), Description: "Producto prohibido",
+		Type: string(sqlcdb.IncidentTypeForbiddenItem), Description: "Unapproved item",
 	})
 	if err != nil {
 		t.Fatalf("CreateProductReport returned error: %v", err)
@@ -134,7 +134,7 @@ func TestIncidentServiceCreateReportsAndList(t *testing.T) {
 	}
 
 	user, err := svc.CreateUserReport(context.Background(), reporterID, ownerID, model.CreateUserReportRequest{
-		Type: string(sqlcdb.IncidentTypeLateReturn), Description: "Devolucion tarde",
+		Type: string(sqlcdb.IncidentTypeLateReturn), Description: "Late return",
 	})
 	if err != nil {
 		t.Fatalf("CreateUserReport returned error: %v", err)
@@ -204,7 +204,7 @@ func sampleIncidentRow(incidentID, reporterID, itemID, bookingID uuid.UUID) sqlc
 		StartDate:      time.Date(2026, 6, 1, 0, 0, 0, 0, time.UTC),
 		EndDate:        time.Date(2026, 6, 3, 0, 0, 0, 0, time.UTC),
 		IncidentType:   sqlcdb.IncidentTypeDamage,
-		Description:    "Producto danado",
+		Description:    "Damaged product",
 		IncidentStatus: sqlcdb.IncidentStatusOpen,
 		Priority:       "medium",
 		AssociatedCost: costToNumeric(12.5),

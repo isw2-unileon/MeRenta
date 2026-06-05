@@ -1,6 +1,12 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
 
-import { createAddress, fetchAddresses, isNewPhoto, reportFormErrors, uploadItemImages } from "@/components/product/productApi";
+import {
+  createAddress,
+  fetchAddresses,
+  isNewPhoto,
+  reportFormErrors,
+  uploadItemImages,
+} from "@/components/product/productApi";
 
 afterEach(() => {
   vi.restoreAllMocks();

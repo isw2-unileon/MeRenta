@@ -44,7 +44,9 @@ describe("useFavorites", () => {
       "fetch",
       vi.fn().mockResolvedValue({
         ok: true,
-        json: vi.fn().mockResolvedValue({ success: true, data: { items: [{ item_id: "item-1" }, { item_id: "item-2" }] } }),
+        json: vi
+          .fn()
+          .mockResolvedValue({ success: true, data: { items: [{ item_id: "item-1" }, { item_id: "item-2" }] } }),
       })
     );
     let api: ReturnType<typeof useFavorites> | undefined;
@@ -77,7 +79,10 @@ describe("useFavorites", () => {
   it("reverts optimistic updates when the API call fails", async () => {
     const fetchMock = vi
       .fn()
-      .mockResolvedValueOnce({ ok: true, json: vi.fn().mockResolvedValue({ success: true, data: { items: [{ item_id: "item-1" }] } }) })
+      .mockResolvedValueOnce({
+        ok: true,
+        json: vi.fn().mockResolvedValue({ success: true, data: { items: [{ item_id: "item-1" }] } }),
+      })
       .mockResolvedValueOnce({ ok: false });
     vi.stubGlobal("fetch", fetchMock);
     let api: ReturnType<typeof useFavorites> | undefined;

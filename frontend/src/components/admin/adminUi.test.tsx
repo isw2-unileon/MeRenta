@@ -2,7 +2,16 @@ import { act, type ReactNode } from "react";
 import { createRoot } from "react-dom/client";
 import { afterEach, describe, expect, it, vi } from "vitest";
 
-import { Avatar, Badge, Card, ConfirmModal, FilterPills, Pagination, SectionTitle, TableSkeleton } from "@/components/admin/adminUi";
+import {
+  Avatar,
+  Badge,
+  Card,
+  ConfirmModal,
+  FilterPills,
+  Pagination,
+  SectionTitle,
+  TableSkeleton,
+} from "@/components/admin/adminUi";
 
 globalThis.IS_REACT_ACT_ENVIRONMENT = true;
 
