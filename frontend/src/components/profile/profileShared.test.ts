@@ -37,7 +37,15 @@ describe("profileShared", () => {
 
     const success = productsReducer(loading, {
       type: "fetch_success",
-      payload: { items: [{ item_id: "1", city: "Leon" } as SearchItemResponse], total: 1, page: 1, limit: 48 },
+      payload: {
+        items: [{ item_id: "1", city: "Leon" } as SearchItemResponse],
+        total: 1,
+        page: 1,
+        limit: 48,
+        category_counts: {},
+        city_counts: {},
+        condition_counts: {},
+      },
     });
     expect(success).toMatchObject({ total: 1, loading: false, error: "" });
 
@@ -81,7 +89,10 @@ describe("profileShared", () => {
 
   it("fetches profile products and reviews with credentials", async () => {
     const signal = new AbortController().signal;
-    const fetchMock = mockFetch({ success: true, data: { items: [], total: 0, page: 1, limit: 48 } });
+    const fetchMock = mockFetch({
+      success: true,
+      data: { items: [], total: 0, page: 1, limit: 48, category_counts: {}, city_counts: {}, condition_counts: {} },
+    });
 
     await expect(fetchMyItems(signal)).resolves.toMatchObject({ total: 0 });
     expect(fetchMock).toHaveBeenCalledWith("/api/items/mine?limit=48", { credentials: "include", signal });

@@ -1,5 +1,7 @@
 /// <reference types="vite/client" />
 
+declare var IS_REACT_ACT_ENVIRONMENT: boolean;
+
 interface ImportMetaEnv {
   readonly VITE_STRIPE_PUBLISHABLE_KEY: string;
   readonly VITE_API_BASE_URL: string;

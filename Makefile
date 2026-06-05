@@ -107,11 +107,13 @@ run-frontend-prod: build-frontend
 
 ## Run backend tests
 test-backend:
-	powershell -NoProfile -ExecutionPolicy Bypass -Command "New-Item -ItemType Directory -Force '$(GO_TEST_TMP)' | Out-Null; $$env:GOTMPDIR=(Resolve-Path '$(GO_TEST_TMP)').Path; go test -v -count=1 ./backend/..."
+	mkdir -p $(GO_TEST_TMP)
+	GOTMPDIR=$(CURDIR)/$(GO_TEST_TMP) go test -v -count=1 ./backend/...
 
 ## Run backend tests with the race detector (requires gcc/MinGW in PATH on Windows)
 test-backend-race:
-	powershell -NoProfile -ExecutionPolicy Bypass -Command "New-Item -ItemType Directory -Force '$(GO_TEST_TMP)' | Out-Null; $$env:GOTMPDIR=(Resolve-Path '$(GO_TEST_TMP)').Path; $$env:CGO_ENABLED='1'; go test -v -race -count=1 ./backend/..."
+	mkdir -p $(GO_TEST_TMP)
+	GOTMPDIR=$(CURDIR)/$(GO_TEST_TMP) CGO_ENABLED=1 go test -v -race -count=1 ./backend/...
 
 ## Run frontend tests
 test-frontend:
@@ -122,7 +124,8 @@ test-frontend-coverage:
 
 ## Run backend tests with coverage
 test-backend-coverage:
-	powershell -NoProfile -ExecutionPolicy Bypass -Command "New-Item -ItemType Directory -Force '$(GO_TEST_TMP)' | Out-Null; $$env:GOTMPDIR=(Resolve-Path '$(GO_TEST_TMP)').Path; go test -v -count=1 -coverprofile='$(BACKEND_COVERAGE)' -covermode=atomic ./backend/..."
+	mkdir -p $(GO_TEST_TMP)
+	GOTMPDIR=$(CURDIR)/$(GO_TEST_TMP) go test -v -count=1 -coverprofile=$(BACKEND_COVERAGE) -covermode=atomic ./backend/...
 	go tool cover -func=$(BACKEND_COVERAGE)
 
 test-coverage: test-frontend-coverage test-backend-coverage

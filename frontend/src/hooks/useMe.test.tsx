@@ -46,7 +46,18 @@ function mockFetch(response: unknown, ok = true, status = ok ? 200 : 500) {
 
 describe("useMe", () => {
   it("fetches the current user with credentials", async () => {
-    const customer = { customer_id: "c1", email: "diego@example.com", user_role: "user" } as CustomerPublic;
+    const customer: CustomerPublic = {
+      customer_id: "c1",
+      first_name: "Diego",
+      last_name: "Perez",
+      email: "diego@example.com",
+      phone: null,
+      avatar_url: null,
+      registration_date: "2026-06-01T00:00:00Z",
+      account_status: "active",
+      user_role: "customer",
+      verification_status: "none",
+    };
     const fetchMock = mockFetch({ success: true, data: customer });
     let api: ReturnType<typeof useMe> | undefined;
 

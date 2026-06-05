@@ -59,7 +59,7 @@ describe("productApi", () => {
   });
 
   it("creates addresses with JSON credentials and unwraps the response", async () => {
-    const payload = { city: "Leon", province: "Leon", postal_code: "24001", street: "Calle Luna 1" };
+    const payload = { city: "Leon", province: "Leon", postal_code: "24001", street: "Calle Luna", number: "1" };
     const fetchMock = mockFetch({ success: true, data: { address_id: "a1", ...payload } });
 
     await expect(createAddress(payload)).resolves.toMatchObject({ address_id: "a1" });
@@ -74,7 +74,7 @@ describe("productApi", () => {
   it("throws API messages from failed address creation and image uploads", async () => {
     mockFetch({ success: false, error: "direccion invalida" }, false);
     await expect(
-      createAddress({ city: "Leon", province: "Leon", postal_code: "24001", street: "Calle Luna 1" })
+      createAddress({ city: "Leon", province: "Leon", postal_code: "24001", street: "Calle Luna", number: "1" })
     ).rejects.toThrow("direccion invalida");
 
     mockFetch({ success: false, message: "imagenes invalidas" }, false);

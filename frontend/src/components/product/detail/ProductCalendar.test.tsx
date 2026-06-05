@@ -69,7 +69,7 @@ describe("ProductCalendar", () => {
     click(requiredElement<HTMLButtonElement>(container, 'button[aria-label="7 de Junio"]'));
 
     expect(onDateSelect).toHaveBeenCalledTimes(1);
-    expect(onDateSelect.mock.calls[0][0]).toEqual(new Date(2026, 5, 7));
+    expect(onDateSelect.mock.calls[0]?.[0]).toEqual(new Date(2026, 5, 7));
   });
 
   it("highlights selected range and prevents navigating before current month", () => {
