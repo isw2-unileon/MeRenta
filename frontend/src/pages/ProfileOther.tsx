@@ -53,12 +53,12 @@ const categoryLabels: Record<string, string> = {
   photography: "Fotografía",
   camping: "Camping",
   tools: "Herramientas",
-  electronics: "Electronica",
+  electronics: "Electrónica",
   home: "Hogar",
   gardening: "Jardinería",
   vehicles: "Vehículos",
   clothing: "Ropa",
-  music: "Musica",
+  music: "Música",
   leisure: "Ocio",
   other: "Otros",
 };
@@ -98,7 +98,7 @@ type ReceivedReviewsResponse = ReceivedReviewsResponseBase<ReceivedReview>;
 type UserIncidentType = "not_delivered" | "late_return" | "other";
 
 const userIncidentOptions: { value: UserIncidentType; label: string }[] = [
-  { value: "not_delivered", label: "No entrego el articulo" },
+  { value: "not_delivered", label: "No entrego el artículo" },
   { value: "late_return", label: "Devolución tardía" },
   { value: "other", label: "Otra incidencia" },
 ];
@@ -302,7 +302,7 @@ function ProductCard({ product, ownerRating }: { product: SearchItemResponse; ow
         </div>
 
         <div className="mt-2 flex items-center justify-between gap-3">
-          <p className="text-primary text-[15px] font-bold">{Math.round(product.price_per_day)} EUR/dia</p>
+          <p className="text-primary text-[15px] font-bold">{Math.round(product.price_per_day)} EUR/día</p>
           <button
             type="button"
             className="btn-primary btn--sm"
@@ -418,14 +418,14 @@ function ReviewForm({
     >
       <div className="flex flex-col gap-4 md:flex-row md:items-start md:justify-between">
         <div>
-          <p className="profile-about-heading">Escribe una valoracion</p>
-          <p className="profile-products-sub mt-1">Puntua tu experiencia con {profileName || "este usuario"}.</p>
+          <p className="profile-about-heading">Escribe una valoración</p>
+          <p className="profile-products-sub mt-1">Puntúa tu experiencia con {profileName || "este usuario"}.</p>
         </div>
 
         <div
           className="flex items-center gap-1"
           role="radiogroup"
-          aria-label="Puntuacion"
+          aria-label="Puntuación"
         >
           {[1, 2, 3, 4, 5].map((value) => (
             <button
@@ -622,7 +622,7 @@ function UserReportModal({
           </div>
 
           <label className="block">
-            <span className="text-ink text-[13px] font-semibold">Descripcion</span>
+            <span className="text-ink text-[13px] font-semibold">Descripción</span>
             <textarea
               className="border-border-input text-body-color focus:border-primary mt-2 min-h-32 w-full resize-none rounded-lg border bg-white px-3 py-2 text-[14px] outline-none"
               value={description}
@@ -901,7 +901,7 @@ function ProfileProductsSection({
 }: ProfileProductsSectionProps) {
   return (
     <section className="mt-22">
-      <h2 className="heading-panel--sm">Articulos de {firstName ?? "este usuario"} en alquiler</h2>
+      <h2 className="heading-panel--sm">Artículos de {firstName ?? "este usuario"} en alquiler</h2>
       <p className="profile-products-sub mt-1">
         {loading
           ? "Cargando productos..."
@@ -933,7 +933,7 @@ function ProfileProductsSection({
 
       {!loading && visibleProducts.length === 0 && !error && (
         <div className="profile-info-panel mt-4 flex min-h-36 items-center justify-center p-6 text-center">
-          <p className="text-subtle">Este usuario no tiene productos publicados en esta categoria.</p>
+          <p className="text-subtle">Este usuario no tiene productos publicados en esta categoría.</p>
         </div>
       )}
 
@@ -1020,7 +1020,7 @@ function ProfileReviewsSection({
 
       {!loading && total === 0 && !error && (
         <div className="profile-info-panel mt-4 flex min-h-36 items-center justify-center p-6 text-center">
-          <p className="text-subtle">Este usuario todavia no ha recibido valoraciones.</p>
+          <p className="text-subtle">Este usuario todavía no ha recibido valoraciones.</p>
         </div>
       )}
 

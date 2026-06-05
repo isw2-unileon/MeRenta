@@ -578,7 +578,7 @@ function ConversationList({
           />
           <input
             type="search"
-            placeholder="Buscar conversacion..."
+            placeholder="Buscar conversación..."
             className="text-card-loc h-10 rounded-lg pl-10"
             value={searchQuery}
             onChange={(event) => onSearchChange(event.target.value)}
@@ -675,7 +675,7 @@ function ChatHeader({
             )}
           </div>
           <p className="bg-primary-light text-primary inline-flex max-w-90 truncate rounded-full px-2.5 py-0.5 text-[10px] font-medium">
-            {conversation.item_title} · {Math.round(conversation.item_price)} EUR/dia
+            {conversation.item_title} · {Math.round(conversation.item_price)} EUR/día
           </p>
         </div>
       </div>
@@ -734,7 +734,7 @@ function MessagesPanel({
             ))
           ) : (
             <p className="text-subtle text-center text-[13px]">
-              Empieza la conversacion escribiendo el primer mensaje.
+              Empieza la conversación escribiendo el primer mensaje.
             </p>
           )}
           <div ref={messagesEndRef} />
@@ -800,7 +800,7 @@ function DeleteConversationDialog({
         <div className="flex items-start justify-between gap-4">
           <div>
             <h2 className="text-ink text-logo-footer font-semibold">Eliminar conversaciones</h2>
-            <p className="text-subtle mt-2 text-[14px]">Desea eliminar {label} de tu bandeja?</p>
+            <p className="text-subtle mt-2 text-[14px]">¿Desea eliminar {label} de tu bandeja?</p>
           </div>
           <button
             type="button"
@@ -1145,7 +1145,7 @@ function Chat() {
           </>
         ) : (
           <div className="flex flex-1 items-center justify-center px-6">
-            <p className="text-subtle text-center text-[14px]">Selecciona una conversacion para ver los mensajes.</p>
+            <p className="text-subtle text-center text-[14px]">Selecciona una conversación para ver los mensajes.</p>
           </div>
         )}
       </section>

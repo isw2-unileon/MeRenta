@@ -58,7 +58,7 @@ function PaymentError() {
 
         {/* ── Title ── */}
         <p className="error-pay-title mb-1 text-center">Pago rechazado</p>
-        <p className="error-pay-desc mb-6 text-center">No se pudo procesar el pago. No se ha realizado ningun cargo.</p>
+        <p className="error-pay-desc mb-6 text-center">No se pudo procesar el pago. No se ha realizado ningún cargo.</p>
 
         {/* ── Stripe error box ── */}
         <div className="error-pay-stripe-box mb-6 w-full">

@@ -341,7 +341,7 @@ function HomeProductCard({
           )}
         </div>
         <div className="mt-5 flex items-center justify-between gap-3">
-          <p className="text-primary text-[17px] font-bold">{Math.round(item.price_per_day)} EUR/dia</p>
+          <p className="text-primary text-[17px] font-bold">{Math.round(item.price_per_day)} EUR/día</p>
           {!isAvailable && (
             <span className="text-card-loc rounded-lg bg-[#f3f4f6] px-3 py-2 font-medium text-[#9ca3af]">
               No disponible
@@ -495,7 +495,7 @@ function NearbyProductsSection({
               to={searchUrl}
               className="text-primary inline-flex items-center gap-1 text-[14px] font-medium"
             >
-              Ver mas
+              Ver más
               <ArrowRight size={14} />
             </Link>
           )}
@@ -557,9 +557,9 @@ function SearchHero({ firstName, categories }: SearchHeroProps) {
   return (
     <section className="bg-section-alt border-border-main border-b">
       <div className="mx-auto flex min-h-72 max-w-340 flex-col items-center justify-center px-6 py-10 md:px-10">
-        <p className="text-subtle w-full max-w-190 text-left text-[15px]">Buenos dias, {firstName}</p>
+        <p className="text-subtle w-full max-w-190 text-left text-[15px]">Buenos días, {firstName}</p>
         <h1 className="text-ink mt-2 w-full max-w-190 text-left text-4xl leading-tight font-bold">
-          ¿Que necesitas hoy?
+          ¿Qué necesitas hoy?
         </h1>
         <form
           className="border-border-main mt-6 flex h-14 w-full max-w-190 items-center rounded-xl border bg-white p-1.5 text-left shadow-[0_1px_0_rgba(15,110,86,0.04)]"
@@ -644,13 +644,13 @@ function CategoryGrid({ categories }: CategoryGridProps) {
   return (
     <section className="mt-12">
       <div className="mb-4 flex items-center justify-between gap-4">
-        <h2 className="text-section-hd text-ink font-semibold">Explorar por categoria</h2>
+        <h2 className="text-section-hd text-ink font-semibold">Explorar por categoría</h2>
         <div className="flex items-center gap-2">
           <button
             type="button"
             className="btn-secondary btn--sm w-9 p-0"
             onClick={() => scrollCategories("prev")}
-            aria-label="Categorias anteriores"
+            aria-label="Categorías anteriores"
           >
             <ArrowLeft size={15} />
           </button>
@@ -658,7 +658,7 @@ function CategoryGrid({ categories }: CategoryGridProps) {
             type="button"
             className="btn-secondary btn--sm w-9 p-0"
             onClick={() => scrollCategories("next")}
-            aria-label="Categorias siguientes"
+            aria-label="Categorías siguientes"
           >
             <ArrowRight size={15} />
           </button>
@@ -838,12 +838,12 @@ function Home() {
         <CategoryGrid categories={categoryPreview} />
 
         <ProductSection
-          title="Recien añadidos"
-          subtitle="Ultimos productos añadidos"
+          title="Recién añadidos"
+          subtitle="Últimos productos añadidos"
           items={recentItems}
           loading={state.loading}
           to="/search?sort=recent"
-          emptyText="Todavia no hay productos publicados."
+          emptyText="Todavía no hay productos publicados."
           isFavorite={isFav}
           toggleFavorite={toggle}
           reviewSummaries={reviewSummaries}

@@ -112,7 +112,7 @@ async function loadCheckoutData({ itemId, startStr, endStr }: CheckoutLoadParams
   const itemRes = await fetch(`/api/items/${itemId}`, { credentials: "include" });
   const itemJson = (await itemRes.json()) as ApiResponse<ItemResponse>;
   if (!itemRes.ok || !itemJson.success || !itemJson.data) {
-    throw new Error(itemJson.error ?? "No se pudo cargar el articulo.");
+    throw new Error(itemJson.error ?? "No se pudo cargar el artículo.");
   }
   const fetchedItem = itemJson.data;
 

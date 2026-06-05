@@ -7,13 +7,13 @@ import type { FavoriteItemResponse, FavoritesResponse } from "@/types/item";
 import * as React from "react";
 
 const CATEGORY_LABELS: Record<string, string> = {
-  electronics: "Electronica",
+  electronics: "Electrónica",
   tools: "Herramientas",
   sports: "Deportes",
   vehicles: "Vehículos",
   home: "Hogar",
   gardening: "Jardinería",
-  music: "Musica",
+  music: "Música",
   photography: "Fotografía",
   camping: "Camping",
   clothing: "Ropa",
@@ -275,7 +275,7 @@ function FavCard({ item, onRemove }: FavCardProps) {
         <p className="text-subtle mb-4 text-[11px]">Guardado {timeAgo(item.saved_at)}</p>
 
         <div className="flex items-center justify-between gap-3">
-          <p className="text-primary text-[17px] font-bold">{Math.round(item.price_per_day)} EUR/dia</p>
+          <p className="text-primary text-[17px] font-bold">{Math.round(item.price_per_day)} EUR/día</p>
           <ActionButton
             item={item}
             onRent={handleRent}
@@ -296,7 +296,7 @@ function EmptySlot() {
           size={32}
           className="text-subtle"
         />
-        <p className="text-subtle text-center text-[13px]">Explora mas productos y guardalos aquí</p>
+        <p className="text-subtle text-center text-[13px]">Explora más productos y guardalos aquí</p>
         <button
           type="button"
           className="btn-primary btn--sm mt-1"

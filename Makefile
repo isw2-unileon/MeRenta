@@ -1,6 +1,5 @@
 GOPATH := $(shell go env GOPATH)
 BACKEND_BIN := backend/bin/server
-GO_TEST_TMP := tmp/go-test
 BACKEND_COVERAGE := tmp/backend-coverage.out
 
 .PHONY: install install-backend install-frontend install-e2e clean \
@@ -106,14 +105,20 @@ run-frontend-prod: build-frontend
 # ============================================================================
 
 ## Run backend tests
+# The recipe tolerates a Windows-only flake: after tests pass, Go deletes each
+# package's *.test.exe, and Windows Defender often still holds a transient lock,
+# making `go test` exit non-zero with "unlinkat ... being used by another
+# process". We decide pass/fail from the test output (FAIL / build error /
+# panic), so genuine failures still abort while the cleanup race is ignored.
 test-backend:
-	mkdir -p $(GO_TEST_TMP)
-	GOTMPDIR=$(CURDIR)/$(GO_TEST_TMP) go test -v -count=1 ./backend/...
+	@log=$$(mktemp); \
+	go test -v -count=1 ./backend/... 2>&1 | tee $$log; \
+	if grep -qE "^(FAIL|--- FAIL|# |panic:)" $$log || ! grep -q "^ok " $$log; then rm -f $$log; exit 1; fi; \
+	rm -f $$log
 
 ## Run backend tests with the race detector (requires gcc/MinGW in PATH on Windows)
 test-backend-race:
-	mkdir -p $(GO_TEST_TMP)
-	GOTMPDIR=$(CURDIR)/$(GO_TEST_TMP) CGO_ENABLED=1 go test -v -race -count=1 ./backend/...
+	CGO_ENABLED=1 go test -v -race -count=1 ./backend/...
 
 ## Run frontend tests
 test-frontend:
@@ -123,9 +128,14 @@ test-frontend-coverage:
 	cd frontend && npm run test:coverage
 
 ## Run backend tests with coverage
+# See test-backend for why the exit status is derived from the output instead of
+# go test's own code (Windows Defender temp-cleanup race).
 test-backend-coverage:
-	mkdir -p $(GO_TEST_TMP)
-	GOTMPDIR=$(CURDIR)/$(GO_TEST_TMP) go test -v -count=1 -coverprofile=$(BACKEND_COVERAGE) -covermode=atomic ./backend/...
+	mkdir -p $(dir $(BACKEND_COVERAGE))
+	@log=$$(mktemp); \
+	go test -v -count=1 -coverprofile=$(BACKEND_COVERAGE) -covermode=atomic ./backend/... 2>&1 | tee $$log; \
+	if grep -qE "^(FAIL|--- FAIL|# |panic:)" $$log || ! grep -q "^ok " $$log; then rm -f $$log; exit 1; fi; \
+	rm -f $$log
 	go tool cover -func=$(BACKEND_COVERAGE)
 
 test-coverage: test-frontend-coverage test-backend-coverage
