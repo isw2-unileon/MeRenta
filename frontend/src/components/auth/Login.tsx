@@ -3,6 +3,7 @@ import { useNavigate } from "react-router-dom";
 import { Eye, EyeOff } from "lucide-react";
 import { useAuth } from "@/hooks/useAuth";
 import { BlockedAccountError } from "@/types/auth";
+import { normalizeLoginPayload, validateLogin } from "@/components/auth/authForms.logic";
 
 type AuthView = "login" | "register" | "forgot";
 
@@ -43,22 +44,14 @@ function Login({ onSwitch }: { onSwitch: (v: AuthView) => void }) {
     e.preventDefault();
     setError("");
 
-    if (!formData.email.trim()) {
-      setError("El email es requerido");
+    const validationError = validateLogin(formData);
+    if (validationError) {
+      setError(validationError);
       return;
     }
-
-    if (!formData.password) {
-      setError("La contraseña es requerida");
-      return;
-    }
-
     const runLogin = async () => {
       try {
-        await login({
-          email: formData.email.trim(),
-          password: formData.password,
-        });
+        await login(normalizeLoginPayload(formData));
         setFormData({ email: "", password: "" });
         await navigate("/home", { replace: true });
       } catch (err) {

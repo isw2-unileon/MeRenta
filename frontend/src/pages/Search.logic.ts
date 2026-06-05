@@ -1,0 +1,158 @@
+import type { SearchItemResponse, SearchItemsResponse } from "@/types/item";
+import type { ReviewSummary } from "@/types/review";
+
+const PAGE_SIZE = 12;
+
+const CATEGORY_LABELS: Record<string, string> = {
+  electronics: "ElectrÃ³nica",
+  tools: "Herramientas",
+  sports: "Deportes",
+  vehicles: "VehÃ­culos",
+  home: "Hogar",
+  gardening: "JardinerÃ­a",
+  music: "MÃºsica",
+  photography: "FotografÃ­a",
+  camping: "Camping",
+  clothing: "Ropa",
+  leisure: "Ocio",
+  other: "Otros",
+};
+
+const CATEGORY_ORDER = [
+  "electronics",
+  "tools",
+  "sports",
+  "vehicles",
+  "home",
+  "gardening",
+  "music",
+  "photography",
+  "camping",
+  "clothing",
+  "leisure",
+  "other",
+];
+
+const CONDITION_LABELS: Record<string, string> = {
+  new: "Nuevo",
+  like_new: "Excelente",
+  good: "Muy bueno",
+  fair: "Bueno",
+  poor: "Aceptable",
+};
+
+const CONDITION_ORDER = ["new", "like_new", "good", "fair", "poor"];
+
+const SORT_OPTIONS = [
+  { value: "recent", label: "MÃ¡s recientes" },
+  { value: "price_asc", label: "Precio: menor a mayor" },
+  { value: "price_desc", label: "Precio: mayor a menor" },
+  { value: "oldest", label: "MÃ¡s antiguos" },
+];
+
+const SEARCH_SKELETON_IDS = [
+  "search-skel-1",
+  "search-skel-2",
+  "search-skel-3",
+  "search-skel-4",
+  "search-skel-5",
+  "search-skel-6",
+  "search-skel-7",
+  "search-skel-8",
+  "search-skel-9",
+  "search-skel-10",
+  "search-skel-11",
+  "search-skel-12",
+];
+
+interface SearchState {
+  items: SearchItemResponse[];
+  total: number;
+  categoryCounts: Record<string, number>;
+  cityCounts: Record<string, number>;
+  conditionCounts: Record<string, number>;
+  loading: boolean;
+  error: string;
+}
+
+type SearchAction =
+  | { type: "FETCH_START" }
+  | { type: "FETCH_SUCCESS"; payload: SearchItemsResponse }
+  | { type: "FETCH_ERROR"; error: string };
+
+const initialSearchState: SearchState = {
+  items: [],
+  total: 0,
+  categoryCounts: {},
+  cityCounts: {},
+  conditionCounts: {},
+  loading: true,
+  error: "",
+};
+
+const emptyReviewSummary: ReviewSummary = {
+  average_rating: 0,
+  total: 0,
+  distribution: {},
+};
+
+function searchReducer(state: SearchState, action: SearchAction): SearchState {
+  switch (action.type) {
+    case "FETCH_START":
+      return { ...state, loading: true, error: "" };
+    case "FETCH_SUCCESS":
+      return {
+        ...state,
+        items: action.payload.items,
+        total: action.payload.total,
+        categoryCounts: action.payload.category_counts,
+        cityCounts: action.payload.city_counts,
+        conditionCounts: action.payload.condition_counts,
+        loading: false,
+        error: "",
+      };
+    case "FETCH_ERROR":
+      return {
+        ...state,
+        items: [],
+        total: 0,
+        categoryCounts: {},
+        cityCounts: {},
+        conditionCounts: {},
+        loading: false,
+        error: action.error,
+      };
+    default:
+      return state;
+  }
+}
+
+function humanizeCategory(value: string): string {
+  return CATEGORY_LABELS[value] ?? value.replaceAll("_", " ");
+}
+
+function humanizeCondition(value: string): string {
+  return CONDITION_LABELS[value] ?? value.replaceAll("_", " ");
+}
+
+function getPageWindow(page: number, totalPages: number): number[] {
+  const pages = new Set<number>([1, page, page + 1, page + 2, totalPages].filter((p) => p >= 1 && p <= totalPages));
+  return Array.from(pages).sort((a, b) => a - b);
+}
+
+export {
+  CATEGORY_LABELS,
+  CATEGORY_ORDER,
+  CONDITION_LABELS,
+  CONDITION_ORDER,
+  PAGE_SIZE,
+  SEARCH_SKELETON_IDS,
+  SORT_OPTIONS,
+  emptyReviewSummary,
+  getPageWindow,
+  humanizeCategory,
+  humanizeCondition,
+  initialSearchState,
+  searchReducer,
+};
+export type { SearchAction, SearchState };
