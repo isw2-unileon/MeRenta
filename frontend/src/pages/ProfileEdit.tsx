@@ -86,6 +86,12 @@ async function deleteAddress(addressId: string): Promise<void> {
   });
   const json = (await res.json()) as ApiResponse<{ message: string }>;
   if (!res.ok || !json.success) {
+    if (res.status === 409) {
+      throw new Error(
+        "No puedes eliminar una dirección que está siendo usada por un producto publicado. " +
+          "Elimina o edita ese producto primero."
+      );
+    }
     throw new Error(json.message ?? json.error ?? "Error al quitar la dirección");
   }
 }

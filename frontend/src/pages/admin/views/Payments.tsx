@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useReducer, useRef, useState } from "react";
+import { useCallback, useEffect, useReducer, useState } from "react";
 import { ExternalLink, ImageIcon, MoreHorizontal, Search } from "lucide-react";
 
 import type { BookingDetailResponse, BookingListResponse, BookingStatus } from "@/types/booking";
@@ -8,6 +8,7 @@ import {
   Badge,
   Card,
   ConfirmModal,
+  Dropdown,
   FilterPills,
   Pagination,
   SectionTitle,
@@ -131,52 +132,31 @@ interface StatusMenuProps {
 }
 
 function StatusMenu({ payment, onRequest }: StatusMenuProps) {
-  const [open, setOpen] = useState(false);
-  const ref = useRef<HTMLDivElement>(null);
-
-  useEffect(() => {
-    if (!open) return;
-    function onDown(e: MouseEvent) {
-      if (ref.current && !ref.current.contains(e.target as Node)) setOpen(false);
-    }
-    document.addEventListener("mousedown", onDown);
-    return () => document.removeEventListener("mousedown", onDown);
-  }, [open]);
-
   const options = ADMIN_NEXT[payment.booking_status] ?? [];
   if (options.length === 0) return null;
 
   return (
-    <div
-      className="relative"
-      ref={ref}
+    <Dropdown
+      ariaLabel={`Acciones para ${payment.item_title}`}
+      panelClassName="min-w-44 py-1"
+      button={<MoreHorizontal size={16} />}
     >
-      <button
-        type="button"
-        className="rounded p-1 text-neutral-400 hover:text-neutral-700"
-        onClick={() => setOpen((v) => !v)}
-        aria-label={`Acciones para ${payment.item_title}`}
-      >
-        <MoreHorizontal size={16} />
-      </button>
-      {open && (
-        <div className="absolute right-0 z-10 mt-1 w-44 rounded-lg border border-neutral-200 bg-white py-1 shadow-md">
-          {options.map((next) => (
-            <button
-              key={next}
-              type="button"
-              className="flex w-full items-center gap-2 px-3 py-2 text-left text-sm text-neutral-700 hover:bg-neutral-50"
-              onClick={() => {
-                onRequest(payment.booking_id, next);
-                setOpen(false);
-              }}
-            >
-              {NEXT_LABELS[next]}
-            </button>
-          ))}
-        </div>
-      )}
-    </div>
+      {(close) =>
+        options.map((next) => (
+          <button
+            key={next}
+            type="button"
+            className="flex w-full items-center gap-2 px-3 py-2 text-left text-sm text-neutral-700 hover:bg-neutral-50"
+            onClick={() => {
+              onRequest(payment.booking_id, next);
+              close();
+            }}
+          >
+            {NEXT_LABELS[next]}
+          </button>
+        ))
+      }
+    </Dropdown>
   );
 }
 

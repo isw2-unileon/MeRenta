@@ -8,6 +8,9 @@ type CreatePaymentIntentRequest struct {
 	StartDate   string  `json:"start_date"   binding:"required"`
 	EndDate     string  `json:"end_date"     binding:"required"`
 	PricePerDay float64 `json:"price_per_day" binding:"required,gt=0"`
+	// Category determines the per-day insurance premium. Optional: an empty or
+	// unknown category falls back to the default rate.
+	Category string `json:"category" binding:"omitempty"`
 }
 
 // CreatePaymentIntentResponse carries the client secret back to the browser

@@ -12,6 +12,7 @@ interface PlatformConfig {
   allow_new_registrations: boolean;
   service_fee_eur: number;
   insurance_daily_rate_eur: number;
+  insurance_daily_rates_by_category?: Record<string, number>;
   booking_expiry_days: number;
   updated_at?: string;
   updated_by_email?: string;
@@ -20,6 +21,21 @@ interface PlatformConfig {
 // ── Constants ─────────────────────────────────────────────────────────────────
 
 const LIMIT = 20;
+
+const CATEGORY_LABELS: Record<string, string> = {
+  vehicles: "Vehículos",
+  electronics: "Electrónica",
+  photography: "Fotografía",
+  music: "Música",
+  sports: "Deportes",
+  camping: "Camping",
+  tools: "Herramientas",
+  gardening: "Jardinería",
+  leisure: "Ocio",
+  home: "Hogar",
+  clothing: "Ropa",
+  other: "Otros",
+};
 
 const ACTION_OPTIONS: { value: string; label: string }[] = [
   { value: "", label: "Todas" },
@@ -248,6 +264,42 @@ function ReadOnlyRow({ label, value }: { label: string; value: string }) {
   );
 }
 
+/**
+ * Read-only block showing the per-day insurance premium, which varies by
+ * product category. Displays the overall range plus a per-category breakdown.
+ */
+function InsuranceRatesRow({ rates, fallback }: { rates: Record<string, number>; fallback: number }) {
+  const entries = Object.entries(rates).sort((a, b) => b[1] - a[1]);
+  const values = entries.length > 0 ? entries.map(([, rate]) => rate) : [fallback];
+  const min = Math.min(...values);
+  const max = Math.max(...values);
+  const rangeLabel = min === max ? `${EUR.format(min)} / día` : `${EUR.format(min)} – ${EUR.format(max)} / día`;
+
+  return (
+    <div className="py-3.5">
+      <div className="flex items-center justify-between">
+        <span className="text-sm text-neutral-600">Seguro (por día de alquiler)</span>
+        <span className="rounded bg-neutral-100 px-2 py-1 font-mono text-sm text-neutral-700">{rangeLabel}</span>
+      </div>
+      <p className="mt-0.5 text-xs text-neutral-400">Varía según la categoría del producto.</p>
+
+      {entries.length > 0 && (
+        <div className="mt-3 grid grid-cols-2 gap-x-6 gap-y-2 sm:grid-cols-3">
+          {entries.map(([category, rate]) => (
+            <div
+              key={category}
+              className="flex items-center justify-between gap-2"
+            >
+              <span className="text-xs text-neutral-500">{CATEGORY_LABELS[category] ?? category}</span>
+              <span className="font-mono text-xs text-neutral-700">{EUR.format(rate)}</span>
+            </div>
+          ))}
+        </div>
+      )}
+    </div>
+  );
+}
+
 // ── Config panel ──────────────────────────────────────────────────────────────
 
 interface ConfigPanelProps {
@@ -358,9 +410,9 @@ function ConfigPanel({ state, onToggle }: ConfigPanelProps) {
             label="Cuota de servicio por reserva"
             value={EUR.format(config.service_fee_eur)}
           />
-          <ReadOnlyRow
-            label="Seguro (por día de alquiler)"
-            value={`${EUR.format(config.insurance_daily_rate_eur)} / día`}
+          <InsuranceRatesRow
+            rates={config.insurance_daily_rates_by_category ?? {}}
+            fallback={config.insurance_daily_rate_eur}
           />
         </div>
       </Card>

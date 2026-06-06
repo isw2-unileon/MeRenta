@@ -1,5 +1,5 @@
-import { useCallback, useEffect, useReducer, useRef, useState } from "react";
-import { CalendarDays, ChevronDown, ImageIcon, MoreHorizontal, Search } from "lucide-react";
+import { useCallback, useEffect, useReducer, useState } from "react";
+import { CalendarDays, ImageIcon, MoreHorizontal, Search } from "lucide-react";
 
 import type { BookingDetailResponse, BookingListResponse, BookingStatus } from "@/types/booking";
 import { getAdminData, sendAdminMutation } from "@/components/admin/adminApi";
@@ -8,6 +8,7 @@ import {
   Badge,
   Card,
   ConfirmModal,
+  Dropdown,
   FilterPills,
   Pagination,
   SectionTitle,
@@ -136,53 +137,30 @@ interface StatusMenuProps {
  * Returns null for terminal statuses (rejected, canceled, completed).
  */
 function StatusMenu({ booking, onUpdate }: StatusMenuProps) {
-  const [open, setOpen] = useState(false);
-  const ref = useRef<HTMLDivElement>(null);
-
-  useEffect(() => {
-    if (!open) return;
-    function onMouseDown(e: MouseEvent) {
-      if (ref.current && !ref.current.contains(e.target as Node)) setOpen(false);
-    }
-    document.addEventListener("mousedown", onMouseDown);
-    return () => document.removeEventListener("mousedown", onMouseDown);
-  }, [open]);
-
   const options = ADMIN_NEXT[booking.booking_status] ?? [];
   if (options.length === 0) return null;
 
   return (
-    <div
-      className="relative"
-      ref={ref}
+    <Dropdown
+      ariaLabel={`Cambiar estado de la reserva ${booking.booking_id.slice(0, 8)}`}
+      button={<MoreHorizontal size={16} />}
     >
-      <button
-        type="button"
-        className="rounded p-1 text-neutral-400 hover:text-neutral-700"
-        onClick={() => setOpen((v) => !v)}
-        aria-label={`Cambiar estado de la reserva ${booking.booking_id.slice(0, 8)}`}
-      >
-        <MoreHorizontal size={16} />
-      </button>
-
-      {open && (
-        <div className="absolute right-0 z-10 mt-1 w-36 rounded-lg border border-neutral-200 bg-white py-1 shadow-md">
-          {options.map((next) => (
-            <button
-              key={next}
-              type="button"
-              className="flex w-full items-center gap-2 px-3 py-2 text-left text-sm text-neutral-700 hover:bg-neutral-50"
-              onClick={() => {
-                onUpdate(booking.booking_id, next);
-                setOpen(false);
-              }}
-            >
-              {NEXT_LABELS[next]}
-            </button>
-          ))}
-        </div>
-      )}
-    </div>
+      {(close) =>
+        options.map((next) => (
+          <button
+            key={next}
+            type="button"
+            className="flex w-full items-center gap-2 px-3 py-2 text-left text-sm text-neutral-700 hover:bg-neutral-50"
+            onClick={() => {
+              onUpdate(booking.booking_id, next);
+              close();
+            }}
+          >
+            {NEXT_LABELS[next]}
+          </button>
+        ))
+      }
+    </Dropdown>
   );
 }
 
@@ -314,27 +292,21 @@ function Operations() {
 
         {/* Sort + search */}
         <div className="flex items-center gap-2">
-          <div className="relative">
-            <select
-              value={filters.sort}
-              onChange={(e) => handleSort(e.target.value)}
-              aria-label="Ordenar reservas"
-              className="appearance-none rounded-lg border border-neutral-200 py-2 pr-8 pl-3 text-sm text-neutral-600 outline-none focus:border-emerald-500"
-            >
-              {SORT_OPTIONS.map(({ value, label }) => (
-                <option
-                  key={value}
-                  value={value}
-                >
-                  {label}
-                </option>
-              ))}
-            </select>
-            <ChevronDown
-              size={13}
-              className="pointer-events-none absolute top-2.5 right-2.5 text-neutral-400"
-            />
-          </div>
+          <select
+            value={filters.sort}
+            onChange={(e) => handleSort(e.target.value)}
+            aria-label="Ordenar reservas"
+            className="h-auto w-auto rounded-lg border border-neutral-200 py-2 pr-9 pl-3 text-sm text-neutral-600 focus:border-emerald-500"
+          >
+            {SORT_OPTIONS.map(({ value, label }) => (
+              <option
+                key={value}
+                value={value}
+              >
+                {label}
+              </option>
+            ))}
+          </select>
 
           <div className="relative">
             <Search

@@ -1,10 +1,10 @@
-import { useCallback, useEffect, useReducer, useRef, useState } from "react";
+import { useCallback, useEffect, useReducer, useState } from "react";
 import { AlertTriangle, Check, ChevronDown, Filter, Package, RotateCcw, Users } from "lucide-react";
 
 import type { ApiResponse } from "@/types/common";
 import type { IncidentListResponse, IncidentPriority, IncidentResponse, IncidentStatus } from "@/types/incident";
 import { GREEN } from "@/components/admin/adminTokens";
-import { Badge, Card } from "@/components/admin/adminUi";
+import { Badge, Card, Dropdown } from "@/components/admin/adminUi";
 
 // ── Constants ─────────────────────────────────────────────────────────────────
 
@@ -219,49 +219,34 @@ interface AdminDropdownProps<T extends string> {
 }
 
 function AdminDropdown<T extends string>({ label, value, options, labels, onUpdate }: AdminDropdownProps<T>) {
-  const [open, setOpen] = useState(false);
-  const ref = useRef<HTMLDivElement>(null);
-
-  useEffect(() => {
-    if (!open) return;
-    function onClick(e: MouseEvent) {
-      if (ref.current && !ref.current.contains(e.target as Node)) setOpen(false);
-    }
-    document.addEventListener("mousedown", onClick);
-    return () => document.removeEventListener("mousedown", onClick);
-  }, [open]);
-
   return (
-    <div
-      className="relative"
-      ref={ref}
+    <Dropdown
+      ariaLabel={`${label}: ${labels[value]}`}
+      panelClassName="min-w-44 py-1"
+      buttonClassName="inline-flex items-center gap-1.5 rounded-lg border border-neutral-200 px-3 py-2 text-sm font-medium text-neutral-700 hover:bg-neutral-50"
+      button={
+        <>
+          {label}: {labels[value]} <ChevronDown size={14} />
+        </>
+      }
     >
-      <button
-        type="button"
-        onClick={() => setOpen((v) => !v)}
-        className="inline-flex items-center gap-1.5 rounded-lg border border-neutral-200 px-3 py-2 text-sm font-medium text-neutral-700 hover:bg-neutral-50"
-      >
-        {label}: {labels[value]} <ChevronDown size={14} />
-      </button>
-      {open && (
-        <div className="absolute right-0 z-10 mt-1 w-44 rounded-lg border border-neutral-200 bg-white py-1 shadow-md">
-          {options.map((option) => (
-            <button
-              key={option}
-              type="button"
-              onClick={() => {
-                onUpdate(option);
-                setOpen(false);
-              }}
-              className="flex w-full items-center gap-2 px-3 py-2 text-left text-sm text-neutral-700 hover:bg-neutral-50"
-            >
-              {option === value && <Check size={14} />}
-              <span className={option === value ? "font-semibold" : ""}>{labels[option]}</span>
-            </button>
-          ))}
-        </div>
-      )}
-    </div>
+      {(close) =>
+        options.map((option) => (
+          <button
+            key={option}
+            type="button"
+            onClick={() => {
+              onUpdate(option);
+              close();
+            }}
+            className="flex w-full items-center gap-2 px-3 py-2 text-left text-sm text-neutral-700 hover:bg-neutral-50"
+          >
+            {option === value && <Check size={14} />}
+            <span className={option === value ? "font-semibold" : ""}>{labels[option]}</span>
+          </button>
+        ))
+      }
+    </Dropdown>
   );
 }
 

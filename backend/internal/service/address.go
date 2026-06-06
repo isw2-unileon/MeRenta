@@ -14,6 +14,10 @@ import (
 	"github.com/isw2-unileon/MeRenta/backend/internal/sqlcdb"
 )
 
+// ErrAddressInUse indicates the address cannot be deleted because it is still
+// referenced by a published product.
+var ErrAddressInUse = errors.New("address is used by a product")
+
 // addressQuerier is the minimal DB interface needed by AddressService.
 type addressQuerier interface {
 	CreateAddress(ctx context.Context, arg sqlcdb.CreateAddressParams) (sqlcdb.Address, error)
@@ -156,7 +160,13 @@ func (s *AddressService) DeleteAddress(ctx context.Context, customerID uuid.UUID
 		return ErrForbidden
 	}
 
-	return s.q.DeleteAddress(ctx, addressID)
+	if err := s.q.DeleteAddress(ctx, addressID); err != nil {
+		if isForeignKeyViolation(err) {
+			return ErrAddressInUse
+		}
+		return err
+	}
+	return nil
 }
 
 // addressCoords converts the optional latitude/longitude on the request into the
