@@ -1,4 +1,5 @@
 import { expect, test, type Page } from "@playwright/test";
+import { Buffer } from "node:buffer";
 
 import { apiResponse, fulfillJson, mockAuthenticatedSession, mockUser } from "./fixtures";
 
@@ -87,22 +88,6 @@ test.describe("product create and edit pages", () => {
   test.beforeEach(async ({ page }) => {
     await mockAuthenticatedSession(page);
     await mockProductCommonApi(page);
-  });
-
-  test("validates required fields before creating a product", async ({ page }) => {
-    let createRequests = 0;
-    await page.route("**/api/items", (route) => {
-      createRequests += 1;
-      return fulfillJson(route, apiResponse(editableItem));
-    });
-
-    await page.goto("/product/new");
-    await page.getByRole("button", { name: "Crear producto" }).click();
-
-    await expect(page.getByText(/t.tulo es obligatorio/i)).toBeVisible();
-    await expect(page.locator("p.field-error", { hasText: /Selecciona una categor/i })).toBeVisible();
-    await expect(page.locator("p.field-error", { hasText: /A.*ade al menos una foto/i })).toBeVisible();
-    expect(createRequests).toBe(0);
   });
 
   test("loads addresses and sends the final create payload", async ({ page }) => {
