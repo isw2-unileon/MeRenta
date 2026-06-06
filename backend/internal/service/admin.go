@@ -685,10 +685,14 @@ func textOrNull(value string) pgtype.Text {
 type PlatformConfigResponse struct {
 	AllowNewRegistrations bool    `json:"allow_new_registrations"`
 	ServiceFeeEUR         float64 `json:"service_fee_eur"`
+	// InsuranceDailyRateEUR is the default rate applied to unknown categories.
 	InsuranceDailyRateEUR float64 `json:"insurance_daily_rate_eur"`
-	BookingExpiryDays     int     `json:"booking_expiry_days"`
-	UpdatedAt             string  `json:"updated_at,omitempty"`
-	UpdatedByEmail        string  `json:"updated_by_email,omitempty"`
+	// InsuranceDailyRatesByCategory maps each product category to its per-day
+	// insurance premium (EUR).
+	InsuranceDailyRatesByCategory map[string]float64 `json:"insurance_daily_rates_by_category"`
+	BookingExpiryDays             int                `json:"booking_expiry_days"`
+	UpdatedAt                     string             `json:"updated_at,omitempty"`
+	UpdatedByEmail                string             `json:"updated_by_email,omitempty"`
 }
 
 // GetPlatformConfig returns the current platform settings.
@@ -715,11 +719,12 @@ func (s *AdminService) UpdatePlatformConfig(
 
 func platformConfigToResponse(cfg sqlcdb.PlatformConfig) PlatformConfigResponse {
 	return PlatformConfigResponse{
-		AllowNewRegistrations: cfg.AllowNewRegistrations,
-		ServiceFeeEUR:         serviceFeeEUR,
-		InsuranceDailyRateEUR: insuranceDailyRateEUR,
-		BookingExpiryDays:     bookingExpiryDays,
-		UpdatedAt:             cfg.UpdatedAt.UTC().Format(time.RFC3339),
-		UpdatedByEmail:        cfg.UpdatedByEmail,
+		AllowNewRegistrations:         cfg.AllowNewRegistrations,
+		ServiceFeeEUR:                 serviceFeeEUR,
+		InsuranceDailyRateEUR:         defaultInsuranceDailyRateEUR,
+		InsuranceDailyRatesByCategory: insuranceDailyRatesByCategory,
+		BookingExpiryDays:             bookingExpiryDays,
+		UpdatedAt:                     cfg.UpdatedAt.UTC().Format(time.RFC3339),
+		UpdatedByEmail:                cfg.UpdatedByEmail,
 	}
 }

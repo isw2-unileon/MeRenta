@@ -7,6 +7,7 @@ import (
 
 	"github.com/google/uuid"
 	"github.com/jackc/pgx/v5"
+	"github.com/jackc/pgx/v5/pgconn"
 	"github.com/jackc/pgx/v5/pgtype"
 
 	"github.com/isw2-unileon/MeRenta/backend/internal/model"
@@ -20,6 +21,7 @@ type addressQuerierStub struct {
 	updateArg sqlcdb.UpdateAddressParams
 	deletedID uuid.UUID
 	getErr    error
+	deleteErr error
 }
 
 func (s *addressQuerierStub) CreateAddress(_ context.Context, arg sqlcdb.CreateAddressParams) (sqlcdb.Address, error) {
@@ -41,7 +43,7 @@ func (s *addressQuerierStub) CreateAddress(_ context.Context, arg sqlcdb.CreateA
 
 func (s *addressQuerierStub) DeleteAddress(_ context.Context, addressID uuid.UUID) error {
 	s.deletedID = addressID
-	return nil
+	return s.deleteErr
 }
 
 func (s *addressQuerierStub) GetAddressByID(_ context.Context, _ uuid.UUID) (sqlcdb.Address, error) {
@@ -155,5 +157,22 @@ func TestAddressServiceOwnershipAndNotFound(t *testing.T) {
 	stub.getErr = pgx.ErrNoRows
 	if _, err := svc.UpdateAddress(context.Background(), customerID, addressID, model.CreateAddressRequest{}); !errors.Is(err, ErrAddressNotFound) {
 		t.Fatalf("expected address not found, got %v", err)
+	}
+}
+
+func TestAddressServiceDeleteInUse(t *testing.T) {
+	t.Parallel()
+
+	customerID := uuid.MustParse("22222222-2222-2222-2222-222222222222")
+	addressID := uuid.MustParse("11111111-1111-1111-1111-111111111111")
+
+	stub := &addressQuerierStub{
+		current:   sqlcdb.Address{AddressID: addressID, CustomerID: customerID},
+		deleteErr: &pgconn.PgError{Code: "23503"},
+	}
+	svc := NewAddressService(stub)
+
+	if err := svc.DeleteAddress(context.Background(), customerID, addressID); !errors.Is(err, ErrAddressInUse) {
+		t.Fatalf("expected address in use, got %v", err)
 	}
 }

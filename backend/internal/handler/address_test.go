@@ -96,7 +96,8 @@ func TestAddressHandlerErrors(t *testing.T) {
 		{"bad update id", &addressServiceStub{}, http.MethodPatch, "/addresses/bad", body, http.StatusBadRequest},
 		{"update not found", &addressServiceStub{err: service.ErrAddressNotFound}, http.MethodPatch, "/addresses/" + validID, body, http.StatusNotFound},
 		{"update forbidden", &addressServiceStub{err: service.ErrForbidden}, http.MethodPatch, "/addresses/" + validID, body, http.StatusForbidden},
-		{"delete conflict", &addressServiceStub{err: errors.New("fk")}, http.MethodDelete, "/addresses/" + validID, "", http.StatusConflict},
+		{"delete in use", &addressServiceStub{err: service.ErrAddressInUse}, http.MethodDelete, "/addresses/" + validID, "", http.StatusConflict},
+		{"delete internal error", &addressServiceStub{err: errors.New("boom")}, http.MethodDelete, "/addresses/" + validID, "", http.StatusInternalServerError},
 	}
 
 	for _, tt := range tests {

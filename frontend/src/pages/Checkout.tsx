@@ -5,13 +5,13 @@ import { Elements } from "@stripe/react-stripe-js";
 
 import { PaymentForm } from "@/components/checkout/PaymentForm";
 import { RentalSummary } from "@/components/checkout/RentalSummary";
+import { insuranceDailyRate } from "@/components/product/insurance";
 import type { ApiResponse } from "@/types/common";
 import type { CustomerProfile } from "@/types/customer";
 import type { ItemImageResponse, ItemResponse } from "@/types/item";
 
 // ── Constants (mirror BookingCard & backend) ──────────────────────────────────
 const SERVICE_FEE = 5;
-const INSURANCE_DAILY_RATE = 2.3;
 const CHECKOUT_FALLBACK_DATE = new Date(0);
 
 // ── Stripe setup ──────────────────────────────────────────────────────────────
@@ -132,6 +132,7 @@ async function loadCheckoutData({ itemId, startStr, endStr }: CheckoutLoadParams
       start_date: startStr,
       end_date: endStr,
       price_per_day: fetchedItem.price_per_day,
+      category: fetchedItem.category,
     }),
   });
   const piJson = (await piRes.json()) as ApiResponse<PaymentIntentData>;
@@ -174,7 +175,7 @@ function Checkout() {
 
   // Computed pricing
   const pricePerDay = item?.price_per_day ?? 0;
-  const insurance = Math.round(INSURANCE_DAILY_RATE * days * 100) / 100;
+  const insurance = Math.round(insuranceDailyRate(item?.category) * days * 100) / 100;
   const total = pricePerDay * days + SERVICE_FEE + insurance;
 
   // Fetch item + create PaymentIntent together
