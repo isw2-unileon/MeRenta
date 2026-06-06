@@ -68,8 +68,8 @@ const INITIAL_STATE: ProductEditState = {
 
 const SAVE_STEP_LABELS: Record<SaveStep, string> = {
   idle: "Guardar cambios",
-  saving: "Guardandoâ€¦",
-  uploading: "Subiendo fotosâ€¦",
+  saving: "Guardando",
+  uploading: "Subiendo fotos",
   done: "Cambios guardados",
 };
 
@@ -166,22 +166,22 @@ function validateForm(data: ProductFormData): FormErrors {
   const errors: FormErrors = {};
 
   if (!data.title.trim()) errors.title = "El titulo es obligatorio";
-  if (!data.category) errors.category = "Selecciona una categorÃ­a";
-  if (!data.condition) errors.condition = "Selecciona el estado de conservaciÃ³n";
-  if (!data.description.trim()) errors.description = "La descripciÃ³n es obligatoria";
+  if (!data.category) errors.category = "Selecciona una categoría";
+  if (!data.condition) errors.condition = "Selecciona el estado de conservación";
+  if (!data.description.trim()) errors.description = "La descripción es obligatoria";
   if (!data.pricePerDay || Number.parseFloat(data.pricePerDay) <= 0) {
-    errors.pricePerDay = "El precio por dÃ­a debe ser mayor que 0";
+    errors.pricePerDay = "El precio por día debe ser mayor que 0";
   }
 
   const minRentalPeriod = Number.parseInt(data.minRentalPeriod, 10);
   const maxRentalPeriod = Number.parseInt(data.maxRentalPeriod, 10);
   if (data.maxRentalPeriod !== "0" && minRentalPeriod > maxRentalPeriod) {
-    errors.minRentalPeriod = "El periodo mÃ­nimo no puede superar el mÃ¡ximo";
-    errors.maxRentalPeriod = "El periodo mÃ¡ximo debe ser igual o mayor que el mÃ­nimo";
+    errors.minRentalPeriod = "El periodo mínimo no puede superar el máximo";
+    errors.maxRentalPeriod = "El periodo máximo debe ser igual o mayor que el mínimo";
   }
 
-  if (!data.address) errors.address = "Selecciona una direcciÃ³n de recogida";
-  if (data.photos.length === 0) errors.photos = "AÃ±ade al menos una foto del producto";
+  if (!data.address) errors.address = "Selecciona una dirección de recogida";
+  if (data.photos.length === 0) errors.photos = "Añade al menos una foto del producto";
 
   return errors;
 }
@@ -214,7 +214,7 @@ function formatRelativeDate(value?: string): string {
   const days = Math.max(0, Math.round((Date.now() - date.getTime()) / 86400000));
   if (days === 0) return "hoy";
   if (days === 1) return "hace 1 dia";
-  return `hace ${days} dÃ­as`;
+  return `hace ${days} días`;
 }
 
 export {

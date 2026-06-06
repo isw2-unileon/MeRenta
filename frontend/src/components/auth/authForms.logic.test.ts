@@ -5,7 +5,7 @@ import { normalizeLoginPayload, normalizeRegisterPayload, validateLogin, validat
 describe("authForms logic", () => {
   it("validates login required fields and normalizes credentials", () => {
     expect(validateLogin({ email: " ", password: "secret" })).toBe("El email es requerido");
-    expect(validateLogin({ email: "user@example.com", password: "" })).toBe("La contraseÃ±a es requerida");
+    expect(validateLogin({ email: "user@example.com", password: "" })).toBe("La contraseña es requerida");
     expect(validateLogin({ email: " user@example.com ", password: "secret" })).toBe("");
     expect(normalizeLoginPayload({ email: " user@example.com ", password: "secret" })).toEqual({
       email: "user@example.com",
@@ -42,7 +42,7 @@ describe("authForms logic", () => {
         password: "short",
         repeatPassword: "short",
       })
-    ).toBe("La contraseÃ±a debe tener al menos 8 caracteres");
+    ).toBe("La contraseña debe tener al menos 8 caracteres");
 
     expect(
       validateRegister({
@@ -52,7 +52,7 @@ describe("authForms logic", () => {
         password: "password1",
         repeatPassword: "password2",
       })
-    ).toBe("Las contraseÃ±as no coinciden");
+    ).toBe("Las contraseñas no coinciden");
   });
 
   it("normalizes registration payloads before calling the auth API", () => {
