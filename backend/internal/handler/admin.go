@@ -208,10 +208,12 @@ func (h *AdminHandler) ListPayments(c *gin.Context) {
 	response.OK(c, http.StatusOK, res)
 }
 
+// isValidPaymentStatus reports whether s is an accepted payment filter value.
 func isValidPaymentStatus(s string) bool {
 	return s == "paid" || s == "refunded"
 }
 
+// isValidAuditAction reports whether s is a known audit-log action filter.
 func isValidAuditAction(s string) bool {
 	switch s {
 	case "user_status_changed", "booking_status_changed", "verification_updated":
@@ -413,6 +415,8 @@ func (h *AdminHandler) UpdatePlatformConfig(c *gin.Context) {
 	response.OK(c, http.StatusOK, cfg)
 }
 
+// getAdminAuditIdentity extracts the acting admin's ID and email from the
+// context for audit logging, returning false when either is missing.
 func getAdminAuditIdentity(c *gin.Context) (uuid.UUID, string, bool) {
 	rawID, ok := c.Get("customer_id")
 	if !ok {
@@ -433,6 +437,7 @@ func getAdminAuditIdentity(c *gin.Context) (uuid.UUID, string, bool) {
 	return customerID, email, true
 }
 
+// isValidAccountStatus reports whether s is a settable account status.
 func isValidAccountStatus(s string) bool {
 	switch sqlcdb.AccountStatus(s) {
 	case sqlcdb.AccountStatusActive,
@@ -443,6 +448,8 @@ func isValidAccountStatus(s string) bool {
 	return false
 }
 
+// isValidAdminVerificationStatus reports whether s is a valid verification
+// queue filter (pending/verified/rejected).
 func isValidAdminVerificationStatus(s string) bool {
 	switch sqlcdb.VerificationStatus(s) {
 	case sqlcdb.VerificationStatusPending,
@@ -453,6 +460,8 @@ func isValidAdminVerificationStatus(s string) bool {
 	return false
 }
 
+// isValidVerificationDecision reports whether s is a valid admin decision
+// (verified or rejected).
 func isValidVerificationDecision(s string) bool {
 	switch sqlcdb.VerificationStatus(s) {
 	case sqlcdb.VerificationStatusVerified,
@@ -462,6 +471,7 @@ func isValidVerificationDecision(s string) bool {
 	return false
 }
 
+// isValidBookingSort reports whether s is a supported booking sort order.
 func isValidBookingSort(s string) bool {
 	switch s {
 	case "recent", "oldest", "amount_desc", "amount_asc":
@@ -470,6 +480,7 @@ func isValidBookingSort(s string) bool {
 	return false
 }
 
+// isValidBookingStatus reports whether s is a known booking lifecycle status.
 func isValidBookingStatus(s string) bool {
 	switch sqlcdb.BookingStatus(s) {
 	case sqlcdb.BookingStatusPending,

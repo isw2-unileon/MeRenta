@@ -14,6 +14,7 @@ import (
 	"github.com/isw2-unileon/MeRenta/backend/pkg/response"
 )
 
+// addressService is the subset of the address service used by the handler.
 type addressService interface {
 	ListAddresses(ctx context.Context, customerID uuid.UUID) ([]model.AddressResponse, error)
 	CreateAddress(ctx context.Context, customerID uuid.UUID, req model.CreateAddressRequest) (*model.AddressResponse, error)

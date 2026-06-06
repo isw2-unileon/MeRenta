@@ -31,9 +31,13 @@ var (
 )
 
 const (
-	bookingDateLayout   = "2006-01-02"
+	// bookingDateLayout is the date format (YYYY-MM-DD) used for booking dates.
+	bookingDateLayout = "2006-01-02"
+	// defaultBookingLimit is the page size used when none is supplied.
 	defaultBookingLimit = 20
-	bookingExpiryDays   = 5
+	// bookingExpiryDays is how long a pending booking stays open before it is
+	// auto-cancelled and refunded.
+	bookingExpiryDays = 5
 )
 
 // PaymentRefunder issues refunds for paid bookings.
@@ -532,6 +536,7 @@ func optionalTime(t pgtype.Timestamptz) string {
 	return t.Time.Format(time.RFC3339)
 }
 
+// nullableUUIDString returns the string form of a pgtype.UUID, or "" when NULL.
 func nullableUUIDString(id pgtype.UUID) string {
 	if !id.Valid {
 		return ""

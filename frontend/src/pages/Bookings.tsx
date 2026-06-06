@@ -9,11 +9,13 @@ import type { IncidentType } from "@/types/incident";
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
 
+/** Formats an ISO date as a short Spanish date. */
 function fmtDate(value: string): string {
   const d = new Date(value);
   return d.toLocaleDateString("es-ES", { day: "numeric", month: "short", year: "numeric" });
 }
 
+/** Formats a price with two decimals and a comma decimal separator. */
 function fmtPrice(value: number): string {
   return value.toFixed(2).replace(".", ",");
 }
@@ -34,6 +36,7 @@ const STATUS_CLASSES: Record<BookingStatus, string> = {
   completed: "bg-[#dcfce7] text-[#15803d]",
 };
 
+/** Fetches the user's bookings, either as renter ("mine") or as owner. */
 async function fetchBookings(role: "mine" | "as-owner"): Promise<BookingListResponse> {
   const res = await fetch(`/api/bookings/${role}`, { credentials: "include" });
   const json = (await res.json()) as ApiResponse<BookingListResponse>;
@@ -43,6 +46,7 @@ async function fetchBookings(role: "mine" | "as-owner"): Promise<BookingListResp
   return json.data;
 }
 
+/** Opens (or returns) a conversation for an item and returns its ID. */
 async function openConversation(itemId: string, withUserId?: string): Promise<string> {
   const body: Record<string, string> = { item_id: itemId };
   if (withUserId) body.with_user_id = withUserId;
@@ -60,6 +64,7 @@ async function openConversation(itemId: string, withUserId?: string): Promise<st
   return json.data.conversation_id;
 }
 
+/** Applies a status-change action (accept/reject/cancel/complete) to a booking. */
 async function patchBookingStatus(
   bookingId: string,
   action: "accept" | "reject" | "cancel" | "complete"
@@ -88,6 +93,7 @@ const INCIDENT_TYPE_LABELS: Record<IncidentType, string> = {
 
 const BOOKING_INCIDENT_TYPES: IncidentType[] = ["damage", "late_return", "item_mismatch", "not_delivered", "other"];
 
+/** Files an incident report against a booking. */
 async function submitIncident(bookingId: string, type: IncidentType, description: string): Promise<void> {
   const res = await fetch("/api/incidents", {
     method: "POST",
@@ -109,6 +115,7 @@ interface IncidentModalProps {
   onSuccess: () => void;
 }
 
+/** Modal for filing an incident against a booking (type + description). */
 function IncidentModal({ booking, onClose, onSuccess }: IncidentModalProps) {
   const [type, setType] = useState<IncidentType>("damage");
   const [description, setDescription] = useState("");
@@ -241,6 +248,7 @@ type BookingsAction =
 
 const initialState: BookingsState = { items: [], total: 0, loading: true, error: "" };
 
+/** Reduces booking-list fetch and local status-update actions. */
 function bookingsReducer(state: BookingsState, action: BookingsAction): BookingsState {
   switch (action.type) {
     case "fetch_start":
@@ -276,6 +284,7 @@ interface BookingCardProps {
   actionLoading: string | null;
 }
 
+/** Card for a single booking, with role-aware action buttons. */
 function BookingCard({
   booking,
   viewMode,
@@ -438,6 +447,7 @@ interface TabPanelProps {
   dispatch: React.Dispatch<BookingsAction>;
 }
 
+/** Renders one bookings tab (renter or owner) with its cards and actions. */
 function TabPanel({ viewMode, state, dispatch }: TabPanelProps) {
   const navigate = useNavigate();
   const [actionLoading, setActionLoading] = useState<string | null>(null);

@@ -28,6 +28,7 @@ interface AddressSelectProps {
   onChange: (e: ChangeEvent<HTMLSelectElement>) => void;
 }
 
+/** Dropdown for picking one of the user's saved pick-up addresses. */
 function AddressSelect({ value, error, addresses, onChange }: AddressSelectProps) {
   return (
     <div>
@@ -76,6 +77,7 @@ interface NewAddressFormProps {
   onSave: () => void;
 }
 
+/** Inline form for creating a new pick-up address without leaving the page. */
 function NewAddressForm({ value, errors, saving, onChange, onCancel, onSave }: NewAddressFormProps) {
   return (
     <div className="border-border-main bg-surface rounded-lg border p-4">
@@ -231,6 +233,7 @@ interface DeliveryRadiusSelectProps {
   onChange: (e: ChangeEvent<HTMLSelectElement>) => void;
 }
 
+/** Dropdown for choosing the listing's delivery radius. */
 function DeliveryRadiusSelect({ value, onChange }: DeliveryRadiusSelectProps) {
   return (
     <div>
@@ -260,6 +263,7 @@ interface AvailabilityTogglesProps {
   onChange: (e: ChangeEvent<HTMLInputElement>) => void;
 }
 
+/** "Available now" checkbox controlling whether the listing publishes active. */
 function AvailabilityToggles({ availableNow, onChange }: AvailabilityTogglesProps) {
   return (
     <div className="border-border-main rounded-lg border p-4">
@@ -290,6 +294,16 @@ interface LocationSectionProps {
   onAddressCreated: (req: CreateAddressRequest) => Promise<void>;
 }
 
+/**
+ * Form section for the listing's location and availability: pick-up address
+ * (with inline address creation), delivery radius and "available now" toggle.
+ * @param data Current location/availability field values.
+ * @param errors Validation error messages keyed by field name.
+ * @param addresses The user's saved addresses to choose from.
+ * @param onChange Callback to update a single field.
+ * @param onAddressCreated Callback to persist a newly entered address.
+ * @returns The location-and-availability section JSX.
+ */
 function LocationSection({ data, errors, addresses, onChange, onAddressCreated }: LocationSectionProps) {
   const [showNewForm, setShowNewForm] = useState(false);
   const [newAddr, setNewAddr] = useState<CreateAddressRequest>(EMPTY_NEW_ADDRESS);

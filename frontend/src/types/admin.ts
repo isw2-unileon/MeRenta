@@ -29,6 +29,9 @@ interface AdminUserListResponse {
   page: number;
   limit: number;
 }
+/**
+ * A customer awaiting a verification decision in the admin queue.
+ */
 interface AdminVerificationRequest {
   customer_id: string;
   first_name: string;
@@ -42,6 +45,9 @@ interface AdminVerificationRequest {
   has_address: boolean;
 }
 
+/**
+ * Paginated response from GET /api/admin/verification.
+ */
 interface AdminVerificationListResponse {
   requests: AdminVerificationRequest[];
   total: number;

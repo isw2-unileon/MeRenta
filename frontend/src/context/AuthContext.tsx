@@ -76,6 +76,7 @@ const parseAuthResponse = async (response: Response): Promise<CustomerPublic> =>
   return customer as CustomerPublic;
 };
 
+/** Internal reducer state backing the auth context. */
 interface AuthState {
   isAuthenticated: boolean;
   isLoading: boolean;
@@ -84,6 +85,7 @@ interface AuthState {
   suspendedUntil: string | null;
 }
 
+/** Reducer actions covering the load/login/register/logout lifecycle. */
 type AuthAction =
   | { type: "load_start" }
   | { type: "load_success"; user: CustomerPublic }

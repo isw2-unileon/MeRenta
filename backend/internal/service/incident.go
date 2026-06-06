@@ -287,6 +287,9 @@ func (s *IncidentService) UpdatePriority(
 
 // ── Private helpers ───────────────────────────────────────────────────────────
 
+// authoriseReporter checks that the reporter is the renter or owner of the
+// booking and that the booking is in a state (accepted or completed) that
+// allows incidents to be filed.
 func (s *IncidentService) authoriseReporter(b sqlcdb.BookingDetailRow, reporterID uuid.UUID) error {
 	isRenter := b.RenterID == reporterID
 	isOwner := b.OwnerID.Valid && uuid.UUID(b.OwnerID.Bytes) == reporterID
@@ -300,6 +303,8 @@ func (s *IncidentService) authoriseReporter(b sqlcdb.BookingDetailRow, reporterI
 	return ErrIncidentInvalidState
 }
 
+// parseIncidentType validates a raw type string and converts it to a known
+// sqlcdb.IncidentType, returning ErrIncidentInvalidType otherwise.
 func parseIncidentType(s string) (sqlcdb.IncidentType, error) {
 	switch sqlcdb.IncidentType(s) {
 	case sqlcdb.IncidentTypeDamage, sqlcdb.IncidentTypeLateReturn,
@@ -311,6 +316,8 @@ func parseIncidentType(s string) (sqlcdb.IncidentType, error) {
 	return "", ErrIncidentInvalidType
 }
 
+// parseProductReportType validates a product-report type and derives its triage
+// priority, returning ErrProductReportInvalidType for unsupported types.
 func parseProductReportType(s string) (sqlcdb.IncidentType, string, error) {
 	incidentType, err := parseIncidentType(s)
 	if err != nil {
@@ -328,6 +335,8 @@ func parseProductReportType(s string) (sqlcdb.IncidentType, string, error) {
 	}
 }
 
+// parseUserReportType validates a user-report type and derives its triage
+// priority, returning ErrProductReportInvalidType for unsupported types.
 func parseUserReportType(s string) (sqlcdb.IncidentType, string, error) {
 	incidentType, err := parseIncidentType(s)
 	if err != nil {
@@ -343,6 +352,8 @@ func parseUserReportType(s string) (sqlcdb.IncidentType, string, error) {
 	}
 }
 
+// parseIncidentStatus validates a raw status string and converts it to a known
+// sqlcdb.IncidentStatus, returning ErrIncidentInvalidStatus otherwise.
 func parseIncidentStatus(s string) (sqlcdb.IncidentStatus, error) {
 	switch sqlcdb.IncidentStatus(s) {
 	case sqlcdb.IncidentStatusOpen, sqlcdb.IncidentStatusUnderReview,
@@ -352,6 +363,8 @@ func parseIncidentStatus(s string) (sqlcdb.IncidentStatus, error) {
 	return "", ErrIncidentInvalidStatus
 }
 
+// parseIncidentPriority validates that s is one of the allowed priorities
+// (low, medium, high).
 func parseIncidentPriority(s string) error {
 	switch s {
 	case "low", "medium", "high":
@@ -360,6 +373,7 @@ func parseIncidentPriority(s string) error {
 	return ErrIncidentInvalidPriority
 }
 
+// toIncidentResponse maps an enriched incident row into the API response model.
 func toIncidentResponse(r sqlcdb.IncidentRow) model.IncidentResponse {
 	resp := model.IncidentResponse{
 		IncidentID:     r.IncidentID.String(),
@@ -386,6 +400,8 @@ func toIncidentResponse(r sqlcdb.IncidentRow) model.IncidentResponse {
 	return resp
 }
 
+// toList maps incident rows into a paginated list response, extracting the
+// shared total count carried on each row.
 func toList(rows []sqlcdb.IncidentRow, page, limit int) *model.IncidentListResponse {
 	var total int64
 	items := make([]model.IncidentResponse, len(rows))
@@ -396,6 +412,7 @@ func toList(rows []sqlcdb.IncidentRow, page, limit int) *model.IncidentListRespo
 	return &model.IncidentListResponse{Items: items, Total: total, Page: page, Limit: limit}
 }
 
+// nullText wraps a filter string in a pgtype.Text, marking it NULL when empty.
 func nullText(s string) pgtype.Text {
 	if s == "" {
 		return pgtype.Text{}
@@ -403,6 +420,8 @@ func nullText(s string) pgtype.Text {
 	return pgtype.Text{String: s, Valid: true}
 }
 
+// costToNumeric converts a euro cost into a 2-decimal pgtype.Numeric, returning
+// a NULL value for a zero cost.
 func costToNumeric(cost float64) pgtype.Numeric {
 	if cost == 0 {
 		return pgtype.Numeric{Valid: false}
@@ -415,6 +434,8 @@ func costToNumeric(cost float64) pgtype.Numeric {
 	}
 }
 
+// numericToFloat converts a pgtype.Numeric to a float64, returning 0 for NULL
+// or NaN values.
 func numericToFloat(n pgtype.Numeric) float64 {
 	if !n.Valid || n.NaN || n.Int == nil {
 		return 0

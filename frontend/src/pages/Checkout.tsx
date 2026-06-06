@@ -34,6 +34,7 @@ interface PaymentIntentData {
   amount_eur: number;
 }
 
+/** Reducer state for the checkout page. */
 interface CheckoutState {
   item: ItemResponse | null;
   itemImageUrl: string;
@@ -77,6 +78,7 @@ const initialCheckoutState: CheckoutState = {
   loadError: "",
 };
 
+/** Reduces checkout load success/error actions into the next state. */
 function checkoutReducer(state: CheckoutState, action: CheckoutAction): CheckoutState {
   switch (action.type) {
     case "load:success":
@@ -96,18 +98,24 @@ function checkoutReducer(state: CheckoutState, action: CheckoutAction): Checkout
   }
 }
 
+/** Returns the URL of an item's first image, or "" when none exists. */
 async function fetchFirstItemImage(itemId: string): Promise<string> {
   const res = await fetch(`/api/items/${itemId}/images`, { credentials: "include" });
   const json = (await res.json()) as ApiResponse<ItemImageResponse[]>;
   return json.success ? (json.data?.[0]?.image_url ?? "") : "";
 }
 
+/** Returns the owner's full name, or "" when it cannot be loaded. */
 async function fetchOwnerName(ownerId: string): Promise<string> {
   const res = await fetch(`/api/customers/${ownerId}/profile`, { credentials: "include" });
   const json = (await res.json()) as ApiResponse<CustomerProfile>;
   return json.success && json.data ? `${json.data.first_name} ${json.data.last_name}` : "";
 }
 
+/**
+ * Loads everything the checkout page needs: the item, its image and owner name,
+ * and a freshly created Stripe PaymentIntent for the selected dates.
+ */
 async function loadCheckoutData({ itemId, startStr, endStr }: CheckoutLoadParams): Promise<LoadedCheckoutData> {
   const itemRes = await fetch(`/api/items/${itemId}`, { credentials: "include" });
   const itemJson = (await itemRes.json()) as ApiResponse<ItemResponse>;

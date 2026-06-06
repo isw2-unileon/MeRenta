@@ -1,3 +1,5 @@
+// State model, reducer, validation and payload mapping for the product-edit
+// page, kept UI-free for easy unit testing.
 import type {
   ExistingProductPhoto,
   ItemImageResponse,
@@ -7,6 +9,7 @@ import type {
   UpdateItemRequest,
 } from "@/types/item";
 
+/** Default values for a blank edit form (before the item loads). */
 const EMPTY_FORM: ProductFormData = {
   title: "",
   category: "",
@@ -66,6 +69,7 @@ const INITIAL_STATE: ProductEditState = {
   saveMessage: "",
 };
 
+/** User-facing button labels for each save step. */
 const SAVE_STEP_LABELS: Record<SaveStep, string> = {
   idle: "Guardar cambios",
   saving: "Guardando",
@@ -73,10 +77,12 @@ const SAVE_STEP_LABELS: Record<SaveStep, string> = {
   done: "Cambios guardados",
 };
 
+/** True when a photo is an already-stored image (not a newly selected File). */
 function isExistingPhoto(photo: ProductPhoto): photo is ExistingProductPhoto {
   return !(photo instanceof File);
 }
 
+/** Reduces edit-form actions (load, field edits, photos, save) into the next state. */
 function productEditReducer(state: ProductEditState, action: ProductEditAction): ProductEditState {
   switch (action.type) {
     case "load-start":
@@ -135,6 +141,7 @@ function productEditReducer(state: ProductEditState, action: ProductEditAction):
   }
 }
 
+/** Maps a loaded item and its images into editable form state. */
 function itemToFormData(item: ItemResponse, images: ItemImageResponse[]): ProductFormData {
   return {
     ...EMPTY_FORM,
@@ -162,6 +169,7 @@ function itemToFormData(item: ItemResponse, images: ItemImageResponse[]): Produc
   };
 }
 
+/** Validates the edit form, returning a map of field errors (empty when valid). */
 function validateForm(data: ProductFormData): FormErrors {
   const errors: FormErrors = {};
 
@@ -186,6 +194,7 @@ function validateForm(data: ProductFormData): FormErrors {
   return errors;
 }
 
+/** Maps the edit form state into the PATCH /api/items/:id request payload. */
 function formDataToPayload(data: ProductFormData): UpdateItemRequest {
   const maxDays = data.maxRentalPeriod === "0" ? undefined : Number.parseInt(data.maxRentalPeriod, 10);
   const deposit = data.deposit ? Number.parseFloat(data.deposit) : undefined;
@@ -206,6 +215,7 @@ function formDataToPayload(data: ProductFormData): UpdateItemRequest {
   };
 }
 
+/** Formats a date as a Spanish relative label (e.g. "hoy", "hace 3 días"). */
 function formatRelativeDate(value?: string): string {
   if (!value) return "";
   const date = new Date(value);

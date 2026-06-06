@@ -4,6 +4,7 @@ import { createPortal } from "react-dom";
 import { GREEN, MINT, PASTELS } from "@/components/admin/adminTokens";
 
 // ── Types ─────────────────────────────────────────────────────────────────────
+/** Available color schemes for the admin Badge component. */
 type BadgeColor = "gray" | "green" | "amber" | "red" | "blue" | "purple";
 
 // ── Card ─────────────────────────────────────────────────────────────────────

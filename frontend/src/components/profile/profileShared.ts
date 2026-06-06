@@ -1,6 +1,9 @@
+// Shared state, fetch helpers and formatters used by the profile pages
+// (MyProfile and ProfileOther).
 import type { ApiResponse } from "@/types/common";
 import type { SearchItemResponse, SearchItemsResponse } from "@/types/item";
 
+/** Reducer state for the profile's "my products" list. */
 interface ProductsState {
   items: SearchItemResponse[];
   total: number;
@@ -8,11 +11,13 @@ interface ProductsState {
   error: string;
 }
 
+/** Reducer actions for loading the profile's product list. */
 type ProductsAction =
   | { type: "fetch_start" }
   | { type: "fetch_success"; payload: SearchItemsResponse }
   | { type: "fetch_error"; error: string };
 
+/** Initial (loading) state for the products reducer. */
 const initialProductsState: ProductsState = {
   items: [],
   total: 0,
@@ -20,6 +25,7 @@ const initialProductsState: ProductsState = {
   error: "",
 };
 
+/** Reduces product-list loading actions into the next state. */
 function productsReducer(state: ProductsState, action: ProductsAction): ProductsState {
   switch (action.type) {
     case "fetch_start":
@@ -43,6 +49,7 @@ function productsReducer(state: ProductsState, action: ProductsAction): Products
   }
 }
 
+/** Fetches the authenticated user's own listings, aborting on signal. */
 async function fetchMyItems(signal: AbortSignal): Promise<SearchItemsResponse> {
   const res = await fetch("/api/items/mine?limit=48", {
     credentials: "include",
@@ -55,12 +62,14 @@ async function fetchMyItems(signal: AbortSignal): Promise<SearchItemsResponse> {
   return json.data;
 }
 
+/** Aggregate rating summary returned alongside a list of received reviews. */
 interface ReviewsSummary {
   average_rating: number;
   total: number;
   distribution: Record<string, number>;
 }
 
+/** Paginated received-reviews response, generic over the review item shape. */
 interface ReceivedReviewsResponseBase<TItem> {
   items: TItem[];
   total: number;
@@ -69,6 +78,7 @@ interface ReceivedReviewsResponseBase<TItem> {
   summary: ReviewsSummary;
 }
 
+/** Fetches the first page of reviews received by the current user. */
 async function fetchReceivedReviews<TItem>(signal: AbortSignal): Promise<ReceivedReviewsResponseBase<TItem>> {
   const res = await fetch("/api/reviews/received?limit=4", {
     credentials: "include",
@@ -81,10 +91,12 @@ async function fetchReceivedReviews<TItem>(signal: AbortSignal): Promise<Receive
   return json.data;
 }
 
+/** Returns the uppercase initials for a first/last name pair. */
 function getInitials(firstName: string, lastName: string) {
   return `${firstName[0] ?? ""}${lastName[0] ?? ""}`.toUpperCase();
 }
 
+/** Formats a registration date as "month year" in Spanish, or "" when absent. */
 function formatMemberSince(date?: string) {
   if (!date) return "";
 
@@ -109,10 +121,12 @@ function formatMemberSince(date?: string) {
   return `${months[parsed.getMonth()]} ${parsed.getFullYear()}`;
 }
 
+/** Returns the distinct, non-empty cities across a list of products. */
 function uniqueProductCities(products: SearchItemResponse[]) {
   return Array.from(new Set(products.flatMap((product) => (product.city ? [product.city] : []))));
 }
 
+/** A single review received by a customer, as shown on the profile pages. */
 interface ReceivedReview {
   review_id: string;
   reviewer_id: string;
@@ -124,15 +138,18 @@ interface ReceivedReview {
   reviewed_at: string;
 }
 
+/** Returns the reviewer's uppercase initials. */
 function reviewerInitials(review: ReceivedReview) {
   return getInitials(review.reviewer_first_name, review.reviewer_last_name);
 }
 
+/** Returns the reviewer's display name as "First L." (last name abbreviated). */
 function reviewerDisplayName(review: ReceivedReview) {
   const lastInitial = review.reviewer_last_name[0] ? `${review.reviewer_last_name[0]}.` : "";
   return `${review.reviewer_first_name} ${lastInitial}`.trim();
 }
 
+/** Formats a date as a Spanish relative label (e.g. "Hoy", "Hace 3 días"). */
 function formatRelativeDate(value: string) {
   const created = new Date(value);
   if (Number.isNaN(created.getTime())) return "";

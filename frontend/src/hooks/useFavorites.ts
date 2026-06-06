@@ -2,6 +2,10 @@ import { useCallback, useEffect, useState } from "react";
 
 import type { FavoritesResponse } from "@/types/item";
 
+/**
+ * Fetches the current user's favorites and returns the set of favorited item
+ * IDs. Resolves to an empty set on any error.
+ */
 async function loadFavoriteIds(): Promise<Set<string>> {
   try {
     const res = await fetch("/api/favorites", { credentials: "include" });

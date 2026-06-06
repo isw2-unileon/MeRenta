@@ -23,6 +23,7 @@ function getMemberYear(registrationDate: string): number {
   return new Date(registrationDate).getFullYear();
 }
 
+/** Formats a rating value with two decimals. */
 function formatRating(rating: number): string {
   return rating.toFixed(2);
 }

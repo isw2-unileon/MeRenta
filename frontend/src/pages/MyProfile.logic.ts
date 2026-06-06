@@ -1,9 +1,12 @@
+// State model, reducer and helpers for the user's own profile page.
 import type { VerificationStatus } from "@/types/customer";
 import type { SearchItemResponse } from "@/types/item";
 import type { ReceivedReview, ReceivedReviewsResponseBase, ReviewsSummary } from "@/components/profile/profileShared";
 
+/** Received-reviews response specialized to the concrete review item shape. */
 type ReceivedReviewsResponse = ReceivedReviewsResponseBase<ReceivedReview>;
 
+/** Reducer state for the received-reviews panel. */
 interface ReviewsState {
   items: ReceivedReview[];
   total: number;
@@ -61,6 +64,7 @@ const VERIFICATION_BUTTON_LABEL: Record<VerificationStatus, string> = {
   rejected: "Solicitar de nuevo",
 };
 
+/** Reduces review fetch lifecycle actions into the next state. */
 function reviewsReducer(state: ReviewsState, action: ReviewsAction): ReviewsState {
   switch (action.type) {
     case "fetch_start":
@@ -86,6 +90,7 @@ function reviewsReducer(state: ReviewsState, action: ReviewsAction): ReviewsStat
   }
 }
 
+/** Returns the Spanish availability label for one of the user's products. */
 function getStatusLabel(product: SearchItemResponse) {
   if (product.item_status === "rented") return "Reservado";
   if (product.item_status === "retired") return "Retirado";
@@ -93,6 +98,7 @@ function getStatusLabel(product: SearchItemResponse) {
   return "No disponible";
 }
 
+/** Returns a count as a whole-number percentage of total (0 when total is 0). */
 function distributionPercent(count: number, total: number) {
   if (total === 0) return 0;
   return Math.round((count / total) * 100);

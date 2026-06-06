@@ -99,6 +99,8 @@ func (h *ItemHandler) ListByOwner(c *gin.Context) {
 	h.respondWithOwnerItems(c, ownerID, "list public owner items failed")
 }
 
+// respondWithOwnerItems writes a paginated list of the items owned by ownerID,
+// shared by ListMine and ListByOwner.
 func (h *ItemHandler) respondWithOwnerItems(c *gin.Context, ownerID uuid.UUID, logMessage string) {
 	respondWithPaginated(c, 48, 48, logMessage, "owner_id", ownerID, func(page int, limit int) (any, error) {
 		return h.svc.ListOwnerItems(c.Request.Context(), ownerID, page, limit)
@@ -259,6 +261,8 @@ func (h *ItemHandler) Delete(c *gin.Context) {
 	response.OK(c, http.StatusOK, gin.H{"message": "item deleted"})
 }
 
+// parsePositiveInt parses raw as a positive int, returning fallback when it is
+// invalid or below 1 and clamping the result to maxValue.
 func parsePositiveInt(raw string, fallback int, maxValue int) int {
 	value, err := strconv.Atoi(raw)
 	if err != nil || value < 1 {
@@ -270,6 +274,9 @@ func parsePositiveInt(raw string, fallback int, maxValue int) int {
 	return value
 }
 
+// parseOptionalFloatQuery parses an optional non-negative float query param.
+// A missing param yields (nil, true); an invalid one writes 400 and returns
+// (nil, false).
 func parseOptionalFloatQuery(c *gin.Context, key string) (*float64, bool) {
 	raw := strings.TrimSpace(c.Query(key))
 	if raw == "" {

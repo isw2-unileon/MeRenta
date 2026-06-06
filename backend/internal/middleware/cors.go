@@ -39,6 +39,8 @@ func CORS(allowOrigin string) gin.HandlerFunc {
 	}
 }
 
+// resolveAllowedOrigin returns origin when it appears in the comma-separated
+// allowOrigin allowlist, or an empty string when it is not permitted.
 func resolveAllowedOrigin(origin, allowOrigin string) string {
 	if origin == "" {
 		return ""

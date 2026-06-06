@@ -181,6 +181,8 @@ func gracefulShutdown(srv *http.Server) {
 	}
 }
 
+// normalizeGinMode maps a configured mode string to a valid Gin mode,
+// defaulting to debug for unknown values.
 func normalizeGinMode(mode string) string {
 	switch strings.ToLower(strings.TrimSpace(mode)) {
 	case "", gin.DebugMode:

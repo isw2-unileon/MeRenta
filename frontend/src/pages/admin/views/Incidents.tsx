@@ -34,6 +34,7 @@ const PRIORITY_LABEL: Record<IncidentPriority, string> = {
   low: "baja",
 };
 
+/** Formats an ISO date as a short Spanish date. */
 function fmtIncidentDate(iso: string): string {
   return new Date(iso).toLocaleDateString("es-ES", {
     day: "numeric",
@@ -42,10 +43,12 @@ function fmtIncidentDate(iso: string): string {
   });
 }
 
+/** Notifies other views (e.g. the sidebar badge) that incidents changed. */
 function notifyIncidentsChanged(): void {
   window.dispatchEvent(new Event("merenta:incidents-updated"));
 }
 
+/** Loads a page of incidents and returns the items plus total count. */
 async function loadIncidents(
   typeFilter: string,
   statusFilter: string,
@@ -88,6 +91,7 @@ const initialState: IncidentsState = {
   selected: null,
 };
 
+/** Reduces incident list/selection/optimistic-patch actions. */
 function incidentsReducer(state: IncidentsState, action: IncidentsAction): IncidentsState {
   switch (action.type) {
     case "fetch_start":
@@ -131,6 +135,7 @@ function incidentsReducer(state: IncidentsState, action: IncidentsAction): Incid
 
 // ── API helpers ───────────────────────────────────────────────────────────────
 
+/** Fetches a page of incidents filtered by type and status. */
 async function fetchIncidents(typeFilter: string, statusFilter: string, page: number): Promise<IncidentListResponse> {
   const params = new URLSearchParams({ page: String(page), limit: "20" });
   if (typeFilter) params.set("type", typeFilter);
@@ -143,6 +148,7 @@ async function fetchIncidents(typeFilter: string, statusFilter: string, page: nu
   return json.data;
 }
 
+/** Updates an incident's status. */
 async function patchStatus(id: string, status: IncidentStatus): Promise<void> {
   const res = await fetch(`/api/admin/incidents/${id}/status`, {
     method: "PATCH",
@@ -154,6 +160,7 @@ async function patchStatus(id: string, status: IncidentStatus): Promise<void> {
   if (!res.ok || !json.success) throw new Error(json.error ?? "Error");
 }
 
+/** Updates an incident's triage priority. */
 async function patchPriority(id: string, priority: IncidentPriority): Promise<void> {
   const res = await fetch(`/api/admin/incidents/${id}/priority`, {
     method: "PATCH",
@@ -177,10 +184,12 @@ const INCIDENT_TYPE_LABELS: Record<string, string> = {
   forbidden_item: "Producto no permitido",
 };
 
+/** Reports whether an incident type relates to a product (vs. a user). */
 function isProductIncident(type: string): boolean {
   return ["damage", "item_mismatch", "not_available", "forbidden_item"].includes(type);
 }
 
+/** Icon distinguishing product vs. user incidents. */
 function TypeIcon({ type }: { type: string }) {
   const isProduct = isProductIncident(type);
   return (
@@ -218,6 +227,7 @@ interface AdminDropdownProps<T extends string> {
   onUpdate: (value: T) => void;
 }
 
+/** Generic labeled dropdown for selecting one of a fixed set of values. */
 function AdminDropdown<T extends string>({ label, value, options, labels, onUpdate }: AdminDropdownProps<T>) {
   return (
     <Dropdown
@@ -257,6 +267,7 @@ interface DetailPanelProps {
   onPriorityUpdate: (id: string, priority: IncidentPriority) => void;
 }
 
+/** Side panel showing full incident detail with status/priority controls. */
 function DetailPanel({ incident, onStatusUpdate, onPriorityUpdate }: DetailPanelProps) {
   return (
     <Card className="sticky top-4 p-5">

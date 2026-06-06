@@ -82,6 +82,7 @@ const ChartsImpl = lazy(async () => {
     );
   }
 
+  /** Actual charts implementation rendered once recharts has loaded. */
   function Impl({ monthlyRevenue, categories }: ChartsProps) {
     const topCats = categories.slice(0, 6).map((c) => ({
       name: CATEGORY_LABELS[c.category] ?? c.category,
@@ -226,6 +227,7 @@ const ChartsImpl = lazy(async () => {
 
 // ── Fallback skeleton ─────────────────────────────────────────────────────────
 
+/** Loading placeholder shown while the recharts chunk loads. */
 function ChartFallback() {
   return (
     <div className="grid grid-cols-1 gap-4 lg:grid-cols-3">

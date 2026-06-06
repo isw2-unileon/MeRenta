@@ -60,6 +60,7 @@ type ProductsAction =
 
 const initialState: ProductsState = { products: [], total: 0, loading: true, error: null };
 
+/** Reduces product-list fetch lifecycle actions. */
 function productsReducer(state: ProductsState, action: ProductsAction): ProductsState {
   switch (action.type) {
     case "fetch_start":
@@ -71,6 +72,7 @@ function productsReducer(state: ProductsState, action: ProductsAction): Products
   }
 }
 
+/** Fetches a page of products (all statuses) filtered by search query. */
 async function fetchProducts(query: string, page: number): Promise<SearchItemsResponse> {
   const params = new URLSearchParams({ page: String(page), limit: String(LIMIT) });
   if (query) params.set("q", query);
@@ -83,6 +85,7 @@ async function fetchProducts(query: string, page: number): Promise<SearchItemsRe
   return json.data;
 }
 
+/** Permanently deletes a product listing by ID. */
 async function deleteProduct(itemId: string): Promise<void> {
   const res = await fetch(`/api/admin/items/${itemId}`, {
     method: "DELETE",
@@ -94,6 +97,7 @@ async function deleteProduct(itemId: string): Promise<void> {
   }
 }
 
+/** Formats an ISO date as a short Spanish date, or "-" when empty. */
 function fmtDate(iso: string): string {
   if (!iso) return "-";
   return new Date(iso).toLocaleDateString("es-ES", {
@@ -103,25 +107,30 @@ function fmtDate(iso: string): string {
   });
 }
 
+/** Formats a number as EUR currency. */
 function fmtPrice(value: number): string {
   return EUR_FORMAT.format(value);
 }
 
+/** Returns the product owner's full name, or a short ID fallback. */
 function ownerName(product: SearchItemResponse): string {
   const name = `${product.owner_first_name} ${product.owner_last_name}`.trim();
   return name || product.owner_id.slice(0, 8);
 }
 
+/** Returns the badge color for a product's effective status. */
 function productStatusColor(product: SearchItemResponse): "green" | "gray" | "amber" | "red" | "blue" {
   if (!product.is_available) return "gray";
   return STATUS_BADGE_COLORS[product.item_status] ?? "gray";
 }
 
+/** Returns the human label for a product's effective status. */
 function productStatusLabel(product: SearchItemResponse): string {
   if (!product.is_available && product.item_status === "available") return "no visible";
   return STATUS_LABELS[product.item_status] ?? product.item_status;
 }
 
+/** Product thumbnail, with a placeholder when no image exists. */
 function ProductThumb({ product }: { product: SearchItemResponse }) {
   if (!product.primary_image_url) {
     return (
@@ -141,6 +150,10 @@ function ProductThumb({ product }: { product: SearchItemResponse }) {
   );
 }
 
+/**
+ * Admin products view — paginated, searchable table of every listing with a
+ * link to the public page and a guarded delete action.
+ */
 function Products() {
   const [state, dispatch] = useReducer(productsReducer, initialState);
   const [rawQuery, setRawQuery] = useState("");
@@ -170,6 +183,7 @@ function Products() {
     setFilters((f) => ({ ...f, page }));
   }
 
+  // Re-fetches the current page after a mutation (e.g. delete).
   function refreshProducts() {
     dispatch({ type: "fetch_start" });
     fetchProducts(filters.query, filters.page)

@@ -21,8 +21,11 @@ type AuthHandler struct {
 }
 
 const (
-	authCookieName   = "access_token"
-	authCookiePath   = "/"
+	// authCookieName is the name of the HttpOnly cookie holding the JWT.
+	authCookieName = "access_token"
+	// authCookiePath scopes the auth cookie to the whole site.
+	authCookiePath = "/"
+	// authCookieMaxAge is the auth cookie lifetime in seconds (24 hours).
 	authCookieMaxAge = 60 * 60 * 24
 )
 
@@ -264,6 +267,8 @@ func (h *AuthHandler) Logout(c *gin.Context) {
 	})
 }
 
+// respondWithCurrentCustomer loads the authenticated customer from the context
+// and writes it as 200, or a 403 blocked payload for banned/suspended accounts.
 func respondWithCurrentCustomer(c *gin.Context, svc *service.AuthService) {
 	customerID, ok := c.Get("customer_id")
 	if !ok {
@@ -316,6 +321,8 @@ func blockedPayload(errCode string, suspendedUntil interface{}) gin.H {
 	}
 }
 
+// formatBindError returns a generic message in release mode and the detailed
+// validation error otherwise, to avoid leaking internals in production.
 func formatBindError(err error) string {
 	if gin.Mode() == gin.ReleaseMode {
 		return "invalid request body"
@@ -323,6 +330,8 @@ func formatBindError(err error) string {
 	return err.Error()
 }
 
+// setAuthCookie writes the JWT as an HttpOnly cookie, using Secure/SameSite=None
+// in release mode and Lax in development.
 func setAuthCookie(c *gin.Context, token string) {
 	secure := gin.Mode() == gin.ReleaseMode
 	if secure {
@@ -333,6 +342,7 @@ func setAuthCookie(c *gin.Context, token string) {
 	c.SetCookie(authCookieName, token, authCookieMaxAge, authCookiePath, "", secure, true)
 }
 
+// clearAuthCookie expires the auth cookie to log the customer out.
 func clearAuthCookie(c *gin.Context) {
 	secure := gin.Mode() == gin.ReleaseMode
 	if secure {

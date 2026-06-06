@@ -39,6 +39,7 @@ interface PaymentFormProps {
   onError: (code: string, message: string) => void;
 }
 
+/** Local UI state for the payment form. */
 interface PaymentFormState {
   holderName: string;
   termsAccepted: boolean;
@@ -47,6 +48,7 @@ interface PaymentFormState {
   cardBrand: string;
 }
 
+/** Reducer actions for the payment form fields and submission state. */
 type PaymentFormAction =
   | { type: "holderName:set"; value: string }
   | { type: "terms:set"; value: boolean }
@@ -54,6 +56,7 @@ type PaymentFormAction =
   | { type: "fieldError:set"; value: string }
   | { type: "cardNumber:change"; brand: string; errorMessage?: string };
 
+/** Initial payment form state. */
 const initialPaymentFormState: PaymentFormState = {
   holderName: "",
   termsAccepted: false,
@@ -62,6 +65,7 @@ const initialPaymentFormState: PaymentFormState = {
   cardBrand: "unknown",
 };
 
+/** Reduces payment form actions into the next state. */
 function paymentFormReducer(state: PaymentFormState, action: PaymentFormAction): PaymentFormState {
   switch (action.type) {
     case "holderName:set":
