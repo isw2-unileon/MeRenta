@@ -49,7 +49,6 @@ function OwnerCard({ owner, rating = 0, reviewCount = 0 }: OwnerCardProps) {
     <div className="owner-card">
       <p className="owner-heading mb-4">Propietario</p>
 
-      {/* ── Owner identity ── */}
       <div className="mb-4 flex items-center gap-3">
         {owner.avatar_url ? (
           <img
@@ -93,7 +92,6 @@ function OwnerCard({ owner, rating = 0, reviewCount = 0 }: OwnerCardProps) {
         </div>
       </div>
 
-      {/* ── Profile link ── */}
       <button
         type="button"
         className="btn-secondary btn--md w-full"

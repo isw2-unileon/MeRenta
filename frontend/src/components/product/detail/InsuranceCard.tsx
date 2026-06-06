@@ -41,7 +41,6 @@ function InsuranceCard({ days, category, dailyRate = insuranceDailyRate(category
 
   return (
     <div className="insurance-card">
-      {/* ── Header ── */}
       <div className="insurance-card-header">
         <div className="flex flex-1 items-center gap-2">
           <p className="insurance-header-title">Seguro obligatorio</p>
@@ -49,7 +48,6 @@ function InsuranceCard({ days, category, dailyRate = insuranceDailyRate(category
         </div>
       </div>
 
-      {/* ── Body ── */}
       <div className="p-5">
         <p className="insurance-body mb-5">
           Todo alquiler en MeRenta incluye un seguro obligatorio que cubre tanto al propietario como al inquilino
@@ -72,7 +70,6 @@ function InsuranceCard({ days, category, dailyRate = insuranceDailyRate(category
         </ul>
       </div>
 
-      {/* ── Footer: premium ── */}
       <div className="insurance-card-footer">
         <p className="insurance-prime-label flex-1">
           Prima del seguro ({rateLabel} EUR/día · {daysLabel})

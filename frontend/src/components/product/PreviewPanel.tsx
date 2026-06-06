@@ -48,9 +48,7 @@ function PreviewPanel({ formData }: PreviewPanelProps) {
     <aside className="sticky top-[calc(var(--spacing-navbar)+24px)] flex flex-col gap-4">
       <p className="text-subtle text-[13px] font-medium">Vista previa del anuncio</p>
 
-      {/* Preview card */}
       <div className="border-border-main overflow-hidden rounded-xl border bg-white shadow-sm">
-        {/* Photo area */}
         <div className="bg-primary-bg relative flex h-40 items-center justify-center">
           {firstPhoto ? (
             <img
@@ -68,14 +66,11 @@ function PreviewPanel({ formData }: PreviewPanelProps) {
           {availableNow && <span className="product-status-badge absolute top-3 left-3">Disponible</span>}
         </div>
 
-        {/* Card body */}
         <div className="p-4">
-          {/* Title */}
           <p className="text-ink line-clamp-2 text-[15px] font-medium">
             {title || <span className="text-placeholder italic">Bicicleta de montaña Trek X-Caliber 8</span>}
           </p>
 
-          {/* Location */}
           {cityLabel && (
             <div className="mt-1.5 flex items-center gap-1">
               <MapPin className="text-subtle size-3" />
@@ -83,7 +78,6 @@ function PreviewPanel({ formData }: PreviewPanelProps) {
             </div>
           )}
 
-          {/* Tags */}
           {(categoryLabel || conditionLabel) && (
             <div className="mt-2.5 flex flex-wrap gap-1.5">
               {categoryLabel && (
@@ -95,7 +89,6 @@ function PreviewPanel({ formData }: PreviewPanelProps) {
             </div>
           )}
 
-          {/* Price */}
           <div className="mt-3">
             {previewPrice ? (
               <p className="text-primary text-[28px] leading-none font-bold">
@@ -118,7 +111,6 @@ function PreviewPanel({ formData }: PreviewPanelProps) {
             </div>
           </div>
 
-          {/* CTA */}
           <button
             type="button"
             className="btn-booking mt-4"

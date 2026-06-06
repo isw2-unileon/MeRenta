@@ -92,7 +92,6 @@ const ChartsImpl = lazy(async () => {
 
     return (
       <div className="grid grid-cols-1 gap-4 lg:grid-cols-3">
-        {/* Revenue area chart */}
         <Card className="p-5 lg:col-span-2">
           <div className="mb-4">
             <h2 className="text-sm font-semibold text-neutral-800">Ingresos por mes</h2>
@@ -159,7 +158,6 @@ const ChartsImpl = lazy(async () => {
           </ResponsiveContainer>
         </Card>
 
-        {/* Category bar chart */}
         <Card className="p-5">
           <div className="mb-4">
             <h2 className="text-sm font-semibold text-neutral-800">Productos por categoría</h2>

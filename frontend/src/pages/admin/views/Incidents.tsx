@@ -489,7 +489,6 @@ function Incidents() {
 
   return (
     <div className="space-y-4">
-      {/* Filters */}
       <div className="flex flex-wrap items-center gap-2">
         <div className="flex gap-1.5">
           {TYPE_FILTERS.map(({ value, label }) => (
@@ -547,7 +546,6 @@ function Incidents() {
 
       {(loading || incidents.length > 0) && (
         <div className="grid grid-cols-1 gap-4 xl:grid-cols-5">
-          {/* List */}
           <div className="space-y-2 xl:col-span-3">
             {loading ? (
               Array.from({ length: 5 }).map((_, i) => (
@@ -623,7 +621,6 @@ function Incidents() {
             )}
           </div>
 
-          {/* Detail panel */}
           {selected && (
             <div className="xl:col-span-2">
               <DetailPanel

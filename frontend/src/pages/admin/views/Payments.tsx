@@ -235,7 +235,6 @@ function Payments() {
         />
       )}
 
-      {/* Filter bar */}
       <div className="flex flex-wrap items-center justify-between gap-3">
         <FilterPills
           options={FILTER_OPTIONS}

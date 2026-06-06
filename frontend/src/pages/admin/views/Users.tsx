@@ -326,7 +326,6 @@ function UsersView() {
 
   return (
     <div className="space-y-4">
-      {/* Header + filters */}
       <div className="flex flex-wrap items-center justify-between gap-3">
         <FilterPills
           options={FILTER_OPTIONS}
@@ -431,7 +430,6 @@ function UsersView() {
           </table>
         )}
 
-        {/* Pagination */}
         {!loading && (
           <Pagination
             page={filters.page}

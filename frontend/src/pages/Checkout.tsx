@@ -298,12 +298,10 @@ function Checkout() {
 
   return (
     <div>
-      {/* Two-column layout */}
       <div
         className="mx-auto flex gap-8 px-(--spacing-layout-margin) py-10"
         style={{ maxWidth: 1300 }}
       >
-        {/* ── Left: payment form ── */}
         <div
           className="rounded-(--radius-panel) border border-(--color-border-main) bg-white p-8"
           style={{ width: "var(--spacing-panel-payment)", flexShrink: 0 }}
@@ -321,7 +319,6 @@ function Checkout() {
           </Elements>
         </div>
 
-        {/* ── Right: summary ── */}
         <div
           className="rounded-(--radius-panel) border border-(--color-border-main) bg-white p-8"
           style={{ width: "var(--spacing-panel-summary)", flexShrink: 0 }}

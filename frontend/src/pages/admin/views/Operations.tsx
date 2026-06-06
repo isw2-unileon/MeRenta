@@ -287,16 +287,13 @@ function Operations() {
         />
       )}
 
-      {/* ── Filter bar ── */}
       <div className="flex flex-wrap items-center justify-between gap-3">
-        {/* Status pills */}
         <FilterPills
           options={FILTER_OPTIONS}
           value={filters.status}
           onChange={handleStatusFilter}
         />
 
-        {/* Sort + search */}
         <div className="flex items-center gap-2">
           <select
             value={filters.sort}
@@ -330,7 +327,6 @@ function Operations() {
         </div>
       </div>
 
-      {/* ── Table ── */}
       <Card className="overflow-hidden">
         <div className="border-b border-neutral-100 px-5 py-4">
           <SectionTitle
@@ -416,7 +412,6 @@ function Operations() {
           </table>
         )}
 
-        {/* ── Pagination ── */}
         {!loading && (
           <Pagination
             page={filters.page}

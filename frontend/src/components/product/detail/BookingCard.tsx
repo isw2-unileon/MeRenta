@@ -299,7 +299,6 @@ function BookingCard({
 
   return (
     <div className="booking-card p-5">
-      {/* ── Price + rating ── */}
       <div className="mb-4 flex items-start justify-between">
         <p className="booking-price">
           {pricePerDay} EUR<span className="text-2xl">/día</span>
@@ -348,7 +347,6 @@ function BookingCard({
       </div>
       <p className="booking-row-label mb-2">{periodHint}</p>
 
-      {/* ── Mini calendar dropdown ── */}
       {calendarOpen && (
         <div className="mb-4">
           <ProductCalendar
@@ -394,7 +392,6 @@ function BookingCard({
         </p>
       )}
 
-      {/* ── Actions ── */}
       <div className="flex flex-col gap-2">
         <button
           type="button"
@@ -424,7 +421,6 @@ function BookingCard({
         </p>
       )}
 
-      {/* Disclaimer */}
       <p className="booking-disclaimer mt-3 text-center">
         El pago queda retenido hasta que el propietario acepte. Si rechaza o no responde en 5 días, recibirás un
         reembolso completo.
@@ -434,7 +430,6 @@ function BookingCard({
         <>
           <hr className="divider-booking my-4" />
 
-          {/* Report link */}
           <button
             type="button"
             className="booking-report flex w-full items-center justify-center gap-1.5 bg-transparent p-0 text-center"

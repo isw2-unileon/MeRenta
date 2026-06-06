@@ -109,7 +109,6 @@ function BasicInfoSection({ data, errors, onChange }: BasicInfoSectionProps) {
       <p className="field-hint mb-6">Cuéntanos qué estás alquilando. Sé claro y específico.</p>
 
       <div className="flex flex-col gap-5">
-        {/* Title */}
         <div>
           <label
             htmlFor="title"
@@ -140,7 +139,6 @@ function BasicInfoSection({ data, errors, onChange }: BasicInfoSectionProps) {
           </div>
         </div>
 
-        {/* Category + Subcategory */}
         <div className="grid grid-cols-2 gap-4">
           <div>
             <label
@@ -191,7 +189,6 @@ function BasicInfoSection({ data, errors, onChange }: BasicInfoSectionProps) {
           </div>
         </div>
 
-        {/* Condition */}
         <div>
           <label
             htmlFor="condition"
@@ -219,7 +216,6 @@ function BasicInfoSection({ data, errors, onChange }: BasicInfoSectionProps) {
           {errors.condition && <p className="field-error mt-1">{errors.condition}</p>}
         </div>
 
-        {/* Description */}
         <div>
           <label
             htmlFor="description"

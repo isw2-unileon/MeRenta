@@ -174,7 +174,6 @@ function PaymentForm({ totalEUR, clientSecret, onSuccess, onError }: PaymentForm
       onSubmit={handleSubmit}
       noValidate
     >
-      {/* ── Panel header ── */}
       <div className="mb-5 flex items-center justify-between">
         <h2 className="heading-panel">Datos de pago</h2>
         <span className="badge-stripe">Powered by Stripe</span>
@@ -182,7 +181,6 @@ function PaymentForm({ totalEUR, clientSecret, onSuccess, onError }: PaymentForm
 
       <p className="checkout-ssl mb-5">🔒 Conexión segura SSL. MeRenta nunca almacena los datos de tu tarjeta.</p>
 
-      {/* ── Card visual + brand badges ── */}
       <div className="mb-5 flex items-center gap-4">
         <CreditCardVisual holderName={holderName} />
 
@@ -202,7 +200,6 @@ function PaymentForm({ totalEUR, clientSecret, onSuccess, onError }: PaymentForm
         </div>
       </div>
 
-      {/* ── Card number ── */}
       <div className="mb-4">
         <label
           htmlFor="stripe-card-number"
@@ -220,7 +217,6 @@ function PaymentForm({ totalEUR, clientSecret, onSuccess, onError }: PaymentForm
             options={{ style: STRIPE_ELEMENT_STYLE, showIcon: false }}
             onChange={handleCardNumberChange}
           />
-          {/* Brand badge */}
           <span className="card-brand-badge ml-2 shrink-0">{brandLabel}</span>
         </div>
         <p className="checkout-hint mt-1">
@@ -228,7 +224,6 @@ function PaymentForm({ totalEUR, clientSecret, onSuccess, onError }: PaymentForm
         </p>
       </div>
 
-      {/* ── Expiry + CVC ── */}
       <div className="mb-4 flex gap-4">
         <div className="flex-1">
           <label
@@ -279,7 +274,6 @@ function PaymentForm({ totalEUR, clientSecret, onSuccess, onError }: PaymentForm
         Campos gestionados por Stripe Elements, inyectados en tiempo de ejecución
       </p>
 
-      {/* ── Holder name ── */}
       <div className="mb-5">
         <label
           htmlFor="card-holder-name"
@@ -299,7 +293,6 @@ function PaymentForm({ totalEUR, clientSecret, onSuccess, onError }: PaymentForm
         />
       </div>
 
-      {/* ── Terms checkbox ── */}
       <div className="mb-5 flex items-start gap-3">
         <input
           id="terms-checkout"
@@ -316,10 +309,8 @@ function PaymentForm({ totalEUR, clientSecret, onSuccess, onError }: PaymentForm
         </label>
       </div>
 
-      {/* ── Inline validation error ── */}
       {fieldError && <p className="field-error mb-4">{fieldError}</p>}
 
-      {/* ── Pay button ── */}
       <button
         type="submit"
         className={`btn-pay${loading ? "loading" : ""}`}

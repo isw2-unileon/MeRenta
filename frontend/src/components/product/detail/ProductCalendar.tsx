@@ -164,7 +164,6 @@ function ProductCalendar({
       <p className="calendar-hint mb-3">Los días en gris están ocupados</p>
 
       <div className="border-border-main bg-surface rounded-xl border p-4">
-        {/* Month navigation */}
         <div className="mb-3 flex items-center justify-between">
           <button
             type="button"
@@ -188,7 +187,6 @@ function ProductCalendar({
           </button>
         </div>
 
-        {/* Weekday header row */}
         <div className="mb-1 grid grid-cols-7">
           {WEEKDAY_LABELS.map((label) => (
             <div
@@ -200,7 +198,6 @@ function ProductCalendar({
           ))}
         </div>
 
-        {/* Day cells */}
         <div className="grid grid-cols-7 gap-y-0.5">
           {cells.map(({ key, day }) => {
             if (!day) {
@@ -250,7 +247,6 @@ function ProductCalendar({
           })}
         </div>
 
-        {/* Legend */}
         <div className="mt-3 flex items-center justify-end gap-4">
           <div className="flex items-center gap-1.5">
             <span className="calendar-legend-dot calendar-legend-dot--occupied" />

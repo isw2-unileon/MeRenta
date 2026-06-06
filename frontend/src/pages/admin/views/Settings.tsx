@@ -362,7 +362,6 @@ function ConfigPanel({ state, onToggle }: ConfigPanelProps) {
     <div className="space-y-4">
       {error && <p className="text-sm text-red-600">{error}</p>}
 
-      {/* ── Acceso a la plataforma ── */}
       <Card className="overflow-hidden">
         <div className="border-b border-neutral-100 px-5 py-4">
           <h2 className="text-sm font-semibold text-neutral-800">Acceso a la plataforma</h2>
@@ -410,7 +409,6 @@ function ConfigPanel({ state, onToggle }: ConfigPanelProps) {
         </div>
       </Card>
 
-      {/* ── Precios (solo lectura) ── */}
       <Card className="overflow-hidden">
         <div className="border-b border-neutral-100 px-5 py-4">
           <h2 className="text-sm font-semibold text-neutral-800">Precios y tarifas</h2>
@@ -430,7 +428,6 @@ function ConfigPanel({ state, onToggle }: ConfigPanelProps) {
         </div>
       </Card>
 
-      {/* ── Reservas (solo lectura) ── */}
       <Card className="overflow-hidden">
         <div className="border-b border-neutral-100 px-5 py-4">
           <h2 className="text-sm font-semibold text-neutral-800">Reservas</h2>
@@ -681,7 +678,6 @@ function SettingsView() {
 
   return (
     <div className="space-y-4">
-      {/* Tab bar */}
       <div className="flex w-fit gap-1 rounded-xl border border-neutral-200 bg-white p-1">
         {TABS.map(({ id, label }) => {
           const active = activeTab === id;
@@ -699,7 +695,6 @@ function SettingsView() {
         })}
       </div>
 
-      {/* Content */}
       {activeTab === "audit" && (
         <AuditTable
           state={auditState}
