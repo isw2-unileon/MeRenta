@@ -1,181 +1,181 @@
 # MeRenta
 
-MeRenta es una aplicación web full-stack para alquiler de productos entre particulares, desarrollada como proyecto de Ingeniería del Software II en la Universidad de Leon.
+MeRenta is a full-stack web application for peer-to-peer product rentals, developed as a Software Engineering II project at the University of León.
 
-## Descripción
+## Description
 
-La plataforma permite publicar productos en alquiler, buscar artículos disponibles, reservarlos, gestionar pagos y comunicarse con otros usuarios. También incluye perfiles, valoraciones, favoritos, incidencias, verificación de usuarios y un panel de administración para operar la plataforma.
+The platform allows users to publish products for rent, search available items, book them, manage payments, and communicate with other users. It also includes profiles, reviews, favorites, incident reporting, user verification, and an administration panel to operate the platform.
 
-## Funcionalidades
+## Features
 
-- Registro, inicio de sesión y autenticación con JWT.
-- Catálogo con búsqueda, categorías, favoritos y detalle de producto.
-- Creación, edición y retirada de productos.
-- Reservas con calendario, historial y estados de alquiler.
-- Pagos mediante Stripe.
-- Chat interno con WebSockets y cifrado de mensajes.
-- Reseñas entre usuarios.
-- Gestion de incidencias sobre productos, reservas y usuarios.
-- Panel de administración con usuarios, productos, pagos, operaciones, verificaciones y auditoria.
+- User registration, login, and JWT authentication.
+- Catalog with search, categories, favorites, and product detail pages.
+- Product creation, editing, and withdrawal.
+- Bookings with calendar support, history, and rental states.
+- Stripe payments.
+- Internal chat with WebSockets and encrypted messages.
+- User reviews.
+- Incident management for products, bookings, and users.
+- Admin panel for users, products, payments, operations, verifications, and audit logs.
 
-## Stack Tecnológico
+## Tech Stack
 
 - **Frontend:** React 19, TypeScript, Vite, Tailwind CSS 4, React Router, Vitest.
 - **Backend:** Go 1.25, Gin, pgx, sqlc, WebSockets.
-- **Base de datos:** PostgreSQL y Supabase.
-- **Pagos:** Stripe.
-- **Testing:** Go test, Vitest y Playwright.
-- **Calidad:** golangci-lint, ESLint, Prettier y react-doctor.
-- **CI/CD:** GitHub Actions y Render.
+- **Database:** PostgreSQL and Supabase.
+- **Payments:** Stripe.
+- **Testing:** Go test, Vitest, and Playwright.
+- **Quality:** golangci-lint, ESLint, Prettier, and react-doctor.
+- **CI/CD:** GitHub Actions and Render.
 
-## Estructura del Proyecto
+## Project Structure
 
 ```text
 .
-|-- backend/                 API en Go
-|   |-- cmd/server/          Punto de entrada del servidor
-|   |-- internal/            Configuracion, handlers, servicios, modelos y SQLC
-|   |-- pkg/                 Paquetes reutilizables
-|   `-- test/integration/    Tests de integracion
-|-- frontend/                Aplicacion React + TypeScript + Vite
-|   |-- public/              Assets publicos
-|   `-- src/                 Paginas, componentes, hooks, tipos y rutas
-|-- e2e/                     Tests end-to-end con Playwright
-|-- docs/                    Documentacion y ADRs
-|-- .github/workflows/       Pipelines de CI
-|-- Makefile                 Comandos de desarrollo
-|-- go.mod                   Modulo Go
-`-- .env.example             Plantilla de configuracion
+|-- backend/                 Go API
+|   |-- cmd/server/          Server entry point
+|   |-- internal/            Config, handlers, services, models, and SQLC
+|   |-- pkg/                 Reusable packages
+|   `-- test/integration/    Integration tests
+|-- frontend/                React + TypeScript + Vite app
+|   |-- public/              Public assets
+|   `-- src/                 Pages, components, hooks, types, and routes
+|-- e2e/                     End-to-end tests with Playwright
+|-- docs/                    Documentation and ADRs
+|-- .github/workflows/       CI pipelines
+|-- Makefile                 Development commands
+|-- go.mod                   Go module
+`-- .env.example             Configuration template
 ```
 
-## Requisitos
+## Requirements
 
-- [Go](https://go.dev/dl/) 1.25 o superior.
-- [Node.js](https://nodejs.org/) 22 o superior.
-- PostgreSQL o un proyecto Supabase configurado.
-- Cuenta y claves de Stripe para probar pagos.
-- Docker para ejecutar los tests de integración con base de datos local.
+- [Go](https://go.dev/dl/) 1.25 or later.
+- [Node.js](https://nodejs.org/) 22 or later.
+- PostgreSQL or a configured Supabase project.
+- Stripe account and keys for payment testing.
+- Docker to run local database integration tests.
 
-## Configuración
+## Configuration
 
-Copia la plantilla de variables de entorno:
+Copy the environment variable template:
 
 ```bash
 cp .env.example .env
 ```
 
-Variables principales:
+Main variables:
 
-| Variable                      | Uso                                           |
-|-------------------------------|-----------------------------------------------|
-| `PORT`                        | Puerto del backend.                           |
-| `GIN_MODE`                    | Modo de Gin, por ejemplo `debug` o `release`. |
-| `CORS_ALLOW_ORIGIN`           | Origen permitido para el frontend.            |
-| `DATABASE_URL`                | URL de conexion a PostgreSQL.                 |
-| `SUPABASE_URL`                | URL del proyecto Supabase.                    |
-| `SUPABASE_SERVICE_ROLE_KEY`   | Clave de servicio de Supabase.                |
-| `JWT_SECRET`                  | Secreto base64 para firmar tokens JWT.        |
-| `MESSAGE_ENCRYPTION_KEY`      | Clave base64 para cifrado de mensajes.        |
-| `STRIPE_SECRET_KEY`           | Clave privada de Stripe.                      |
-| `VITE_STRIPE_PUBLISHABLE_KEY` | Clave publica de Stripe para el frontend.     |
-| `VITE_API_BASE_URL`           | URL del backend usada por Vite y la app.      |
+| Variable                      | Purpose                                      |
+|-------------------------------|----------------------------------------------|
+| `PORT`                        | Backend port.                                |
+| `GIN_MODE`                    | Gin mode, for example `debug` or `release`.  |
+| `CORS_ALLOW_ORIGIN`           | Allowed frontend origin.                     |
+| `DATABASE_URL`                | PostgreSQL connection URL.                   |
+| `SUPABASE_URL`                | Supabase project URL.                        |
+| `SUPABASE_SERVICE_ROLE_KEY`   | Supabase service role key.                   |
+| `JWT_SECRET`                  | Base64 secret used to sign JWT tokens.       |
+| `MESSAGE_ENCRYPTION_KEY`      | Base64 key used to encrypt messages.         |
+| `STRIPE_SECRET_KEY`           | Stripe secret key.                           |
+| `VITE_STRIPE_PUBLISHABLE_KEY` | Stripe publishable key used by the frontend. |
+| `VITE_API_BASE_URL`           | Backend URL used by Vite and the app.        |
 
-En desarrollo local, el backend suele ejecutarse en `http://localhost:8080` y el frontend en `http://localhost:5173`.
+In local development, the backend usually runs at `http://localhost:8080` and the frontend at `http://localhost:5173`.
 
-## Instalación
+## Installation
 
-Instalar dependencias y herramientas de desarrollo:
+Install development dependencies and tools:
 
 ```bash
 make install-dev
 ```
 
-Para una instalación de producción:
+For a production dependency install:
 
 ```bash
 make install-prod
 ```
 
-## Ejecución Local
+## Local Development
 
-Levanta el backend:
+Start the backend:
 
 ```bash
 make run-backend
 ```
 
-Levanta el frontend en otro terminal:
+Start the frontend in another terminal:
 
 ```bash
 make run-frontend
 ```
 
-Abre `http://localhost:5173`. El servidor de Vite reenvía `/api`, `/health` y `/ready` al backend configurado en `VITE_API_BASE_URL`.
+Open `http://localhost:5173`. The Vite server proxies `/api`, `/health`, and `/ready` to the backend configured in `VITE_API_BASE_URL`.
 
-También se pueden lanzar ambos procesos con:
+Both processes can also be started with:
 
 ```bash
 make -j2 run
 ```
 
-## Comandos Disponibles
+## Available Commands
 
-### Desarrollo
+### Development
 
-| Comando             | Descripcion                                        |
-|---------------------|----------------------------------------------------|
-| `make install-dev`  | Instala dependencias y herramientas de desarrollo. |
-| `make install-prod` | Instala dependencias de produccion.                |
-| `make run-backend`  | Ejecuta el backend con recarga mediante Air.       |
-| `make run-frontend` | Ejecuta el servidor de desarrollo de Vite.         |
-| `make -j2 run`      | Ejecuta backend y frontend en paralelo.            |
-| `make sqlc`         | Regenera codigo Go a partir de las consultas SQL.  |
+| Command             | Description                                 |
+|---------------------|---------------------------------------------|
+| `make install-dev`  | Install development dependencies and tools. |
+| `make install-prod` | Install production dependencies.            |
+| `make run-backend`  | Run the backend with Air hot reload.        |
+| `make run-frontend` | Run the Vite development server.            |
+| `make -j2 run`      | Run backend and frontend in parallel.       |
+| `make sqlc`         | Regenerate Go code from SQL queries.        |
 
 ### Build
 
-| Comando                  | Descripcion                                    |
-|--------------------------|------------------------------------------------|
-| `make build-backend`     | Compila el binario del backend.                |
-| `make build-frontend`    | Genera el build de produccion del frontend.    |
-| `make build`             | Compila backend y frontend.                    |
-| `make run-backend-prod`  | Ejecuta el backend compilado.                  |
-| `make run-frontend-prod` | Ejecuta la preview de produccion del frontend. |
+| Command                  | Description                          |
+|--------------------------|--------------------------------------|
+| `make build-backend`     | Compile the backend binary.          |
+| `make build-frontend`    | Build the production frontend.       |
+| `make build`             | Build backend and frontend.          |
+| `make run-backend-prod`  | Run the compiled backend.            |
+| `make run-frontend-prod` | Run the production frontend preview. |
 
 ### Tests
 
-| Comando                        | Descripcion                                                 |
-|--------------------------------|-------------------------------------------------------------|
-| `make test`                    | Ejecuta tests de backend y frontend.                        |
-| `make test-backend`            | Ejecuta los tests del backend.                              |
-| `make test-backend-race`       | Ejecuta tests Go con detector de carreras.                  |
-| `make test-frontend`           | Ejecuta tests del frontend con Vitest.                      |
-| `make test-frontend-coverage`  | Ejecuta cobertura del frontend.                             |
-| `make test-backend-coverage`   | Ejecuta cobertura del backend.                              |
-| `make test-coverage`           | Ejecuta cobertura frontend y backend.                       |
-| `make test-integration-docker` | Ejecuta tests de integracion con PostgreSQL en Docker.      |
-| `make e2e`                     | Ejecuta Playwright. Requiere backend y frontend levantados. |
+| Command                        | Description                                                        |
+|--------------------------------|--------------------------------------------------------------------|
+| `make test`                    | Run backend and frontend tests.                                    |
+| `make test-backend`            | Run backend tests.                                                 |
+| `make test-backend-race`       | Run Go tests with the race detector.                               |
+| `make test-frontend`           | Run frontend tests with Vitest.                                    |
+| `make test-frontend-coverage`  | Run frontend test coverage.                                        |
+| `make test-backend-coverage`   | Run backend test coverage.                                         |
+| `make test-coverage`           | Run frontend and backend coverage.                                 |
+| `make test-integration-docker` | Run integration tests with PostgreSQL in Docker.                   |
+| `make e2e`                     | Run Playwright tests. Requires backend and frontend to be running. |
 
-### Calidad
+### Quality
 
-| Comando             | Descripcion                                        |
+| Command             | Description                                        |
 |---------------------|----------------------------------------------------|
-| `make fmt`          | Formatea backend y frontend.                       |
-| `make format-check` | Comprueba formato.                                 |
-| `make lint`         | Ejecuta linters.                                   |
-| `make doctor`       | Ejecuta diagnosticos de React.                     |
-| `make check`        | Ejecuta tests, formato, lint y doctor.             |
-| `make clean`        | Elimina artefactos de build y reportes temporales. |
+| `make fmt`          | Format backend and frontend code.                  |
+| `make format-check` | Check formatting.                                  |
+| `make lint`         | Run linters.                                       |
+| `make doctor`       | Run React diagnostics.                             |
+| `make check`        | Run tests, formatting checks, linting, and doctor. |
+| `make clean`        | Remove build artifacts and temporary reports.      |
 
-## Documentación
+## Documentation
 
-- [Guia de arranque](docs/getting-started.md)
-- [Buenas practicas Go](docs/golang.md)
-- [Decisiones técnicas](docs/adr/)
-- [Estructura monorepo](docs/monorepo.md)
+- [Getting started guide](docs/getting-started.md)
+- [Go best practices](docs/golang.md)
+- [Technical decisions](docs/adr/)
+- [Monorepo structure](docs/monorepo.md)
 
-## Autores
+## Authors
 
-- Jose Angel Mestas Diaz
-- Elena Ondicol Garcia
-- Diego Perez Gonzalez
-- Lucia Gonzalez Rodriguez
+- Elena Ondicol García
+- Diego Pérez González
+- José Ángel Mestas Díaz
+- Lucía González Rodríguez
