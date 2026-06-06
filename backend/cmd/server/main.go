@@ -82,11 +82,13 @@ func main() {
 	reviewSvc := service.NewReviewService(q)
 	reviewH := handler.NewReviewHandler(reviewSvc)
 
+	landingH := wireLanding(q)
+
 	paymentSvc, bookingSvc, paymentH, bookingH := wirePaymentAndBooking(q, cfg.StripeSecretKey)
 	go startAutoExpireJob(ctx, bookingSvc)
 	adminH, incidentH := wireAdminHandlers(q, paymentSvc)
 
-	r := router.Setup(authH, itemH, itemImgH, addrH, favH, chatH, reviewH, paymentH, bookingH, incidentH, adminH, jwtMgr, cfg.CORSAllowOrigin, pool.Ping)
+	r := router.Setup(authH, itemH, itemImgH, addrH, favH, chatH, reviewH, paymentH, bookingH, incidentH, adminH, landingH, jwtMgr, cfg.CORSAllowOrigin, pool.Ping)
 	portNum, err := strconv.Atoi(cfg.Port)
 	if err != nil || portNum < 1 || portNum > 65535 {
 		slog.Error("invalid port", "port", cfg.Port)
@@ -118,6 +120,11 @@ func main() {
 	}
 
 	gracefulShutdown(srv)
+}
+
+// wireLanding constructs the public landing-page handler.
+func wireLanding(q *sqlcdb.Queries) *handler.LandingHandler {
+	return handler.NewLandingHandler(service.NewLandingService(q))
 }
 
 // wireAdminHandlers constructs the admin and incident handlers.
@@ -174,6 +181,8 @@ func gracefulShutdown(srv *http.Server) {
 	}
 }
 
+// normalizeGinMode maps a configured mode string to a valid Gin mode,
+// defaulting to debug for unknown values.
 func normalizeGinMode(mode string) string {
 	switch strings.ToLower(strings.TrimSpace(mode)) {
 	case "", gin.DebugMode:

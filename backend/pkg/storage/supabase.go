@@ -145,6 +145,8 @@ func (c *SupabaseClient) SignURL(
 	return result.SignedURL, nil
 }
 
+// normalizeBaseURL trims surrounding whitespace, trailing slashes and any
+// "/storage/v1" suffix so the project base URL can be composed consistently.
 func normalizeBaseURL(baseURL string) string {
 	normalized := strings.TrimSpace(baseURL)
 	normalized = strings.TrimRight(normalized, "/")
@@ -152,6 +154,8 @@ func normalizeBaseURL(baseURL string) string {
 	return strings.TrimRight(normalized, "/")
 }
 
+// objectEndpoint builds the full Supabase Storage API URL for an operation
+// (e.g. "object" or "object/sign") on a given bucket and object path.
 func objectEndpoint(baseURL, operation, bucket, objectPath string) (string, error) {
 	endpoint, err := url.JoinPath(baseURL, "storage/v1", operation, bucket, objectPath)
 	if err != nil {

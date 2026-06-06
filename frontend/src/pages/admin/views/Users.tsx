@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useReducer, useRef, useState } from "react";
+import { useCallback, useEffect, useReducer, useState } from "react";
 import { Check, MoreHorizontal, Search, X } from "lucide-react";
 
 import type { AccountStatus } from "@/types/customer";
@@ -6,7 +6,16 @@ import type { AdminUser, AdminUserListResponse } from "@/types/admin";
 import { GREEN } from "@/components/admin/adminTokens";
 import { getAdminData, sendAdminMutation } from "@/components/admin/adminApi";
 import { fmtDate } from "@/components/admin/adminFormat";
-import { Avatar, Badge, Card, FilterPills, Pagination, SectionTitle, TableSkeleton } from "@/components/admin/adminUi";
+import {
+  Avatar,
+  Badge,
+  Card,
+  Dropdown,
+  FilterPills,
+  Pagination,
+  SectionTitle,
+  TableSkeleton,
+} from "@/components/admin/adminUi";
 
 // ── Constants ─────────────────────────────────────────────────────────────────
 
@@ -45,10 +54,12 @@ const FILTER_OPTIONS: { value: string; label: string }[] = [
 
 // ── Pure helpers (module scope) ───────────────────────────────────────────────
 
+/** Returns the uppercase initials for an admin user row. */
 function userInitials(u: AdminUser): string {
   return `${u.first_name[0] ?? ""}${u.last_name[0] ?? ""}`.toUpperCase();
 }
 
+/** Renders a user's avatar image, falling back to colored initials. */
 function UserAvatar({ user, index }: { user: AdminUser; index: number }) {
   if (user.avatar_url) {
     return (
@@ -87,6 +98,7 @@ type UsersAction =
 
 const initialState: UsersState = { users: [], total: 0, loading: true, error: null };
 
+/** Reduces user-list fetch and optimistic status-patch actions. */
 function usersReducer(state: UsersState, action: UsersAction): UsersState {
   switch (action.type) {
     case "fetch_start":
@@ -107,6 +119,7 @@ function usersReducer(state: UsersState, action: UsersAction): UsersState {
 
 // ── API helpers ───────────────────────────────────────────────────────────────
 
+/** Fetches a page of users filtered by search query and status. */
 function fetchUsers(query: string, status: string, page: number): Promise<AdminUserListResponse> {
   const params = new URLSearchParams({ page: String(page), limit: String(LIMIT) });
   if (query) params.set("q", query);
@@ -115,6 +128,7 @@ function fetchUsers(query: string, status: string, page: number): Promise<AdminU
   return getAdminData<AdminUserListResponse>(`/api/admin/users?${params.toString()}`, "Error al cargar usuarios");
 }
 
+/** Sends a customer account-status change, with optional suspension end date. */
 function updateStatus(customerId: string, status: AccountStatus, suspendedUntil?: string): Promise<void> {
   const body: { status: string; suspended_until?: string } = { status };
   if (suspendedUntil) body.suspended_until = suspendedUntil;
@@ -134,118 +148,91 @@ interface StatusMenuProps {
  * Shows an inline date picker when "suspended" is selected.
  */
 function StatusMenu({ user, onUpdate }: StatusMenuProps) {
-  const [open, setOpen] = useState(false);
   const [pickingSuspend, setPickingSuspend] = useState(false);
   const [suspendDate, setSuspendDate] = useState("");
-  const ref = useRef<HTMLDivElement>(null);
-
-  useEffect(() => {
-    if (!open) return;
-    function handleClick(e: MouseEvent) {
-      if (ref.current && !ref.current.contains(e.target as Node)) {
-        setOpen(false);
-        setPickingSuspend(false);
-      }
-    }
-    document.addEventListener("mousedown", handleClick);
-    return () => document.removeEventListener("mousedown", handleClick);
-  }, [open]);
 
   const options = NEXT_STATUSES[user.account_status];
   const todayStr = new Date().toISOString().slice(0, 10);
 
-  function handleOptionClick(next: AccountStatus) {
-    if (next === "suspended") {
-      setPickingSuspend(true);
-      return;
-    }
-    onUpdate(user.customer_id, next);
-    setOpen(false);
-  }
-
-  function handleConfirmSuspend() {
-    if (!suspendDate) return;
-    const until = new Date(suspendDate + "T23:59:59Z").toISOString();
-    onUpdate(user.customer_id, "suspended", until);
-    setOpen(false);
+  function reset() {
     setPickingSuspend(false);
     setSuspendDate("");
   }
 
   return (
-    <div
-      className="relative"
-      ref={ref}
+    <Dropdown
+      ariaLabel={`Acciones para ${user.first_name} ${user.last_name}`}
+      onClose={reset}
+      button={<MoreHorizontal size={16} />}
     >
-      <button
-        type="button"
-        className="rounded p-1 text-neutral-400 hover:text-neutral-700"
-        onClick={() => {
-          setOpen((v) => !v);
-          setPickingSuspend(false);
-        }}
-        aria-label={`Acciones para ${user.first_name} ${user.last_name}`}
-      >
-        <MoreHorizontal size={16} />
-      </button>
-
-      {open && !pickingSuspend && (
-        <div className="absolute right-0 z-10 mt-1 w-36 rounded-lg border border-neutral-200 bg-white py-1 shadow-md">
-          {options.map((next) => (
+      {(close) =>
+        !pickingSuspend ? (
+          options.map((next) => (
             <button
               key={next}
               type="button"
               className="flex w-full items-center gap-2 px-3 py-2 text-left text-sm text-neutral-700 hover:bg-neutral-50"
-              onClick={() => handleOptionClick(next)}
+              onClick={() => {
+                if (next === "suspended") {
+                  setPickingSuspend(true);
+                  return;
+                }
+                onUpdate(user.customer_id, next);
+                close();
+              }}
             >
               {NEXT_STATUS_LABELS[next]}
             </button>
-          ))}
-        </div>
-      )}
-
-      {open && pickingSuspend && (
-        <div className="absolute right-0 z-10 mt-1 w-56 rounded-lg border border-neutral-200 bg-white p-3 shadow-md">
-          <label
-            htmlFor="suspend-date"
-            className="mb-2 block text-xs font-medium text-neutral-600"
-          >
-            Suspender hasta:
-          </label>
-          <input
-            id="suspend-date"
-            type="date"
-            min={todayStr}
-            value={suspendDate}
-            onChange={(e) => setSuspendDate(e.target.value)}
-            className="w-full rounded border border-neutral-200 px-2 py-1.5 text-sm outline-none focus:border-emerald-500"
-          />
-          <div className="mt-2 flex gap-2">
-            <button
-              type="button"
-              disabled={!suspendDate}
-              onClick={handleConfirmSuspend}
-              className="flex-1 rounded py-1.5 text-xs font-semibold text-white disabled:opacity-40"
-              style={{ backgroundColor: GREEN }}
+          ))
+        ) : (
+          <div className="w-56 p-3">
+            <label
+              htmlFor="suspend-date"
+              className="mb-2 block text-xs font-medium text-neutral-600"
             >
-              Confirmar
-            </button>
-            <button
-              type="button"
-              onClick={() => setPickingSuspend(false)}
-              className="flex-1 rounded border border-neutral-200 py-1.5 text-xs text-neutral-600"
-            >
-              Cancelar
-            </button>
+              Suspender hasta:
+            </label>
+            <input
+              id="suspend-date"
+              type="date"
+              min={todayStr}
+              value={suspendDate}
+              onChange={(e) => setSuspendDate(e.target.value)}
+              className="w-full rounded border border-neutral-200 px-2 py-1.5 text-sm outline-none focus:border-emerald-500"
+            />
+            <div className="mt-2 flex gap-2">
+              <button
+                type="button"
+                disabled={!suspendDate}
+                onClick={() => {
+                  if (!suspendDate) return;
+                  const until = new Date(suspendDate + "T23:59:59Z").toISOString();
+                  onUpdate(user.customer_id, "suspended", until);
+                  close();
+                }}
+                className="flex-1 rounded py-1.5 text-xs font-semibold text-white disabled:opacity-40"
+                style={{ backgroundColor: GREEN }}
+              >
+                Confirmar
+              </button>
+              <button
+                type="button"
+                onClick={() => setPickingSuspend(false)}
+                className="flex-1 rounded border border-neutral-200 py-1.5 text-xs text-neutral-600"
+              >
+                Cancelar
+              </button>
+            </div>
           </div>
-        </div>
-      )}
-    </div>
+        )
+      }
+    </Dropdown>
   );
 }
 
 // ── Verification badges ───────────────────────────────────────────────────────
 
+/** Small email/phone verification indicators for a user row. */
 function VerifBadges({ hasPhone }: { hasPhone: boolean }) {
   const items: { key: string; label: string; verified: boolean }[] = [
     { key: "email", label: "Email verificado", verified: true },
@@ -339,7 +326,6 @@ function UsersView() {
 
   return (
     <div className="space-y-4">
-      {/* Header + filters */}
       <div className="flex flex-wrap items-center justify-between gap-3">
         <FilterPills
           options={FILTER_OPTIONS}
@@ -444,7 +430,6 @@ function UsersView() {
           </table>
         )}
 
-        {/* Pagination */}
         {!loading && (
           <Pagination
             page={filters.page}

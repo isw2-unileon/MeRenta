@@ -274,6 +274,8 @@ func (s *ChatService) SendMessage(ctx context.Context, customerID, conversationI
 	return &res, nil
 }
 
+// toConversationResponse maps a conversation row into the API response model,
+// converting the numeric item price and decrypting the last message preview.
 func (s *ChatService) toConversationResponse(row sqlcdb.ConversationRow) (model.ConversationResponse, error) {
 	itemPrice, err := numericToFloat64(row.ItemPrice)
 	if err != nil {
@@ -300,6 +302,8 @@ func (s *ChatService) toConversationResponse(row sqlcdb.ConversationRow) (model.
 	}, nil
 }
 
+// toMessageResponse maps a message row into the API response model, decrypting
+// the body and flagging ownership relative to customerID.
 func (s *ChatService) toMessageResponse(row sqlcdb.MessageRow, customerID uuid.UUID) (model.MessageResponse, error) {
 	body, err := s.cipher.Decrypt(row.Body)
 	if err != nil {
@@ -317,6 +321,8 @@ func (s *ChatService) toMessageResponse(row sqlcdb.MessageRow, customerID uuid.U
 	}, nil
 }
 
+// timestamptzPtr converts a nullable pgtype.Timestamptz into a *time.Time,
+// returning nil when the value is NULL.
 func timestamptzPtr(value pgtype.Timestamptz) *time.Time {
 	if !value.Valid {
 		return nil

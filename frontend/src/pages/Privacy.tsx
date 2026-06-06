@@ -16,7 +16,7 @@ const PRIVACY_TOC_LINKS = [
   { href: "#contacto", text: "12. Contacto" },
 ];
 
-// 1. Componente para la cabecera
+/** Introductory header with the privacy-policy scope, update date and version. */
 const PrivacyHeader = () => (
   <header className="mb-12">
     <p className="text-card-loc text-subtle tracking-eyebrow mb-3 uppercase">Legal</p>
@@ -33,7 +33,7 @@ const PrivacyHeader = () => (
   </header>
 );
 
-// 2. Componente para las tarjetas de resumen
+/** High-level summary cards for the main privacy themes. */
 const PrivacySummary = () => (
   <section className="mb-10 grid gap-4 md:grid-cols-3">
     <div className="border-border-main bg-surface rounded-lg border p-5">
@@ -58,7 +58,7 @@ const PrivacySummary = () => (
   </section>
 );
 
-// 3. Componente para la tabla de contenidos
+/** Table of contents linking to each privacy section. */
 const PrivacyTOC = () => {
   return (
     <nav
@@ -82,7 +82,7 @@ const PrivacyTOC = () => {
   );
 };
 
-// 4. Componente auxiliar para unificar el estilo de las secciones
+/** Shared shell for each privacy-content section. */
 const Section = ({ id, title, children }: { id: string; title: string; children: React.ReactNode }) => (
   <section
     id={id}
@@ -93,7 +93,7 @@ const Section = ({ id, title, children }: { id: string; title: string; children:
   </section>
 );
 
-// 5. Componente para el contenido principal (los textos)
+/** Full privacy content grouped into the sections exposed in the table of contents. */
 const PrivacyContent = () => (
   <div className="mt-12 space-y-10">
     <Section

@@ -1,0 +1,144 @@
+// Form state model, reducer and validation for the product creation page,
+// kept UI-free for easy unit testing.
+import type { ProductFormData } from "@/types/item";
+
+/** Default values for a blank product creation form. */
+const INITIAL_FORM: ProductFormData = {
+  title: "",
+  category: "",
+  subcategory: "",
+  condition: "",
+  description: "",
+  photos: [],
+  pricePerDay: "",
+  pricePerWeek: "",
+  deposit: "50",
+  minRentalPeriod: "1",
+  maxRentalPeriod: "30",
+  address: "",
+  city: "",
+  deliveryRadius: "5",
+  availableNow: true,
+  blockDates: false,
+  usageRules: "",
+};
+
+/** Validation error messages keyed by form field. */
+type FormErrors = Partial<Record<keyof ProductFormData, string>>;
+/** Stages of the multi-step submit (create item, then upload photos). */
+type SubmitStep = "idle" | "creating" | "uploading" | "done";
+
+/** User-facing button labels for each submit step. */
+const STEP_LABELS: Record<SubmitStep, string> = {
+  idle: "",
+  creating: "Creando anuncio...",
+  uploading: "Subiendo fotos...",
+  done: "¡Publicado!",
+};
+
+interface FormState {
+  data: ProductFormData;
+  errors: FormErrors;
+  submitStep: SubmitStep;
+  submitError: string;
+}
+
+type FormAction =
+  | { type: "update-field"; field: keyof ProductFormData; value: string | boolean }
+  | { type: "set-errors"; errors: FormErrors }
+  | { type: "clear-error"; field: keyof ProductFormData }
+  | { type: "add-photos"; files: File[] }
+  | { type: "remove-photo"; index: number }
+  | { type: "set-submit-step"; step: SubmitStep }
+  | { type: "set-submit-error"; message: string };
+
+/** Initial reducer state for a blank creation form. */
+const INITIAL_STATE: FormState = {
+  data: INITIAL_FORM,
+  errors: {},
+  submitStep: "idle",
+  submitError: "",
+};
+
+/** Reduces creation-form actions (field edits, photos, submit) into the next state. */
+function formReducer(state: FormState, action: FormAction): FormState {
+  switch (action.type) {
+    case "update-field": {
+      const nextErrors = state.errors[action.field] ? { ...state.errors, [action.field]: undefined } : state.errors;
+      return {
+        ...state,
+        data: { ...state.data, [action.field]: action.value },
+        errors: nextErrors,
+      };
+    }
+    case "set-errors":
+      return { ...state, errors: action.errors };
+    case "clear-error":
+      return { ...state, errors: { ...state.errors, [action.field]: undefined } };
+    case "add-photos":
+      return { ...state, data: { ...state.data, photos: [...state.data.photos, ...action.files] } };
+    case "remove-photo":
+      return {
+        ...state,
+        data: { ...state.data, photos: state.data.photos.filter((_, i) => i !== action.index) },
+      };
+    case "set-submit-step":
+      return { ...state, submitStep: action.step };
+    case "set-submit-error":
+      return { ...state, submitError: action.message };
+    default:
+      return state;
+  }
+}
+
+/**
+ * Validates the product form and returns a map of field errors (empty when the
+ * form is valid).
+ */
+function validateForm(data: ProductFormData): FormErrors {
+  const errors: FormErrors = {};
+
+  if (!data.title.trim()) {
+    errors.title = "El título es obligatorio";
+  } else if (data.title.length > 80) {
+    errors.title = "El título no puede superar 80 caracteres";
+  }
+
+  if (!data.category) {
+    errors.category = "Selecciona una categoría";
+  }
+
+  if (!data.condition) {
+    errors.condition = "Selecciona el estado de conservación";
+  }
+
+  if (!data.description.trim()) {
+    errors.description = "La descripción es obligatoria";
+  } else if (data.description.trim().length < 100) {
+    errors.description = "La descripción debe tener al menos 100 caracteres";
+  }
+
+  if (!data.pricePerDay || parseFloat(data.pricePerDay) <= 0) {
+    errors.pricePerDay = "El precio por día debe ser mayor que 0";
+  }
+
+  const minRentalPeriod = Number.parseInt(data.minRentalPeriod, 10);
+  const maxRentalPeriod = Number.parseInt(data.maxRentalPeriod, 10);
+  if (data.maxRentalPeriod !== "0" && minRentalPeriod > maxRentalPeriod) {
+    errors.minRentalPeriod = "El período mínimo no puede superar el máximo";
+    errors.maxRentalPeriod = "El período máximo debe ser igual o mayor que el mínimo";
+  }
+
+  if (!data.address) {
+    errors.address = "Selecciona una dirección de recogida";
+  }
+
+  if (data.photos.length === 0) {
+    errors.photos = "Añade al menos una foto del producto";
+  }
+
+  return errors;
+}
+
+export { INITIAL_FORM, INITIAL_STATE, STEP_LABELS, formReducer, validateForm };
+export type { FormAction, FormErrors, FormState, SubmitStep };

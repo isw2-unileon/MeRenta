@@ -8,6 +8,9 @@ import (
 	"github.com/isw2-unileon/MeRenta/backend/internal/sqlcdb"
 )
 
+// searchItemCardRowsToResponses maps sqlc search-card rows into the API search
+// response model, extracting the shared total count and converting the numeric
+// price column to a float64.
 func searchItemCardRowsToResponses(rows []sqlcdb.SearchItemCardsRow) ([]model.SearchItemResponse, int64, error) {
 	items := make([]model.SearchItemResponse, 0, len(rows))
 	var total int64

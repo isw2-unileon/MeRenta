@@ -4,54 +4,17 @@ import { ArrowRight, BadgeCheck, CheckCheck, Search, SendHorizontal, Trash2, X }
 
 import type { ApiResponse } from "@/types/common";
 import { useAuth } from "@/hooks/useAuth";
+import {
+  chatReducer,
+  initialState,
+  initialsFromName,
+  type ChatWebSocketEvent,
+  type ConversationResponse,
+  type ConversationsResponse,
+  type MessageResponse,
+  type MessagesResponse,
+} from "./Chat.logic";
 import * as React from "react";
-
-interface ConversationResponse {
-  conversation_id: string;
-  item_id: string;
-  item_title: string;
-  item_price: number;
-  other_user_id: string;
-  other_user_name: string;
-  other_avatar_url?: string;
-  other_user_verification_status: string;
-  last_message?: string;
-  last_message_at?: string;
-  updated_at: string;
-  unread_count: number;
-}
-
-interface ConversationsResponse {
-  items: ConversationResponse[];
-  total: number;
-}
-
-interface MessageResponse {
-  message_id: string;
-  conversation_id: string;
-  sender_id: string;
-  body: string;
-  read_at?: string;
-  created_at: string;
-  is_mine: boolean;
-  is_read: boolean;
-}
-
-interface MessagesResponse {
-  items: MessageResponse[];
-  total: number;
-}
-
-interface ChatWebSocketEvent {
-  type: "message" | "read" | "error";
-  data?: MessageResponse;
-  read?: {
-    conversation_id: string;
-    reader_id: string;
-    message_ids: string[];
-  };
-  error?: string;
-}
 
 const chatTimeFormatter = new Intl.DateTimeFormat("es-ES", {
   hour: "2-digit",
@@ -64,237 +27,13 @@ const dayLabelFormatter = new Intl.DateTimeFormat("es-ES", {
 });
 const CHAT_SKELETON_IDS = ["chat-skel-1", "chat-skel-2", "chat-skel-3", "chat-skel-4", "chat-skel-5"];
 
-interface ChatState {
-  conversations: ConversationResponse[];
-  unreadCountsByConversationID: Map<string, number>;
-  messages: MessageResponse[];
-  draft: string;
-  searchQuery: string;
-  loadingConversations: boolean;
-  loadingMessages: boolean;
-  sending: boolean;
-  error: string;
-}
-
-type ChatAction =
-  | { type: "conversations:success"; items: ConversationResponse[] }
-  | { type: "conversations:refresh"; items: ConversationResponse[]; activeConversationID?: string }
-  | { type: "conversations:error"; message: string }
-  | { type: "conversation:open"; conversationID: string }
-  | { type: "conversation:delete"; conversationID: string }
-  | { type: "messages:loading" }
-  | { type: "messages:success"; items: MessageResponse[] }
-  | { type: "messages:merge"; items: MessageResponse[]; activeConversationID?: string }
-  | { type: "messages:error"; message: string }
-  | { type: "messages:reset" }
-  | { type: "draft:set"; value: string }
-  | { type: "search:set"; value: string }
-  | { type: "sending:start" }
-  | { type: "sending:end" }
-  | { type: "message:receive"; message: MessageResponse; activeConversationID?: string }
-  | { type: "messages:read"; messageIDs: string[] }
-  | { type: "error:clear" }
-  | { type: "error:set"; message: string };
-
-const initialState: ChatState = {
-  conversations: [],
-  unreadCountsByConversationID: new Map<string, number>(),
-  messages: [],
-  draft: "",
-  searchQuery: "",
-  loadingConversations: true,
-  loadingMessages: false,
-  sending: false,
-  error: "",
-};
-
-function sortConversations(conversations: ConversationResponse[]): ConversationResponse[] {
-  return conversations.toSorted((a, b) => {
-    const aTime = new Date(a.last_message_at ?? a.updated_at).getTime();
-    const bTime = new Date(b.last_message_at ?? b.updated_at).getTime();
-    return bTime - aTime;
-  });
-}
-
-function refreshConversations(
-  state: ChatState,
-  items: ConversationResponse[],
-  activeConversationID?: string
-): ChatState {
-  const unreadCountsByConversationID = new Map(state.unreadCountsByConversationID);
-
-  for (const conversation of items) {
-    if (conversation.conversation_id === activeConversationID) {
-      unreadCountsByConversationID.delete(conversation.conversation_id);
-    } else if (conversation.unread_count > 0) {
-      unreadCountsByConversationID.set(conversation.conversation_id, conversation.unread_count);
-    } else {
-      unreadCountsByConversationID.delete(conversation.conversation_id);
-    }
-  }
-
-  return {
-    ...state,
-    conversations: sortConversations(items),
-    unreadCountsByConversationID,
-    loadingConversations: false,
-  };
-}
-
-function applyIncomingMessage(state: ChatState, message: MessageResponse, activeConversationID?: string): ChatState {
-  const messages = state.messages.some((item) => item.message_id === message.message_id)
-    ? state.messages
-    : [...state.messages, message];
-
-  const updatedConversations = state.conversations.map((conversation) =>
-    conversation.conversation_id === message.conversation_id
-      ? {
-          ...conversation,
-          last_message: message.body,
-          last_message_at: message.created_at,
-          updated_at: message.created_at,
-          unread_count:
-            message.conversation_id === activeConversationID || message.is_mine ? 0 : conversation.unread_count + 1,
-        }
-      : conversation
-  );
-  const unreadCountsByConversationID = new Map(state.unreadCountsByConversationID);
-
-  if (message.conversation_id === activeConversationID || message.is_mine) {
-    unreadCountsByConversationID.delete(message.conversation_id);
-  } else {
-    unreadCountsByConversationID.set(
-      message.conversation_id,
-      (unreadCountsByConversationID.get(message.conversation_id) ?? 0) + 1
-    );
-  }
-
-  return { ...state, messages, conversations: sortConversations(updatedConversations), unreadCountsByConversationID };
-}
-
-function mergeMessages(
-  current: MessageResponse[],
-  incoming: MessageResponse[]
-): {
-  messages: MessageResponse[];
-  added: MessageResponse[];
-} {
-  const incomingByID = new Map(incoming.map((message) => [message.message_id, message]));
-  const known = new Set(current.map((message) => message.message_id));
-  const next = current.map((message) => {
-    const updated = incomingByID.get(message.message_id);
-    if (!updated) return message;
-
-    return {
-      ...message,
-      is_read: updated.is_read,
-      read_at: updated.read_at,
-    };
-  });
-  const added: MessageResponse[] = [];
-
-  for (const message of incoming) {
-    if (!known.has(message.message_id)) {
-      next.push(message);
-      added.push(message);
-      known.add(message.message_id);
-    }
-  }
-
-  return { messages: next, added };
-}
-
-function chatReducer(state: ChatState, action: ChatAction): ChatState {
-  switch (action.type) {
-    case "conversations:success":
-      return refreshConversations(state, action.items);
-    case "conversations:refresh":
-      return refreshConversations(state, action.items, action.activeConversationID);
-    case "conversations:error":
-      return { ...state, error: action.message, loadingConversations: false };
-    case "conversation:open": {
-      const unreadCountsByConversationID = new Map(state.unreadCountsByConversationID);
-      unreadCountsByConversationID.delete(action.conversationID);
-      return {
-        ...state,
-        conversations: state.conversations.map((conversation) =>
-          conversation.conversation_id === action.conversationID ? { ...conversation, unread_count: 0 } : conversation
-        ),
-        unreadCountsByConversationID,
-      };
-    }
-    case "conversation:delete": {
-      const unreadCountsByConversationID = new Map(state.unreadCountsByConversationID);
-      unreadCountsByConversationID.delete(action.conversationID);
-      return {
-        ...state,
-        conversations: state.conversations.filter(
-          (conversation) => conversation.conversation_id !== action.conversationID
-        ),
-        messages: state.messages.filter((message) => message.conversation_id !== action.conversationID),
-        unreadCountsByConversationID,
-      };
-    }
-    case "messages:loading":
-      return { ...state, loadingMessages: true, error: "" };
-    case "messages:success":
-      return { ...state, messages: action.items, loadingMessages: false };
-    case "messages:merge": {
-      const merged = mergeMessages(state.messages, action.items);
-      let nextState = { ...state, messages: merged.messages };
-      for (const message of merged.added) {
-        nextState = applyIncomingMessage(nextState, message, action.activeConversationID);
-      }
-      return nextState;
-    }
-    case "messages:error":
-      return { ...state, error: action.message, loadingMessages: false };
-    case "messages:reset":
-      return { ...state, messages: [], loadingMessages: false };
-    case "draft:set":
-      return { ...state, draft: action.value };
-    case "search:set":
-      return { ...state, searchQuery: action.value };
-    case "sending:start":
-      return { ...state, sending: true, error: "" };
-    case "sending:end":
-      return { ...state, sending: false };
-    case "message:receive":
-      return applyIncomingMessage(state, action.message, action.activeConversationID);
-    case "messages:read": {
-      const readIDs = new Set(action.messageIDs);
-      return {
-        ...state,
-        messages: state.messages.map((message) =>
-          readIDs.has(message.message_id) ? { ...message, is_read: true } : message
-        ),
-      };
-    }
-    case "error:clear":
-      return { ...state, error: "" };
-    case "error:set":
-      return { ...state, error: action.message };
-    default:
-      return state;
-  }
-}
-
-function initialsFromName(name: string): string {
-  let result = "";
-  for (const part of name.split(" ")) {
-    const trimmed = part.trim();
-    if (!trimmed) continue;
-    result += trimmed[0] ?? "";
-    if (result.length >= 2) break;
-  }
-  return result.toUpperCase().slice(0, 2);
-}
-
+/** Formats a timestamp as "HH:MM" for message bubbles. */
 function formatChatTime(iso?: string): string {
   if (!iso) return "";
   return chatTimeFormatter.format(new Date(iso));
 }
 
+/** Formats a conversation's last-activity time: time today, "Ayer", else weekday. */
 function formatConversationTime(iso?: string): string {
   if (!iso) return "";
 
@@ -310,11 +49,13 @@ function formatConversationTime(iso?: string): string {
   return conversationDayFormatter.format(date);
 }
 
+/** Formats a date as a "day month" separator label, defaulting to "Hoy". */
 function dayLabel(iso?: string): string {
   if (!iso) return "Hoy";
   return dayLabelFormatter.format(new Date(iso));
 }
 
+/** Resolves after ms, or rejects with AbortError if the signal aborts first. */
 function wait(ms: number, signal?: AbortSignal): Promise<void> {
   return new Promise((resolve, reject) => {
     const timeoutID = window.setTimeout(resolve, ms);
@@ -330,6 +71,7 @@ function wait(ms: number, signal?: AbortSignal): Promise<void> {
   });
 }
 
+/** GETs a URL and unwraps the API envelope, throwing on failure. */
 async function apiGet<T>(url: string, signal?: AbortSignal): Promise<T> {
   const res = await fetch(url, { credentials: "include", signal });
   const json = (await res.json()) as ApiResponse<T>;
@@ -339,6 +81,7 @@ async function apiGet<T>(url: string, signal?: AbortSignal): Promise<T> {
   return json.data;
 }
 
+/** apiGet with up to three backoff retries; aborts are never retried. */
 async function apiGetWithRetry<T>(url: string, signal?: AbortSignal): Promise<T> {
   const delays = [700, 1400, 2500];
 
@@ -358,6 +101,7 @@ async function apiGetWithRetry<T>(url: string, signal?: AbortSignal): Promise<T>
   return attemptFetch(0);
 }
 
+/** Sends a chat message via REST (fallback when the socket is closed). */
 async function sendMessage(conversationID: string, body: string): Promise<MessageResponse> {
   const res = await fetch(`/api/conversations/${conversationID}/messages`, {
     method: "POST",
@@ -372,6 +116,7 @@ async function sendMessage(conversationID: string, body: string): Promise<Messag
   return json.data;
 }
 
+/** Deletes a conversation from the current user's inbox. */
 async function deleteConversation(conversationID: string): Promise<void> {
   const res = await fetch(`/api/conversations/${conversationID}`, {
     method: "DELETE",
@@ -383,6 +128,7 @@ async function deleteConversation(conversationID: string): Promise<void> {
   }
 }
 
+/** Marks all messages in a conversation as read (best effort). */
 async function markConversationRead(conversationID: string): Promise<void> {
   await fetch(`/api/conversations/${conversationID}/read`, {
     method: "POST",
@@ -390,6 +136,7 @@ async function markConversationRead(conversationID: string): Promise<void> {
   });
 }
 
+/** Builds the same-origin (dev) or backend (prod) WebSocket URL for a conversation. */
 function buildWebSocketURL(conversationID: string): string {
   // In dev the Vite proxy (ws: true) forwards /api/* to the backend, so we connect
   // to the dev server origin and let the proxy handle the upgrade. This keeps the
@@ -405,6 +152,7 @@ function buildWebSocketURL(conversationID: string): string {
   return url.toString();
 }
 
+/** Avatar image with initials fallback, used across the chat UI. */
 function ChatAvatar({ name, image, small = false }: { name: string; image?: string; small?: boolean }) {
   const initials = initialsFromName(name);
   const size = small ? "size-7 text-[11px]" : "size-11 text-[14px]";
@@ -426,6 +174,7 @@ function ChatAvatar({ name, image, small = false }: { name: string; image?: stri
   );
 }
 
+/** A single row in the conversation sidebar (with unread badge / select mode). */
 function ConversationRow({
   conversation,
   active,
@@ -503,6 +252,7 @@ function ConversationRow({
   );
 }
 
+/** A single chat message bubble, aligned by ownership with read receipts. */
 function MessageBubble({ message, otherUser }: { message: MessageResponse; otherUser: ConversationResponse }) {
   const isMine = message.is_mine;
 
@@ -538,6 +288,7 @@ function MessageBubble({ message, otherUser }: { message: MessageResponse; other
   );
 }
 
+/** Sidebar with search, bulk-select/delete controls and the conversation rows. */
 function ConversationList({
   conversations,
   loading,
@@ -578,7 +329,7 @@ function ConversationList({
           />
           <input
             type="search"
-            placeholder="Buscar conversacion..."
+            placeholder="Buscar conversación..."
             className="text-card-loc h-10 rounded-lg pl-10"
             value={searchQuery}
             onChange={(event) => onSearchChange(event.target.value)}
@@ -649,6 +400,7 @@ function ConversationList({
   );
 }
 
+/** Header of the active conversation: other user, item and "view product" link. */
 function ChatHeader({
   conversation,
   onViewProduct,
@@ -675,7 +427,7 @@ function ChatHeader({
             )}
           </div>
           <p className="bg-primary-light text-primary inline-flex max-w-90 truncate rounded-full px-2.5 py-0.5 text-[10px] font-medium">
-            {conversation.item_title} · {Math.round(conversation.item_price)} EUR/dia
+            {conversation.item_title} · {Math.round(conversation.item_price)} EUR/día
           </p>
         </div>
       </div>
@@ -692,6 +444,7 @@ function ChatHeader({
   );
 }
 
+/** Scrollable message list for the active conversation with day separators. */
 function MessagesPanel({
   conversation,
   messages,
@@ -734,7 +487,7 @@ function MessagesPanel({
             ))
           ) : (
             <p className="text-subtle text-center text-[13px]">
-              Empieza la conversacion escribiendo el primer mensaje.
+              Empieza la conversación escribiendo el primer mensaje.
             </p>
           )}
           <div ref={messagesEndRef} />
@@ -744,6 +497,7 @@ function MessagesPanel({
   );
 }
 
+/** Message input and send button at the bottom of the conversation. */
 function ChatComposer({
   draft,
   sending,
@@ -780,6 +534,7 @@ function ChatComposer({
   );
 }
 
+/** Confirmation modal for deleting selected conversations. */
 function DeleteConversationDialog({
   count,
   deleting,
@@ -800,7 +555,7 @@ function DeleteConversationDialog({
         <div className="flex items-start justify-between gap-4">
           <div>
             <h2 className="text-ink text-logo-footer font-semibold">Eliminar conversaciones</h2>
-            <p className="text-subtle mt-2 text-[14px]">Desea eliminar {label} de tu bandeja?</p>
+            <p className="text-subtle mt-2 text-[14px]">¿Desea eliminar {label} de tu bandeja?</p>
           </div>
           <button
             type="button"
@@ -837,6 +592,11 @@ function DeleteConversationDialog({
 }
 
 // ── Chat page hook — keeps all state, effects and handlers out of the render ──
+/**
+ * Encapsulates all chat page state: loads conversations and messages (with
+ * polling and a live WebSocket), tracks unread counts, and exposes the send and
+ * bulk-delete handlers consumed by the Chat component.
+ */
 function useChatPage(conversationId: string | undefined) {
   const navigate = useNavigate();
   const { user } = useAuth();
@@ -1145,7 +905,7 @@ function Chat() {
           </>
         ) : (
           <div className="flex flex-1 items-center justify-center px-6">
-            <p className="text-subtle text-center text-[14px]">Selecciona una conversacion para ver los mensajes.</p>
+            <p className="text-subtle text-center text-[14px]">Selecciona una conversación para ver los mensajes.</p>
           </div>
         )}
       </section>

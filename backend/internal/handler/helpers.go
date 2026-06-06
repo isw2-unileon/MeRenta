@@ -13,6 +13,7 @@ import (
 	"github.com/isw2-unileon/MeRenta/backend/pkg/response"
 )
 
+// paginatedResponder fetches a page of data for the given page and limit.
 type paginatedResponder func(page int, limit int) (any, error)
 
 // respondByID parses the ":id" route param, runs fetch, and writes the result as
@@ -128,6 +129,9 @@ func bindAndCreateForTarget[Req any, Res any](
 	response.OK(c, http.StatusCreated, res)
 }
 
+// respondWithPaginated parses the page/limit query params (clamped to sane
+// bounds), runs fetch, and writes the result as 200, logging and returning 500
+// on error.
 func respondWithPaginated(
 	c *gin.Context,
 	defaultLimit int,

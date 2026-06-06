@@ -76,6 +76,7 @@ const parseAuthResponse = async (response: Response): Promise<CustomerPublic> =>
   return customer as CustomerPublic;
 };
 
+/** Internal reducer state backing the auth context. */
 interface AuthState {
   isAuthenticated: boolean;
   isLoading: boolean;
@@ -84,6 +85,7 @@ interface AuthState {
   suspendedUntil: string | null;
 }
 
+/** Reducer actions covering the load/login/register/logout lifecycle. */
 type AuthAction =
   | { type: "load_start" }
   | { type: "load_success"; user: CustomerPublic }
@@ -218,7 +220,6 @@ function AuthProvider({ children }: { children: React.ReactNode }) {
    * @throws Error when the API returns a non-OK response.
    */
   const login = useCallback(async (credentials: LoginRequest) => {
-    dispatch({ type: "load_start" });
     try {
       const response = await fetch(`${API_BASE_URL}/auth/login`, {
         method: "POST",
@@ -256,7 +257,6 @@ function AuthProvider({ children }: { children: React.ReactNode }) {
    * @throws Error when the API returns a non-OK response.
    */
   const register = useCallback(async (data: RegisterRequest) => {
-    dispatch({ type: "load_start" });
     try {
       const response = await fetch(`${API_BASE_URL}/auth/register`, {
         method: "POST",

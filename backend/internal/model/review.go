@@ -1,3 +1,4 @@
+// Package model contains request and response DTOs.
 package model
 
 import "time"

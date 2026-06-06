@@ -1,3 +1,4 @@
+// Package service contains business logic for the API.
 package service
 
 import (
@@ -10,6 +11,8 @@ import (
 	"strings"
 )
 
+// encryptedMessagePrefix tags stored ciphertext so plaintext (legacy) and
+// encrypted message bodies can be told apart on read.
 const encryptedMessagePrefix = "enc:v1:"
 
 // messageCipher encrypts message bodies before they are stored.
@@ -17,6 +20,8 @@ type messageCipher struct {
 	aead cipher.AEAD
 }
 
+// newMessageCipher builds a messageCipher from a 16/24/32-byte AES key using
+// AES-GCM authenticated encryption.
 func newMessageCipher(key []byte) (*messageCipher, error) {
 	block, err := aes.NewCipher(key)
 	if err != nil {
@@ -29,6 +34,8 @@ func newMessageCipher(key []byte) (*messageCipher, error) {
 	return &messageCipher{aead: aead}, nil
 }
 
+// Encrypt seals plaintext with a fresh random nonce and returns the prefixed,
+// base64-encoded nonce+ciphertext payload.
 func (c *messageCipher) Encrypt(plaintext string) (string, error) {
 	nonce := make([]byte, c.aead.NonceSize())
 	if _, err := io.ReadFull(rand.Reader, nonce); err != nil {
@@ -41,6 +48,8 @@ func (c *messageCipher) Encrypt(plaintext string) (string, error) {
 	return encryptedMessagePrefix + base64.RawStdEncoding.EncodeToString(payload), nil
 }
 
+// Decrypt reverses Encrypt. Values without the encryption prefix are assumed to
+// be legacy plaintext and returned unchanged.
 func (c *messageCipher) Decrypt(value string) (string, error) {
 	if !strings.HasPrefix(value, encryptedMessagePrefix) {
 		return value, nil

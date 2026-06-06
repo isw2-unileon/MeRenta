@@ -26,6 +26,7 @@ func Setup(
 	bookingH *handler.BookingHandler,
 	incidentH *handler.IncidentHandler,
 	adminH *handler.AdminHandler,
+	landingH *handler.LandingHandler,
 	jwtMgr *jwt.Manager,
 	corsAllowOrigin string,
 	readiness func(context.Context) error,
@@ -36,7 +37,7 @@ func Setup(
 	addCoreRoutes(r, readiness)
 
 	api := r.Group("/api")
-	registerPublicRoutes(api, authH)
+	registerPublicRoutes(api, authH, landingH)
 	api.GET("/conversations/:id/ws", chatH.WebSocket)
 
 	protected := api.Group("/")
@@ -48,6 +49,7 @@ func Setup(
 	return r
 }
 
+// addCoreRoutes registers the unauthenticated /health and /ready probes.
 func addCoreRoutes(r *gin.Engine, readiness func(context.Context) error) {
 	r.GET("/health", func(c *gin.Context) {
 		c.JSON(http.StatusOK, gin.H{"status": "ok"})
@@ -63,14 +65,20 @@ func addCoreRoutes(r *gin.Engine, readiness func(context.Context) error) {
 	})
 }
 
-func registerPublicRoutes(api *gin.RouterGroup, authH *handler.AuthHandler) {
+// registerPublicRoutes registers the unauthenticated /api routes (auth and
+// landing).
+func registerPublicRoutes(api *gin.RouterGroup, authH *handler.AuthHandler, landingH *handler.LandingHandler) {
 	auth := api.Group("/auth")
 	auth.POST("/register", authH.Register)
 	auth.POST("/login", authH.Login)
 	auth.POST("/logout", authH.Logout)
+
+	api.GET("/landing", landingH.Get)
 }
 
-// centralizes protected API wiring for readability.
+// registerProtectedRoutes registers all JWT-authenticated /api routes
+// (profile, items, addresses, favorites, conversations, reviews, payment,
+// bookings and incidents).
 func registerProtectedRoutes(
 	protected *gin.RouterGroup,
 	authH *handler.AuthHandler,
@@ -86,11 +94,18 @@ func registerProtectedRoutes(
 ) {
 	protected.GET("/session", authH.Session)
 	protected.GET("/me", authH.Me)
+	protected.PATCH("/me", authH.UpdateMe)
+	protected.DELETE("/me", authH.DeleteMe)
+	protected.PATCH("/me/email", authH.UpdateEmail)
+	protected.PATCH("/me/password", authH.UpdatePassword)
+	protected.POST("/me/avatar", authH.UploadAvatar)
 	protected.POST("/me/verification-request", authH.RequestVerification)
 
 	addresses := protected.Group("/addresses")
 	addresses.GET("", addrH.List)
 	addresses.POST("", addrH.Create)
+	addresses.PATCH("/:id", addrH.Update)
+	addresses.DELETE("/:id", addrH.Delete)
 
 	customers := protected.Group("/customers")
 	customers.GET("/:id/profile", authH.ProfileByID)
@@ -136,6 +151,7 @@ func registerProtectedRoutes(
 	incidents.GET("/mine", incidentH.ListMine)
 }
 
+// registerConversationRoutes registers the chat conversation and message routes.
 func registerConversationRoutes(protected *gin.RouterGroup, chatH *handler.ChatHandler) {
 	conversations := protected.Group("/conversations")
 	conversations.GET("", chatH.ListConversations)
@@ -146,6 +162,8 @@ func registerConversationRoutes(protected *gin.RouterGroup, chatH *handler.ChatH
 	conversations.POST("/:id/messages", chatH.SendMessage)
 }
 
+// registerBookingRoutes registers the booking creation, listing and
+// status-transition routes.
 func registerBookingRoutes(protected *gin.RouterGroup, bookingH *handler.BookingHandler) {
 	bookings := protected.Group("/bookings")
 	bookings.POST("", bookingH.Create)
@@ -157,6 +175,8 @@ func registerBookingRoutes(protected *gin.RouterGroup, bookingH *handler.Booking
 	bookings.PATCH("/:id/complete", bookingH.Complete)
 }
 
+// registerAdminRoutes registers the /api/admin routes, guarded by JWT auth and
+// the admin role.
 func registerAdminRoutes(api *gin.RouterGroup, adminH *handler.AdminHandler, incidentH *handler.IncidentHandler, jwtMgr *jwt.Manager) {
 	admin := api.Group("/admin")
 	admin.Use(middleware.JWTAuth(jwtMgr), middleware.RequireRole(sqlcdb.UserRoleAdmin))

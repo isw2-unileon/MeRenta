@@ -57,7 +57,14 @@ func (e *ErrAccountSuspended) Error() string {
 
 // authQuerier extends sqlcdb.Querier with handwritten customer ext queries.
 type authQuerier interface {
-	sqlcdb.Querier
+	CreateCustomer(ctx context.Context, arg sqlcdb.CreateCustomerParams) (sqlcdb.CreateCustomerRow, error)
+	DeleteCustomerAccountData(ctx context.Context, customerID uuid.UUID) error
+	ExistsCustomerByEmail(ctx context.Context, email string) (bool, error)
+	GetCustomerByEmail(ctx context.Context, email string) (sqlcdb.Customer, error)
+	GetCustomerByID(ctx context.Context, customerID uuid.UUID) (sqlcdb.GetCustomerByIDRow, error)
+	UpdateCustomerEmail(ctx context.Context, arg sqlcdb.UpdateCustomerEmailParams) (sqlcdb.UpdateCustomerEmailRow, error)
+	UpdateCustomerPassword(ctx context.Context, arg sqlcdb.UpdateCustomerPasswordParams) error
+	UpdateCustomerProfile(ctx context.Context, arg sqlcdb.UpdateCustomerProfileParams) (sqlcdb.UpdateCustomerProfileRow, error)
 	GetCustomerSuspendedUntil(ctx context.Context, customerID uuid.UUID) (pgtype.Timestamptz, error)
 	EnsureCustomerVerificationSchema(ctx context.Context) error
 	GetCustomerVerificationStatus(ctx context.Context, customerID uuid.UUID) (sqlcdb.VerificationStatus, error)
@@ -499,11 +506,15 @@ func (s *AuthService) GetPublicProfile(ctx context.Context, id uuid.UUID) (*mode
 	}, nil
 }
 
+// isUniqueViolation reports whether err is a PostgreSQL unique-constraint
+// violation (SQLSTATE 23505).
 func isUniqueViolation(err error) bool {
 	var pgErr *pgconn.PgError
 	return errors.As(err, &pgErr) && pgErr.Code == "23505"
 }
 
+// getVerificationStatusOrDefault returns the customer's verification status,
+// falling back to VerificationStatusNone when it cannot be read.
 func getVerificationStatusOrDefault(
 	ctx context.Context,
 	q authQuerier,

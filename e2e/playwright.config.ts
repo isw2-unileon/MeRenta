@@ -20,12 +20,16 @@ export default defineConfig({
       cwd: "..",
       port: 8080,
       reuseExistingServer: !process.env.CI,
+      stdout: "pipe",
+      stderr: "pipe",
     },
     {
       command: "cd frontend && npm run dev",
       cwd: "..",
       port: 5173,
       reuseExistingServer: !process.env.CI,
+      stdout: "pipe",
+      stderr: "pipe",
     },
   ],
 

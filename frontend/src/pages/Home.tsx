@@ -112,6 +112,7 @@ const emptyReviewSummary: ReviewSummary = {
   distribution: {},
 };
 
+/** Reduces the main home data-fetch lifecycle into the next state. */
 function homeReducer(state: HomeState, action: HomeAction): HomeState {
   switch (action.type) {
     case "fetch_start":
@@ -133,6 +134,7 @@ function homeReducer(state: HomeState, action: HomeAction): HomeState {
   }
 }
 
+/** Reduces the "near you" city-filtered product fetch into the next state. */
 function nearbyReducer(state: NearbyState, action: NearbyAction): NearbyState {
   switch (action.type) {
     case "fetch_start":
@@ -148,6 +150,7 @@ function nearbyReducer(state: NearbyState, action: NearbyAction): NearbyState {
   }
 }
 
+/** Returns the display label for a category, or a humanized fallback. */
 function categoryLabel(category: string): string {
   if (CATEGORY_LABELS[category]) return CATEGORY_LABELS[category];
 
@@ -159,15 +162,18 @@ function categoryLabel(category: string): string {
     .replace(/^./, (letter) => letter.toUpperCase());
 }
 
+/** Deterministically maps a category to one of the pastel tone classes. */
 function categoryTone(category: string): string {
   const seed = Array.from(category).reduce((sum, char) => sum + char.charCodeAt(0), 0);
   return CATEGORY_TONE_CLASSES[seed % CATEGORY_TONE_CLASSES.length] ?? "bg-primary-light";
 }
 
+/** Formats an ISO date as a Spanish "day month" string. */
 function fmtDate(value: string): string {
   return new Date(value).toLocaleDateString("es-ES", { day: "numeric", month: "long" });
 }
 
+/** Returns the distinct, sorted cities from the user's saved addresses. */
 function uniqueAddressCities(addresses: AddressResponse[]): string[] {
   return Array.from(
     new Set(
@@ -179,11 +185,13 @@ function uniqueAddressCities(addresses: AddressResponse[]): string[] {
   ).sort((a, b) => a.localeCompare(b));
 }
 
+/** Builds a GET /api/items URL from a set of query params. */
 function buildItemsUrl(params: Record<string, string>): string {
   const searchParams = new URLSearchParams(params);
   return `/api/items?${searchParams.toString()}`;
 }
 
+/** Unwraps the standard API envelope, throwing fallback on any failure. */
 async function readApiData<T>(res: Response, fallback: string): Promise<T> {
   const json = (await res.json()) as ApiResponse<T>;
   if (!res.ok || !json.success || !json.data) {
@@ -192,6 +200,7 @@ async function readApiData<T>(res: Response, fallback: string): Promise<T> {
   return json.data;
 }
 
+/** Fetches the most recent listings for the home feed. */
 async function fetchProducts(signal: AbortSignal): Promise<SearchItemsResponse> {
   const res = await fetch(buildItemsUrl({ page: "1", limit: String(HOME_PAGE_SIZE), sort: "recent" }), {
     credentials: "include",
@@ -200,6 +209,7 @@ async function fetchProducts(signal: AbortSignal): Promise<SearchItemsResponse> 
   return readApiData<SearchItemsResponse>(res, "Error al cargar los productos");
 }
 
+/** Fetches recent listings filtered to a given city ("near you" section). */
 async function fetchProductsByCity(city: string, signal: AbortSignal): Promise<SearchItemsResponse> {
   const res = await fetch(buildItemsUrl({ page: "1", limit: String(HOME_PAGE_SIZE), sort: "recent", city }), {
     credentials: "include",
@@ -208,26 +218,31 @@ async function fetchProductsByCity(city: string, signal: AbortSignal): Promise<S
   return readApiData<SearchItemsResponse>(res, "Error al cargar los productos cercanos");
 }
 
+/** Fetches the current user's favorite items. */
 async function fetchFavorites(signal: AbortSignal): Promise<FavoritesResponse> {
   const res = await fetch("/api/favorites", { credentials: "include", signal });
   return readApiData<FavoritesResponse>(res, "Error al cargar favoritos");
 }
 
+/** Fetches the current user's saved addresses (for the city selector). */
 async function fetchAddresses(signal: AbortSignal): Promise<AddressResponse[]> {
   const res = await fetch("/api/addresses", { credentials: "include", signal });
   return readApiData<AddressResponse[]>(res, "Error al cargar direcciones");
 }
 
+/** Fetches the current user's bookings (to surface an active rental banner). */
 async function fetchBookings(signal: AbortSignal): Promise<BookingListResponse> {
   const res = await fetch("/api/bookings/mine", { credentials: "include", signal });
   return readApiData<BookingListResponse>(res, "Error al cargar reservas");
 }
 
+/** Fetches the rating summary for a product owner. */
 async function fetchReviewSummary(ownerId: string, signal: AbortSignal): Promise<ReviewSummary> {
   const res = await fetch(`/api/reviews/summary/${ownerId}`, { credentials: "include", signal });
   return readApiData<ReviewSummary>(res, "Error al cargar valoraciones");
 }
 
+/** Horizontally scrolls the category carousel one step in the given direction. */
 function scrollCategories(direction: "prev" | "next") {
   const container = document.getElementById("home-category-carousel");
   if (!container) return;
@@ -245,6 +260,7 @@ interface SectionHeaderProps {
   linkLabel?: string;
 }
 
+/** Section title with optional subtitle and a "see all" link. */
 function SectionHeader({ title, subtitle, to, linkLabel = "Ver todos" }: SectionHeaderProps) {
   return (
     <div className="mb-4 flex items-end justify-between gap-4">
@@ -274,6 +290,7 @@ interface HomeProductCardProps {
   badge?: string;
 }
 
+/** Product card used in the home feed, with availability badge, rating and favorite toggle. */
 function HomeProductCard({
   item,
   isFavorite,
@@ -341,7 +358,7 @@ function HomeProductCard({
           )}
         </div>
         <div className="mt-5 flex items-center justify-between gap-3">
-          <p className="text-primary text-[17px] font-bold">{Math.round(item.price_per_day)} EUR/dia</p>
+          <p className="text-primary text-[17px] font-bold">{Math.round(item.price_per_day)} EUR/día</p>
           {!isAvailable && (
             <span className="text-card-loc rounded-lg bg-[#f3f4f6] px-3 py-2 font-medium text-[#9ca3af]">
               No disponible
@@ -353,6 +370,7 @@ function HomeProductCard({
   );
 }
 
+/** Placeholder cards shown while a product section is loading. */
 function ProductSkeletonGrid() {
   return (
     <>
@@ -387,6 +405,7 @@ interface ProductSectionProps {
   badge?: string;
 }
 
+/** A titled grid of product cards with loading and empty states. */
 function ProductSection({
   title,
   subtitle,
@@ -448,6 +467,7 @@ interface NearbyProductsSectionProps {
   onCityChange: (city: string) => void;
 }
 
+/** "Near you" section with a city selector and the matching product grid. */
 function NearbyProductsSection({
   cities,
   selectedCity,
@@ -495,7 +515,7 @@ function NearbyProductsSection({
               to={searchUrl}
               className="text-primary inline-flex items-center gap-1 text-[14px] font-medium"
             >
-              Ver mas
+              Ver más
               <ArrowRight size={14} />
             </Link>
           )}
@@ -543,6 +563,7 @@ interface SearchHeroProps {
   categories: Array<{ value: string; label: string }>;
 }
 
+/** Greeting hero with a search box and quick category chips. */
 function SearchHero({ firstName, categories }: SearchHeroProps) {
   const navigate = useNavigate();
   const [query, setQuery] = useState("");
@@ -557,9 +578,9 @@ function SearchHero({ firstName, categories }: SearchHeroProps) {
   return (
     <section className="bg-section-alt border-border-main border-b">
       <div className="mx-auto flex min-h-72 max-w-340 flex-col items-center justify-center px-6 py-10 md:px-10">
-        <p className="text-subtle w-full max-w-190 text-left text-[15px]">Buenos dias, {firstName}</p>
+        <p className="text-subtle w-full max-w-190 text-left text-[15px]">Buenos días, {firstName}</p>
         <h1 className="text-ink mt-2 w-full max-w-190 text-left text-4xl leading-tight font-bold">
-          ¿Que necesitas hoy?
+          ¿Qué necesitas hoy?
         </h1>
         <form
           className="border-border-main mt-6 flex h-14 w-full max-w-190 items-center rounded-xl border bg-white p-1.5 text-left shadow-[0_1px_0_rgba(15,110,86,0.04)]"
@@ -607,6 +628,7 @@ interface ActiveBookingBannerProps {
   booking?: BookingDetailResponse;
 }
 
+/** Banner highlighting an in-progress (accepted) booking, if any. */
 function ActiveBookingBanner({ booking }: ActiveBookingBannerProps) {
   if (!booking) return null;
 
@@ -638,19 +660,20 @@ interface CategoryGridProps {
   categories: Array<{ value: string; label: string; count: number }>;
 }
 
+/** Horizontally scrollable carousel of category cards with counts. */
 function CategoryGrid({ categories }: CategoryGridProps) {
   if (categories.length === 0) return null;
 
   return (
     <section className="mt-12">
       <div className="mb-4 flex items-center justify-between gap-4">
-        <h2 className="text-section-hd text-ink font-semibold">Explorar por categoria</h2>
+        <h2 className="text-section-hd text-ink font-semibold">Explorar por categoría</h2>
         <div className="flex items-center gap-2">
           <button
             type="button"
             className="btn-secondary btn--sm w-9 p-0"
             onClick={() => scrollCategories("prev")}
-            aria-label="Categorias anteriores"
+            aria-label="Categorías anteriores"
           >
             <ArrowLeft size={15} />
           </button>
@@ -658,7 +681,7 @@ function CategoryGrid({ categories }: CategoryGridProps) {
             type="button"
             className="btn-secondary btn--sm w-9 p-0"
             onClick={() => scrollCategories("next")}
-            aria-label="Categorias siguientes"
+            aria-label="Categorías siguientes"
           >
             <ArrowRight size={15} />
           </button>
@@ -838,12 +861,12 @@ function Home() {
         <CategoryGrid categories={categoryPreview} />
 
         <ProductSection
-          title="Recien añadidos"
-          subtitle="Ultimos productos añadidos"
+          title="Recién añadidos"
+          subtitle="Últimos productos añadidos"
           items={recentItems}
           loading={state.loading}
           to="/search?sort=recent"
-          emptyText="Todavia no hay productos publicados."
+          emptyText="Todavía no hay productos publicados."
           isFavorite={isFav}
           toggleFavorite={toggle}
           reviewSummaries={reviewSummaries}

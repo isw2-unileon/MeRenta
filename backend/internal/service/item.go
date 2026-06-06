@@ -48,6 +48,8 @@ type itemQuerier interface {
 	CountItemCardsByCondition(ctx context.Context, arg sqlcdb.CountItemCardsByConditionParams) ([]sqlcdb.CountItemCardsByConditionRow, error)
 }
 
+// updateItemValues holds the parsed and validated database column values for an
+// item update, derived from a model.UpdateItemRequest.
 type updateItemValues struct {
 	addressID   uuid.UUID
 	pricePerDay pgtype.Numeric
@@ -184,6 +186,8 @@ func (s *ItemService) DeleteItem(ctx context.Context, ownerID uuid.UUID, itemID 
 	return nil
 }
 
+// prepareUpdateItemValues validates an update request and converts its fields
+// into the database column types used by UpdateItemForOwner.
 func prepareUpdateItemValues(req model.UpdateItemRequest) (updateItemValues, error) {
 	if !isValidCategory(req.Category) {
 		return updateItemValues{}, ErrInvalidCategory
@@ -236,6 +240,9 @@ func prepareUpdateItemValues(req model.UpdateItemRequest) (updateItemValues, err
 	}, nil
 }
 
+// mapUpdateItemError translates a raw update error into a domain sentinel:
+// ErrItemNotFound/ErrForbidden for a missing row, ErrAddressNotFound for an FK
+// violation, or ErrInvalidCategory for an invalid enum value.
 func (s *ItemService) mapUpdateItemError(ctx context.Context, itemID uuid.UUID, err error) error {
 	if errors.Is(err, pgx.ErrNoRows) {
 		exists, existsErr := s.q.ExistsItemByID(ctx, itemID)
@@ -486,6 +493,7 @@ func isValidCategory(c string) bool {
 	}
 }
 
+// isValidCondition checks whether c is one of the allowed item-condition values.
 func isValidCondition(c string) bool {
 	switch sqlcdb.ItemCondition(c) {
 	case sqlcdb.ItemConditionNew,
@@ -499,6 +507,8 @@ func isValidCondition(c string) bool {
 	}
 }
 
+// isValidEditableStatus reports whether status is one a user may set when
+// editing an item (available or withdrawn).
 func isValidEditableStatus(status string) bool {
 	switch status {
 	case string(sqlcdb.ItemStatusAvailable), "withdrawn":
@@ -523,6 +533,8 @@ func optionalFloat64ToNumeric(v *float64) (pgtype.Numeric, error) {
 	return float64ToNumeric(*v)
 }
 
+// optionalIntToInt4 returns an invalid (NULL) Int4 when v is nil, otherwise the
+// narrowed int32 value.
 func optionalIntToInt4(v *int) (pgtype.Int4, error) {
 	if v == nil {
 		return pgtype.Int4{}, nil
@@ -535,6 +547,7 @@ func optionalIntToInt4(v *int) (pgtype.Int4, error) {
 	return pgtype.Int4{Int32: value, Valid: true}, nil
 }
 
+// intToInt32 narrows an int to int32, returning an error if it would overflow.
 func intToInt32(value int) (int32, error) {
 	const minInt32 = -2147483648
 	const maxInt32 = 2147483647
@@ -566,6 +579,9 @@ func isInvalidTextRepresentation(err error) bool {
 	return errors.As(err, &pgErr) && pgErr.Code == "22P02"
 }
 
+// isUndefinedTableNamed reports whether err is a PostgreSQL undefined-table
+// error (42P01) referencing the given table name. Used to fall back gracefully
+// when an optional table (e.g. item_image) has not been migrated yet.
 func isUndefinedTableNamed(err error, tableName string) bool {
 	var pgErr *pgconn.PgError
 	return errors.As(err, &pgErr) && pgErr.Code == "42P01" && strings.Contains(pgErr.Message, tableName)

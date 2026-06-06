@@ -2,7 +2,7 @@
 
 ## Status
 
-Accepted
+Superseded by [ADR-007: Use of PostgreSQL without PostGIS](007-postgresql-without-postgis.md)  due to changes in product scope and removal of location-based features from the roadmap.
 
 ## Date
 

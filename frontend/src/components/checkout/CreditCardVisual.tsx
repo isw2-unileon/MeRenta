@@ -19,13 +19,10 @@ function CreditCardVisual({ holderName }: CreditCardVisualProps) {
       className="credit-card-visual"
       aria-hidden="true"
     >
-      {/* Chip */}
       <div className="credit-card-chip mb-3" />
 
-      {/* Number placeholder */}
       <p className="credit-card-number mb-3">•••• •••• •••• ••••</p>
 
-      {/* Bottom row: name + expiry */}
       <div className="flex items-end justify-between">
         <p className="credit-card-holder">{displayName}</p>
         <p className="credit-card-expiry">__/__</p>

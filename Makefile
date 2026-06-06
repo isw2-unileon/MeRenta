@@ -1,11 +1,12 @@
 GOPATH := $(shell go env GOPATH)
 BACKEND_BIN := backend/bin/server
+BACKEND_COVERAGE := tmp/backend-coverage.out
 
 .PHONY: install install-backend install-frontend install-e2e clean \
         run-backend run-frontend run \
         build-backend build-frontend build \
         run-backend-prod run-frontend-prod \
-        test test-backend test-frontend test-coverage \
+        test test-backend test-backend-race test-frontend test-integration-docker test-coverage \
         lint lint-backend lint-frontend doctor \
         e2e \
         fmt fmt-backend fmt-frontend \
@@ -104,17 +105,44 @@ run-frontend-prod: build-frontend
 # ============================================================================
 
 ## Run backend tests
+# The recipe tolerates a Windows-only flake: after tests pass, Go deletes each
+# package's *.test.exe, and Windows Defender often still holds a transient lock,
+# making `go test` exit non-zero with "unlinkat ... being used by another
+# process". We decide pass/fail from the test output (FAIL / build error /
+# panic), so genuine failures still abort while the cleanup race is ignored.
 test-backend:
-	go test -v -race -count=1 ./backend/...
+	@log=$$(mktemp); \
+	go test -v -count=1 ./backend/... 2>&1 | tee $$log; \
+	if grep -qE "^(FAIL|--- FAIL|# |panic:)" $$log || ! grep -q "^ok " $$log; then rm -f $$log; exit 1; fi; \
+	rm -f $$log
+
+## Run backend tests with the race detector (requires gcc/MinGW in PATH on Windows)
+test-backend-race:
+	CGO_ENABLED=1 go test -v -race -count=1 ./backend/...
 
 ## Run frontend tests
 test-frontend:
 	cd frontend && npm run test
 
+## Recreate a local Docker PostgreSQL test DB and run backend integration tests
+test-integration-docker:
+	powershell -NoProfile -ExecutionPolicy Bypass -File backend/test/integration/run_docker_integration.ps1
+
+test-frontend-coverage:
+	cd frontend && npm run test:coverage
+
 ## Run backend tests with coverage
-test-coverage:
-	go test -v -race -count=1 -coverprofile=coverage.out -covermode=atomic ./backend/...
-	go tool cover -func=coverage.out
+# See test-backend for why the exit status is derived from the output instead of
+# go test's own code (Windows Defender temp-cleanup race).
+test-backend-coverage:
+	mkdir -p $(dir $(BACKEND_COVERAGE))
+	@log=$$(mktemp); \
+	go test -v -count=1 -coverprofile=$(BACKEND_COVERAGE) -covermode=atomic ./backend/... 2>&1 | tee $$log; \
+	if grep -qE "^(FAIL|--- FAIL|# |panic:)" $$log || ! grep -q "^ok " $$log; then rm -f $$log; exit 1; fi; \
+	rm -f $$log
+	go tool cover -func=$(BACKEND_COVERAGE)
+
+test-coverage: test-frontend-coverage test-backend-coverage
 
 ## Run all tests
 test: test-backend test-frontend

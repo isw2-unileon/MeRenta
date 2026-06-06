@@ -86,6 +86,8 @@ func (h *ChatHandler) StartConversation(c *gin.Context) {
 	response.OK(c, http.StatusCreated, res)
 }
 
+// handleConversationErr maps a StartConversation error to the appropriate HTTP
+// response (404 for a missing item, 400 for forbidden/self-message, else 500).
 func (h *ChatHandler) handleConversationErr(c *gin.Context, err error) {
 	switch {
 	case errors.Is(err, service.ErrItemNotFound):

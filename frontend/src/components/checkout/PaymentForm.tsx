@@ -39,6 +39,7 @@ interface PaymentFormProps {
   onError: (code: string, message: string) => void;
 }
 
+/** Local UI state for the payment form. */
 interface PaymentFormState {
   holderName: string;
   termsAccepted: boolean;
@@ -47,6 +48,7 @@ interface PaymentFormState {
   cardBrand: string;
 }
 
+/** Reducer actions for the payment form fields and submission state. */
 type PaymentFormAction =
   | { type: "holderName:set"; value: string }
   | { type: "terms:set"; value: boolean }
@@ -54,6 +56,7 @@ type PaymentFormAction =
   | { type: "fieldError:set"; value: string }
   | { type: "cardNumber:change"; brand: string; errorMessage?: string };
 
+/** Initial payment form state. */
 const initialPaymentFormState: PaymentFormState = {
   holderName: "",
   termsAccepted: false,
@@ -62,6 +65,7 @@ const initialPaymentFormState: PaymentFormState = {
   cardBrand: "unknown",
 };
 
+/** Reduces payment form actions into the next state. */
 function paymentFormReducer(state: PaymentFormState, action: PaymentFormAction): PaymentFormState {
   switch (action.type) {
     case "holderName:set":
@@ -170,15 +174,13 @@ function PaymentForm({ totalEUR, clientSecret, onSuccess, onError }: PaymentForm
       onSubmit={handleSubmit}
       noValidate
     >
-      {/* ── Panel header ── */}
       <div className="mb-5 flex items-center justify-between">
         <h2 className="heading-panel">Datos de pago</h2>
         <span className="badge-stripe">Powered by Stripe</span>
       </div>
 
-      <p className="checkout-ssl mb-5">🔒 Conexion segura SSL. MeRenta nunca almacena los datos de tu tarjeta.</p>
+      <p className="checkout-ssl mb-5">🔒 Conexión segura SSL. MeRenta nunca almacena los datos de tu tarjeta.</p>
 
-      {/* ── Card visual + brand badges ── */}
       <div className="mb-5 flex items-center gap-4">
         <CreditCardVisual holderName={holderName} />
 
@@ -198,13 +200,12 @@ function PaymentForm({ totalEUR, clientSecret, onSuccess, onError }: PaymentForm
         </div>
       </div>
 
-      {/* ── Card number ── */}
       <div className="mb-4">
         <label
           htmlFor="stripe-card-number"
           className="checkout-label text-form mb-1.5 block text-[13px] font-medium"
         >
-          Numero de tarjeta
+          Número de tarjeta
         </label>
         <div
           className="bg-section-alt relative flex items-center rounded-md border border-(--color-border-input) px-4 focus-within:border-[1.5px] focus-within:border-(--color-checkout-focus)"
@@ -216,15 +217,13 @@ function PaymentForm({ totalEUR, clientSecret, onSuccess, onError }: PaymentForm
             options={{ style: STRIPE_ELEMENT_STYLE, showIcon: false }}
             onChange={handleCardNumberChange}
           />
-          {/* Brand badge */}
           <span className="card-brand-badge ml-2 shrink-0">{brandLabel}</span>
         </div>
         <p className="checkout-hint mt-1">
-          Este campo es gestionado por Stripe Elements y se inyecta en tiempo de ejecucion
+          Este campo es gestionado por Stripe Elements y se inyecta en tiempo de ejecución
         </p>
       </div>
 
-      {/* ── Expiry + CVC ── */}
       <div className="mb-4 flex gap-4">
         <div className="flex-1">
           <label
@@ -272,10 +271,9 @@ function PaymentForm({ totalEUR, clientSecret, onSuccess, onError }: PaymentForm
         </div>
       </div>
       <p className="checkout-hint -mt-3 mb-4">
-        Campos gestionados por Stripe Elements, inyectados en tiempo de ejecucion
+        Campos gestionados por Stripe Elements, inyectados en tiempo de ejecución
       </p>
 
-      {/* ── Holder name ── */}
       <div className="mb-5">
         <label
           htmlFor="card-holder-name"
@@ -295,7 +293,6 @@ function PaymentForm({ totalEUR, clientSecret, onSuccess, onError }: PaymentForm
         />
       </div>
 
-      {/* ── Terms checkbox ── */}
       <div className="mb-5 flex items-start gap-3">
         <input
           id="terms-checkout"
@@ -308,14 +305,12 @@ function PaymentForm({ totalEUR, clientSecret, onSuccess, onError }: PaymentForm
           htmlFor="terms-checkout"
           className="checkout-terms cursor-pointer"
         >
-          Acepto los terminos del alquiler, la politica de cancelacion y el seguro obligatorio
+          Acepto los términos del alquiler, la política de cancelación y el seguro obligatorio
         </label>
       </div>
 
-      {/* ── Inline validation error ── */}
       {fieldError && <p className="field-error mb-4">{fieldError}</p>}
 
-      {/* ── Pay button ── */}
       <button
         type="submit"
         className={`btn-pay${loading ? "loading" : ""}`}

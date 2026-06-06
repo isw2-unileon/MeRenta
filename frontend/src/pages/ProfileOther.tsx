@@ -53,12 +53,12 @@ const categoryLabels: Record<string, string> = {
   photography: "Fotografía",
   camping: "Camping",
   tools: "Herramientas",
-  electronics: "Electronica",
+  electronics: "Electrónica",
   home: "Hogar",
   gardening: "Jardinería",
   vehicles: "Vehículos",
   clothing: "Ropa",
-  music: "Musica",
+  music: "Música",
   leisure: "Ocio",
   other: "Otros",
 };
@@ -80,6 +80,7 @@ const initialProfileState: PublicProfileState = {
   error: "",
 };
 
+/** Reduces public-profile fetch lifecycle actions. */
 function profileReducer(state: PublicProfileState, action: PublicProfileAction): PublicProfileState {
   switch (action.type) {
     case "fetch_start":
@@ -98,7 +99,7 @@ type ReceivedReviewsResponse = ReceivedReviewsResponseBase<ReceivedReview>;
 type UserIncidentType = "not_delivered" | "late_return" | "other";
 
 const userIncidentOptions: { value: UserIncidentType; label: string }[] = [
-  { value: "not_delivered", label: "No entrego el articulo" },
+  { value: "not_delivered", label: "No entrego el artículo" },
   { value: "late_return", label: "Devolución tardía" },
   { value: "other", label: "Otra incidencia" },
 ];
@@ -124,6 +125,7 @@ const initialReviewsState: ReviewsState = {
   error: "",
 };
 
+/** Reduces received-reviews fetch lifecycle actions. */
 function reviewsReducer(state: ReviewsState, action: ReviewsAction): ReviewsState {
   switch (action.type) {
     case "fetch_start":
@@ -149,6 +151,7 @@ function reviewsReducer(state: ReviewsState, action: ReviewsAction): ReviewsStat
   }
 }
 
+/** Fetches a customer's public profile. */
 async function fetchPublicProfile(id: string, signal: AbortSignal): Promise<CustomerProfile> {
   const res = await fetch(`/api/customers/${id}/profile`, {
     credentials: "include",
@@ -161,6 +164,7 @@ async function fetchPublicProfile(id: string, signal: AbortSignal): Promise<Cust
   return json.data;
 }
 
+/** Fetches the listings published by a given owner. */
 async function fetchOwnerProducts(ownerId: string, signal: AbortSignal): Promise<SearchItemsResponse> {
   const res = await fetch(`/api/customers/${ownerId}/items?limit=48`, {
     credentials: "include",
@@ -173,6 +177,7 @@ async function fetchOwnerProducts(ownerId: string, signal: AbortSignal): Promise
   return json.data;
 }
 
+/** Fetches the first page of reviews received by a customer. */
 async function fetchReceivedReviews(ownerId: string, signal: AbortSignal): Promise<ReceivedReviewsResponse> {
   const res = await fetch(`/api/reviews/received/${ownerId}?limit=4`, {
     credentials: "include",
@@ -185,6 +190,7 @@ async function fetchReceivedReviews(ownerId: string, signal: AbortSignal): Promi
   return json.data;
 }
 
+/** Submits a new review for another customer. */
 async function createReview(reviewedId: string, rating: number, comment: string): Promise<ReceivedReview> {
   const res = await fetch("/api/reviews", {
     method: "POST",
@@ -205,6 +211,7 @@ async function createReview(reviewedId: string, rating: number, comment: string)
   return json.data;
 }
 
+/** Opens (or returns) a conversation about an item and returns its ID. */
 async function openConversation(itemId: string): Promise<string> {
   const res = await fetch("/api/conversations", {
     method: "POST",
@@ -221,6 +228,7 @@ async function openConversation(itemId: string): Promise<string> {
   return json.data.conversation_id;
 }
 
+/** Files an incident report against another customer. */
 async function createUserReport(profileId: string, type: UserIncidentType, description: string): Promise<void> {
   const res = await fetch(`/api/customers/${profileId}/reports`, {
     method: "POST",
@@ -239,16 +247,19 @@ async function createUserReport(profileId: string, type: UserIncidentType, descr
   }
 }
 
+/** Formats a "Miembro desde …" label, with a graceful fallback. */
 function formatCompactMemberSince(date?: string) {
   const formatted = formatMemberSince(date);
   return formatted ? `Miembro desde ${formatted}` : "Miembro desde fecha no disponible";
 }
 
+/** Returns part as a whole-number percentage of total (0 when total is 0). */
 function percent(part: number, total: number) {
   if (total === 0) return 0;
   return Math.round((part / total) * 100);
 }
 
+/** Product card shown in the public profile's listings grid. */
 function ProductCard({ product, ownerRating }: { product: SearchItemResponse; ownerRating: number }) {
   const navigate = useNavigate();
   const tone = productTones[product.category] ?? productTones.other;
@@ -302,7 +313,7 @@ function ProductCard({ product, ownerRating }: { product: SearchItemResponse; ow
         </div>
 
         <div className="mt-2 flex items-center justify-between gap-3">
-          <p className="text-primary text-[15px] font-bold">{Math.round(product.price_per_day)} EUR/dia</p>
+          <p className="text-primary text-[15px] font-bold">{Math.round(product.price_per_day)} EUR/día</p>
           <button
             type="button"
             className="btn-primary btn--sm"
@@ -317,6 +328,7 @@ function ProductCard({ product, ownerRating }: { product: SearchItemResponse; ow
   );
 }
 
+/** Average rating plus a per-star distribution breakdown. */
 function RatingSummary({ summary }: { summary: ReviewSummary }) {
   const total = summary.total;
 
@@ -359,6 +371,7 @@ function RatingSummary({ summary }: { summary: ReviewSummary }) {
   );
 }
 
+/** A single received-review card with reviewer, rating and comment. */
 function ReviewCard({ review }: { review: ReceivedReview }) {
   return (
     <article className="review-card p-5">
@@ -400,6 +413,7 @@ interface ReviewFormProps {
   onSubmit: (event: FormEvent<HTMLFormElement>) => void;
 }
 
+/** Form for rating and commenting on the profile owner. */
 function ReviewForm({
   profileName,
   rating,
@@ -418,14 +432,14 @@ function ReviewForm({
     >
       <div className="flex flex-col gap-4 md:flex-row md:items-start md:justify-between">
         <div>
-          <p className="profile-about-heading">Escribe una valoracion</p>
-          <p className="profile-products-sub mt-1">Puntua tu experiencia con {profileName || "este usuario"}.</p>
+          <p className="profile-about-heading">Escribe una valoración</p>
+          <p className="profile-products-sub mt-1">Puntúa tu experiencia con {profileName || "este usuario"}.</p>
         </div>
 
         <div
           className="flex items-center gap-1"
           role="radiogroup"
-          aria-label="Puntuacion"
+          aria-label="Puntuación"
         >
           {[1, 2, 3, 4, 5].map((value) => (
             <button
@@ -505,6 +519,7 @@ const initialReviewDraftState: ReviewDraftState = {
   submitting: false,
 };
 
+/** Reduces the in-progress review draft (rating, comment, submit state). */
 function reviewDraftReducer(state: ReviewDraftState, action: ReviewDraftAction): ReviewDraftState {
   switch (action.type) {
     case "set_rating":
@@ -532,6 +547,7 @@ type MessageFlowAction = { type: "open_start" } | { type: "open_error"; error: s
 
 const initialMessageFlowState: MessageFlowState = { error: "", opening: false };
 
+/** Reduces the "open conversation" flow state (opening / error). */
 function messageFlowReducer(_state: MessageFlowState, action: MessageFlowAction): MessageFlowState {
   switch (action.type) {
     case "open_start":
@@ -543,6 +559,7 @@ function messageFlowReducer(_state: MessageFlowState, action: MessageFlowAction)
   }
 }
 
+/** Modal for reporting another user (type + description). */
 function UserReportModal({
   profileId,
   profileName,
@@ -622,7 +639,7 @@ function UserReportModal({
           </div>
 
           <label className="block">
-            <span className="text-ink text-[13px] font-semibold">Descripcion</span>
+            <span className="text-ink text-[13px] font-semibold">Descripción</span>
             <textarea
               className="border-border-input text-body-color focus:border-primary mt-2 min-h-32 w-full resize-none rounded-lg border bg-white px-3 py-2 text-[14px] outline-none"
               value={description}
@@ -685,6 +702,7 @@ interface ProfileActionProps {
 }
 
 // ── Profile hero ──────────────────────────────────────────────────
+/** Top banner with avatar, name, rating and primary actions. */
 function ProfileHero({
   data,
   profileLoading,
@@ -765,6 +783,7 @@ interface StatItem {
   rating?: boolean;
 }
 
+/** Horizontal strip of profile KPI stats. */
 function ProfileStatsStrip({ stats }: { stats: StatItem[] }) {
   return (
     <section className="profile-stats-strip h-auto py-5">
@@ -793,6 +812,7 @@ function ProfileStatsStrip({ stats }: { stats: StatItem[] }) {
 }
 
 // ── Sidebar card ──────────────────────────────────────────────────
+/** Sticky sidebar summarizing the profile with contact/report actions. */
 function ProfileSidebar({
   data,
   openingMessage,
@@ -889,6 +909,7 @@ interface ProfileProductsSectionProps {
   onCategoryChange: (category: string) => void;
 }
 
+/** Section listing the profile owner's products with category filters. */
 function ProfileProductsSection({
   firstName,
   loading,
@@ -901,7 +922,7 @@ function ProfileProductsSection({
 }: ProfileProductsSectionProps) {
   return (
     <section className="mt-22">
-      <h2 className="heading-panel--sm">Articulos de {firstName ?? "este usuario"} en alquiler</h2>
+      <h2 className="heading-panel--sm">Artículos de {firstName ?? "este usuario"} en alquiler</h2>
       <p className="profile-products-sub mt-1">
         {loading
           ? "Cargando productos..."
@@ -933,7 +954,7 @@ function ProfileProductsSection({
 
       {!loading && visibleProducts.length === 0 && !error && (
         <div className="profile-info-panel mt-4 flex min-h-36 items-center justify-center p-6 text-center">
-          <p className="text-subtle">Este usuario no tiene productos publicados en esta categoria.</p>
+          <p className="text-subtle">Este usuario no tiene productos publicados en esta categoría.</p>
         </div>
       )}
 
@@ -974,6 +995,7 @@ interface ProfileReviewsSectionProps {
   onSubmit: (event: FormEvent<HTMLFormElement>) => void;
 }
 
+/** Section with the rating summary, review list and (optional) review form. */
 function ProfileReviewsSection({
   isOwnProfile,
   hasProfile,
@@ -1020,7 +1042,7 @@ function ProfileReviewsSection({
 
       {!loading && total === 0 && !error && (
         <div className="profile-info-panel mt-4 flex min-h-36 items-center justify-center p-6 text-center">
-          <p className="text-subtle">Este usuario todavia no ha recibido valoraciones.</p>
+          <p className="text-subtle">Este usuario todavía no ha recibido valoraciones.</p>
         </div>
       )}
 

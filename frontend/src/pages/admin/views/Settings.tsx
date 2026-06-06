@@ -12,6 +12,7 @@ interface PlatformConfig {
   allow_new_registrations: boolean;
   service_fee_eur: number;
   insurance_daily_rate_eur: number;
+  insurance_daily_rates_by_category?: Record<string, number>;
   booking_expiry_days: number;
   updated_at?: string;
   updated_by_email?: string;
@@ -20,6 +21,21 @@ interface PlatformConfig {
 // ── Constants ─────────────────────────────────────────────────────────────────
 
 const LIMIT = 20;
+
+const CATEGORY_LABELS: Record<string, string> = {
+  vehicles: "Vehículos",
+  electronics: "Electrónica",
+  photography: "Fotografía",
+  music: "Música",
+  sports: "Deportes",
+  camping: "Camping",
+  tools: "Herramientas",
+  gardening: "Jardinería",
+  leisure: "Ocio",
+  home: "Hogar",
+  clothing: "Ropa",
+  other: "Otros",
+};
 
 const ACTION_OPTIONS: { value: string; label: string }[] = [
   { value: "", label: "Todas" },
@@ -62,6 +78,7 @@ type AuditAction =
 
 const auditInitial: AuditState = { entries: [], total: 0, loading: true, error: null };
 
+/** Reduces audit-log fetch lifecycle actions. */
 function auditReducer(state: AuditState, action: AuditAction): AuditState {
   switch (action.type) {
     case "fetch_start":
@@ -93,6 +110,7 @@ type ConfigAction =
 
 const configInitial: ConfigState = { config: null, loading: true, saving: false, error: null };
 
+/** Reduces platform-config fetch/save actions, including optimistic updates. */
 function configReducer(state: ConfigState, action: ConfigAction): ConfigState {
   switch (action.type) {
     case "fetch_start":
@@ -114,6 +132,7 @@ function configReducer(state: ConfigState, action: ConfigAction): ConfigState {
 
 // ── API ───────────────────────────────────────────────────────────────────────
 
+/** Fetches a page of audit-log entries, optionally filtered by action. */
 async function fetchAuditLog(action: string, page: number): Promise<AuditLogListResponse> {
   const params = new URLSearchParams({ page: String(page), limit: String(LIMIT) });
   if (action) params.set("action", action);
@@ -123,6 +142,7 @@ async function fetchAuditLog(action: string, page: number): Promise<AuditLogList
   return json.data;
 }
 
+/** Fetches the current platform configuration. */
 async function fetchConfig(): Promise<PlatformConfig> {
   const res = await fetch("/api/admin/config", { credentials: "include" });
   const json = (await res.json()) as ApiResponse<PlatformConfig>;
@@ -130,6 +150,7 @@ async function fetchConfig(): Promise<PlatformConfig> {
   return json.data;
 }
 
+/** Updates the "allow new registrations" flag and returns the saved config. */
 async function patchConfig(allowNewRegistrations: boolean): Promise<PlatformConfig> {
   const res = await fetch("/api/admin/config", {
     method: "PATCH",
@@ -144,6 +165,7 @@ async function patchConfig(allowNewRegistrations: boolean): Promise<PlatformConf
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
 
+/** Formats an ISO timestamp as a short Spanish date + time. */
 function fmtDateTime(iso: string): string {
   if (!iso) return "-";
   return new Date(iso).toLocaleString("es-ES", {
@@ -155,16 +177,19 @@ function fmtDateTime(iso: string): string {
   });
 }
 
+/** Returns the display label for an audit action, or the raw value. */
 function actionLabel(action: string): string {
   return ACTION_LABELS[action] ?? action;
 }
 
+/** Maps an audit value (status) to its badge color. */
 function badgeColor(value: string): "green" | "gray" | "amber" | "red" | "blue" {
   return VALUE_COLORS[value] ?? "gray";
 }
 
 // ── Sub-components ────────────────────────────────────────────────────────────
 
+/** Icon representing the entity type (user, booking or other) of an audit entry. */
 function EntityIcon({ type }: { type: string }) {
   const cls = "shrink-0 text-neutral-400";
   if (type === "user") {
@@ -191,6 +216,7 @@ function EntityIcon({ type }: { type: string }) {
   );
 }
 
+/** Renders the old → new value transition for an audit entry. */
 function ChangeCell({ entry }: { entry: AuditEntry }) {
   return (
     <div className="flex flex-wrap items-center gap-2">
@@ -215,6 +241,7 @@ interface ToggleProps {
   ariaLabel: string;
 }
 
+/** Accessible on/off switch styled in brand green. */
 function Toggle({ checked, disabled = false, onChange, id, ariaLabel }: ToggleProps) {
   return (
     <button
@@ -239,11 +266,48 @@ function Toggle({ checked, disabled = false, onChange, id, ariaLabel }: TogglePr
 
 // ── Config row ────────────────────────────────────────────────────────────────
 
+/** A label/value row for a read-only configuration constant. */
 function ReadOnlyRow({ label, value }: { label: string; value: string }) {
   return (
     <div className="flex items-center justify-between py-3.5">
       <span className="text-sm text-neutral-600">{label}</span>
       <span className="rounded bg-neutral-100 px-2 py-1 font-mono text-sm text-neutral-700">{value}</span>
+    </div>
+  );
+}
+
+/**
+ * Read-only block showing the per-day insurance premium, which varies by
+ * product category. Displays the overall range plus a per-category breakdown.
+ */
+function InsuranceRatesRow({ rates, fallback }: { rates: Record<string, number>; fallback: number }) {
+  const entries = Object.entries(rates).sort((a, b) => b[1] - a[1]);
+  const values = entries.length > 0 ? entries.map(([, rate]) => rate) : [fallback];
+  const min = Math.min(...values);
+  const max = Math.max(...values);
+  const rangeLabel = min === max ? `${EUR.format(min)} / día` : `${EUR.format(min)} – ${EUR.format(max)} / día`;
+
+  return (
+    <div className="py-3.5">
+      <div className="flex items-center justify-between">
+        <span className="text-sm text-neutral-600">Seguro (por día de alquiler)</span>
+        <span className="rounded bg-neutral-100 px-2 py-1 font-mono text-sm text-neutral-700">{rangeLabel}</span>
+      </div>
+      <p className="mt-0.5 text-xs text-neutral-400">Varía según la categoría del producto.</p>
+
+      {entries.length > 0 && (
+        <div className="mt-3 grid grid-cols-2 gap-x-6 gap-y-2 sm:grid-cols-3">
+          {entries.map(([category, rate]) => (
+            <div
+              key={category}
+              className="flex items-center justify-between gap-2"
+            >
+              <span className="text-xs text-neutral-500">{CATEGORY_LABELS[category] ?? category}</span>
+              <span className="font-mono text-xs text-neutral-700">{EUR.format(rate)}</span>
+            </div>
+          ))}
+        </div>
+      )}
     </div>
   );
 }
@@ -257,6 +321,7 @@ interface ConfigPanelProps {
 
 const EUR = new Intl.NumberFormat("es-ES", { style: "currency", currency: "EUR", minimumFractionDigits: 2 });
 
+/** Platform configuration panel: registration toggle plus read-only pricing/booking constants. */
 function ConfigPanel({ state, onToggle }: ConfigPanelProps) {
   const { config, loading, saving, error } = state;
 
@@ -297,7 +362,6 @@ function ConfigPanel({ state, onToggle }: ConfigPanelProps) {
     <div className="space-y-4">
       {error && <p className="text-sm text-red-600">{error}</p>}
 
-      {/* ── Acceso a la plataforma ── */}
       <Card className="overflow-hidden">
         <div className="border-b border-neutral-100 px-5 py-4">
           <h2 className="text-sm font-semibold text-neutral-800">Acceso a la plataforma</h2>
@@ -345,7 +409,6 @@ function ConfigPanel({ state, onToggle }: ConfigPanelProps) {
         </div>
       </Card>
 
-      {/* ── Precios (solo lectura) ── */}
       <Card className="overflow-hidden">
         <div className="border-b border-neutral-100 px-5 py-4">
           <h2 className="text-sm font-semibold text-neutral-800">Precios y tarifas</h2>
@@ -358,14 +421,13 @@ function ConfigPanel({ state, onToggle }: ConfigPanelProps) {
             label="Cuota de servicio por reserva"
             value={EUR.format(config.service_fee_eur)}
           />
-          <ReadOnlyRow
-            label="Seguro (por día de alquiler)"
-            value={`${EUR.format(config.insurance_daily_rate_eur)} / día`}
+          <InsuranceRatesRow
+            rates={config.insurance_daily_rates_by_category ?? {}}
+            fallback={config.insurance_daily_rate_eur}
           />
         </div>
       </Card>
 
-      {/* ── Reservas (solo lectura) ── */}
       <Card className="overflow-hidden">
         <div className="border-b border-neutral-100 px-5 py-4">
           <h2 className="text-sm font-semibold text-neutral-800">Reservas</h2>
@@ -377,7 +439,7 @@ function ConfigPanel({ state, onToggle }: ConfigPanelProps) {
             value={`${config.booking_expiry_days} días sin pago`}
           />
           <ReadOnlyRow
-            label="Auto-completar alquileres pasados"
+            label="Autocompletar alquileres pasados"
             value={`${config.booking_expiry_days} días tras fin del periodo`}
           />
         </div>
@@ -395,6 +457,7 @@ interface AuditTableProps {
   onPage: (page: number) => void;
 }
 
+/** Paginated, filterable table of admin audit-log entries. */
 function AuditTable({ state, filters, onActionFilter, onPage }: AuditTableProps) {
   const { entries, total, loading, error } = state;
   const totalPages = Math.max(1, Math.ceil(total / LIMIT));
@@ -615,7 +678,6 @@ function SettingsView() {
 
   return (
     <div className="space-y-4">
-      {/* Tab bar */}
       <div className="flex w-fit gap-1 rounded-xl border border-neutral-200 bg-white p-1">
         {TABS.map(({ id, label }) => {
           const active = activeTab === id;
@@ -633,7 +695,6 @@ function SettingsView() {
         })}
       </div>
 
-      {/* Content */}
       {activeTab === "audit" && (
         <AuditTable
           state={auditState}

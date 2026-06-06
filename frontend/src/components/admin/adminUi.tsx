@@ -1,8 +1,10 @@
-import type { ReactNode } from "react";
+import { useCallback, useEffect, useEffectEvent, useLayoutEffect, useRef, useState, type ReactNode } from "react";
+import { createPortal } from "react-dom";
 
 import { GREEN, MINT, PASTELS } from "@/components/admin/adminTokens";
 
 // ── Types ─────────────────────────────────────────────────────────────────────
+/** Available color schemes for the admin Badge component. */
 type BadgeColor = "gray" | "green" | "amber" | "red" | "blue" | "purple";
 
 // ── Card ─────────────────────────────────────────────────────────────────────
@@ -230,6 +232,147 @@ function Pagination({ page, total, limit, onPage }: PaginationProps) {
   );
 }
 
+// ── Dropdown ──────────────────────────────────────────────────────────────────
+
+interface DropdownProps {
+  /** Accessible label for the trigger button. */
+  ariaLabel: string;
+  /** Trigger button content (e.g. an icon or a label). */
+  button: ReactNode;
+  /** Trigger button classes. Defaults to a subtle three-dot icon button. */
+  buttonClassName?: string;
+  /** Which trigger edge the panel aligns to. Defaults to "right". */
+  align?: "left" | "right";
+  /** Extra classes for the floating panel (e.g. min-width / padding). */
+  panelClassName?: string;
+  /** Called whenever the menu closes (useful to reset internal state). */
+  onClose?: () => void;
+  /** Panel content; receives a `close` callback to dismiss the menu. */
+  children: (close: () => void) => ReactNode;
+}
+
+/**
+ * Accessible dropdown menu whose panel is rendered in a portal with fixed
+ * positioning. Because it escapes the DOM flow it is never clipped by an
+ * ancestor `overflow-hidden` (e.g. a table card), and it flips above the
+ * trigger when there is not enough room below — so menus on the last rows of a
+ * table stay fully visible. Closes on outside click, Escape, and scroll-away.
+ */
+function Dropdown({
+  ariaLabel,
+  button,
+  buttonClassName = "rounded p-1 text-neutral-400 hover:text-neutral-700",
+  align = "right",
+  panelClassName = "min-w-36 py-1",
+  onClose,
+  children,
+}: DropdownProps) {
+  const [open, setOpen] = useState(false);
+  const triggerRef = useRef<HTMLButtonElement>(null);
+  const panelRef = useRef<HTMLDivElement>(null);
+  const [coords, setCoords] = useState<{ top: number; left: number } | null>(null);
+
+  const close = useCallback(() => {
+    setOpen(false);
+    onClose?.();
+  }, [onClose]);
+
+  // Effect Event wrapper so the document listeners below capture the latest
+  // `close` without `close` being a reactive dependency (avoids re-subscribing
+  // on every parent render).
+  const onDismiss = useEffectEvent(close);
+
+  // Reset position so the panel renders hidden until measured (no flash at the
+  // previous location when reopening).
+  const openMenu = useCallback(() => {
+    setCoords(null);
+    setOpen(true);
+  }, []);
+
+  const reposition = useCallback(() => {
+    const trigger = triggerRef.current;
+    const panel = panelRef.current;
+    if (!trigger || !panel) return;
+    const rect = trigger.getBoundingClientRect();
+    const { offsetHeight: h, offsetWidth: w } = panel;
+    const gap = 4;
+    const spaceBelow = window.innerHeight - rect.bottom;
+    const dropUp = spaceBelow < h + gap && rect.top > h + gap;
+    const top = dropUp ? rect.top - h - gap : rect.bottom + gap;
+    const rawLeft = align === "right" ? rect.right - w : rect.left;
+    const left = Math.min(Math.max(8, rawLeft), window.innerWidth - w - 8);
+    setCoords({ top, left });
+  }, [align]);
+
+  useLayoutEffect(() => {
+    if (!open) return;
+    reposition();
+    const onScroll = () => reposition();
+    window.addEventListener("scroll", onScroll, true);
+    window.addEventListener("resize", onScroll);
+    let observer: ResizeObserver | undefined;
+    if (panelRef.current && typeof ResizeObserver !== "undefined") {
+      observer = new ResizeObserver(() => reposition());
+      observer.observe(panelRef.current);
+    }
+    return () => {
+      window.removeEventListener("scroll", onScroll, true);
+      window.removeEventListener("resize", onScroll);
+      observer?.disconnect();
+    };
+  }, [open, reposition]);
+
+  useEffect(() => {
+    if (!open) return;
+    function onPointerDown(e: MouseEvent) {
+      const target = e.target as Node;
+      if (triggerRef.current?.contains(target) || panelRef.current?.contains(target)) return;
+      onDismiss();
+    }
+    function onKey(e: KeyboardEvent) {
+      if (e.key === "Escape") onDismiss();
+    }
+    document.addEventListener("mousedown", onPointerDown);
+    document.addEventListener("keydown", onKey);
+    return () => {
+      document.removeEventListener("mousedown", onPointerDown);
+      document.removeEventListener("keydown", onKey);
+    };
+  }, [open]);
+
+  return (
+    <>
+      <button
+        ref={triggerRef}
+        type="button"
+        className={buttonClassName}
+        aria-haspopup="menu"
+        aria-expanded={open}
+        aria-label={ariaLabel}
+        onClick={() => (open ? close() : openMenu())}
+      >
+        {button}
+      </button>
+      {open &&
+        createPortal(
+          <div
+            ref={panelRef}
+            role="menu"
+            className={`fixed z-50 rounded-lg border border-neutral-200 bg-white shadow-md ${panelClassName}`}
+            style={{
+              top: coords?.top ?? 0,
+              left: coords?.left ?? 0,
+              visibility: coords ? "visible" : "hidden",
+            }}
+          >
+            {children(close)}
+          </div>,
+          document.body
+        )}
+    </>
+  );
+}
+
 // ── TableSkeleton ─────────────────────────────────────────────────────────────
 
 interface TableSkeletonProps {
@@ -267,4 +410,4 @@ function TableSkeleton({ rows, cols }: TableSkeletonProps) {
   );
 }
 
-export { Card, Badge, Avatar, SectionTitle, ConfirmModal, FilterPills, Pagination, TableSkeleton };
+export { Card, Badge, Avatar, SectionTitle, ConfirmModal, Dropdown, FilterPills, Pagination, TableSkeleton };

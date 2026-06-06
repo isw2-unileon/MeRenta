@@ -9,10 +9,12 @@ const MAX_SIZE_MB = 5;
 const ALLOWED_TYPES = ["image/jpeg", "image/png", "image/webp"];
 const MIN_VISIBLE_SLOTS = 5;
 
+/** Opens the hidden file input referenced by ref. */
 function openFilePicker(ref: React.RefObject<HTMLInputElement | null>): void {
   ref.current?.click();
 }
 
+/** Prevents the browser's default behavior so a drop can be received. */
 function handleDragOver(e: DragEvent<HTMLButtonElement>): void {
   e.preventDefault();
 }
@@ -24,14 +26,15 @@ interface PhotosSectionProps {
   onRemovePhoto: (index: number) => void;
 }
 
-/**
- * Subcomponente para gestionar la vista previa de la imagen de forma eficiente
- * y evitar fugas de memoria al crear URL de objetos.
- */
+/** True when a photo is a freshly selected File (not an already-stored image). */
 function isFilePhoto(photo: ProductPhoto): photo is File {
   return photo instanceof File;
 }
 
+/**
+ * Renders a single photo thumbnail with a remove button. Builds an object URL
+ * for newly selected files and reuses the stored URL for existing images.
+ */
 function Thumbnail({ photo, index, onRemove }: { photo: ProductPhoto; index: number; onRemove: () => void }) {
   const previewUrl = useMemo(() => (isFilePhoto(photo) ? URL.createObjectURL(photo) : photo.image_url), [photo]);
 

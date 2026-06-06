@@ -5,13 +5,13 @@ import { Elements } from "@stripe/react-stripe-js";
 
 import { PaymentForm } from "@/components/checkout/PaymentForm";
 import { RentalSummary } from "@/components/checkout/RentalSummary";
+import { insuranceDailyRate } from "@/components/product/insurance";
 import type { ApiResponse } from "@/types/common";
 import type { CustomerProfile } from "@/types/customer";
 import type { ItemImageResponse, ItemResponse } from "@/types/item";
 
 // ── Constants (mirror BookingCard & backend) ──────────────────────────────────
 const SERVICE_FEE = 5;
-const INSURANCE_DAILY_RATE = 2.3;
 const CHECKOUT_FALLBACK_DATE = new Date(0);
 
 // ── Stripe setup ──────────────────────────────────────────────────────────────
@@ -34,6 +34,7 @@ interface PaymentIntentData {
   amount_eur: number;
 }
 
+/** Reducer state for the checkout page. */
 interface CheckoutState {
   item: ItemResponse | null;
   itemImageUrl: string;
@@ -77,6 +78,7 @@ const initialCheckoutState: CheckoutState = {
   loadError: "",
 };
 
+/** Reduces checkout load success/error actions into the next state. */
 function checkoutReducer(state: CheckoutState, action: CheckoutAction): CheckoutState {
   switch (action.type) {
     case "load:success":
@@ -96,23 +98,29 @@ function checkoutReducer(state: CheckoutState, action: CheckoutAction): Checkout
   }
 }
 
+/** Returns the URL of an item's first image, or "" when none exists. */
 async function fetchFirstItemImage(itemId: string): Promise<string> {
   const res = await fetch(`/api/items/${itemId}/images`, { credentials: "include" });
   const json = (await res.json()) as ApiResponse<ItemImageResponse[]>;
   return json.success ? (json.data?.[0]?.image_url ?? "") : "";
 }
 
+/** Returns the owner's full name, or "" when it cannot be loaded. */
 async function fetchOwnerName(ownerId: string): Promise<string> {
   const res = await fetch(`/api/customers/${ownerId}/profile`, { credentials: "include" });
   const json = (await res.json()) as ApiResponse<CustomerProfile>;
   return json.success && json.data ? `${json.data.first_name} ${json.data.last_name}` : "";
 }
 
+/**
+ * Loads everything the checkout page needs: the item, its image and owner name,
+ * and a freshly created Stripe PaymentIntent for the selected dates.
+ */
 async function loadCheckoutData({ itemId, startStr, endStr }: CheckoutLoadParams): Promise<LoadedCheckoutData> {
   const itemRes = await fetch(`/api/items/${itemId}`, { credentials: "include" });
   const itemJson = (await itemRes.json()) as ApiResponse<ItemResponse>;
   if (!itemRes.ok || !itemJson.success || !itemJson.data) {
-    throw new Error(itemJson.error ?? "No se pudo cargar el articulo.");
+    throw new Error(itemJson.error ?? "No se pudo cargar el artículo.");
   }
   const fetchedItem = itemJson.data;
 
@@ -132,6 +140,7 @@ async function loadCheckoutData({ itemId, startStr, endStr }: CheckoutLoadParams
       start_date: startStr,
       end_date: endStr,
       price_per_day: fetchedItem.price_per_day,
+      category: fetchedItem.category,
     }),
   });
   const piJson = (await piRes.json()) as ApiResponse<PaymentIntentData>;
@@ -174,7 +183,7 @@ function Checkout() {
 
   // Computed pricing
   const pricePerDay = item?.price_per_day ?? 0;
-  const insurance = Math.round(INSURANCE_DAILY_RATE * days * 100) / 100;
+  const insurance = Math.round(insuranceDailyRate(item?.category) * days * 100) / 100;
   const total = pricePerDay * days + SERVICE_FEE + insurance;
 
   // Fetch item + create PaymentIntent together
@@ -289,12 +298,10 @@ function Checkout() {
 
   return (
     <div>
-      {/* Two-column layout */}
       <div
         className="mx-auto flex gap-8 px-(--spacing-layout-margin) py-10"
         style={{ maxWidth: 1300 }}
       >
-        {/* ── Left: payment form ── */}
         <div
           className="rounded-(--radius-panel) border border-(--color-border-main) bg-white p-8"
           style={{ width: "var(--spacing-panel-payment)", flexShrink: 0 }}
@@ -312,7 +319,6 @@ function Checkout() {
           </Elements>
         </div>
 
-        {/* ── Right: summary ── */}
         <div
           className="rounded-(--radius-panel) border border-(--color-border-main) bg-white p-8"
           style={{ width: "var(--spacing-panel-summary)", flexShrink: 0 }}

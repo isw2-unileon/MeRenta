@@ -85,7 +85,6 @@ function PriceSection({ data, errors, onChange }: PriceSectionProps) {
       <p className="field-hint mb-6">Define cuánto cobras y en qué términos alquilas.</p>
 
       <div className="flex flex-col gap-5">
-        {/* Price row: per day / per week / deposit */}
         <div className="grid grid-cols-3 gap-4">
           <div>
             <label
@@ -142,7 +141,6 @@ function PriceSection({ data, errors, onChange }: PriceSectionProps) {
           </div>
         </div>
 
-        {/* Period row: min / max */}
         <div className="grid grid-cols-2 gap-4">
           <div>
             <label htmlFor="minRentalPeriod">Período mínimo de alquiler</label>
@@ -187,7 +185,6 @@ function PriceSection({ data, errors, onChange }: PriceSectionProps) {
           </div>
         </div>
 
-        {/* Insurance notice */}
         <div className="border-primary-border bg-insurance flex items-start gap-3 rounded-lg border p-4">
           <ShieldCheck className="text-primary mt-0.5 size-5 shrink-0" />
           <div>

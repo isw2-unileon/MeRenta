@@ -99,7 +99,6 @@ function ProductImageGallery({
   return (
     <>
       <div>
-        {/* ── Main image ── */}
         <div className="h-main-img relative overflow-hidden rounded-lg">
           {hasImages && mainImage ? (
             <button
@@ -118,14 +117,12 @@ function ProductImageGallery({
             <div className="bg-primary-light h-full w-full" />
           )}
 
-          {/* Availability badge */}
           <div className="absolute top-4 left-4">
             <span className={isAvailable ? "product-status-badge" : "product-status-badge bg-[#fff0c4] text-[#9b7411]"}>
               {isAvailable ? "Disponible" : "No disponible"}
             </span>
           </div>
 
-          {/* Favourite button */}
           {canToggleFavorite && (
             <button
               type="button"
@@ -144,7 +141,6 @@ function ProductImageGallery({
           )}
         </div>
 
-        {/* ── Thumbnails ── */}
         {hasImages && images.length > 1 && (
           <div className="mt-3 flex gap-2 overflow-x-auto pb-1">
             {images.map((img, i) => (
@@ -166,7 +162,6 @@ function ProductImageGallery({
           </div>
         )}
 
-        {/* Placeholder thumbnails when no images */}
         {!hasImages && (
           <div className="mt-3 flex gap-2">
             {PLACEHOLDER_THUMB_IDS.map((id) => (
@@ -179,7 +174,6 @@ function ProductImageGallery({
         )}
       </div>
 
-      {/* ── Lightbox ── */}
       {lightboxOpen && (
         <dialog
           ref={dialogRef}
@@ -197,7 +191,6 @@ function ProductImageGallery({
             onClick={closeLightbox}
           />
 
-          {/* Close */}
           <button
             type="button"
             className="absolute top-4 right-4 z-10 flex size-10 items-center justify-center rounded-full bg-white/15 text-white transition-colors hover:bg-white/30"
@@ -207,7 +200,6 @@ function ProductImageGallery({
             <X size={20} />
           </button>
 
-          {/* Prev */}
           {images.length > 1 && (
             <button
               type="button"
@@ -228,7 +220,6 @@ function ProductImageGallery({
             />
           )}
 
-          {/* Next */}
           {images.length > 1 && (
             <button
               type="button"
@@ -240,7 +231,6 @@ function ProductImageGallery({
             </button>
           )}
 
-          {/* Counter */}
           {images.length > 1 && (
             <p className="absolute bottom-5 z-10 text-sm text-white/70">
               {activeIndex + 1} / {images.length}

@@ -1,6 +1,5 @@
 /**
- * UI-level form state for the product creation form.
- * Not the same as the API payload — includes extra UI-only fields.
+ * An image already persisted for a product, shown when editing a listing.
  */
 interface ExistingProductPhoto {
   image_id: string;
@@ -8,8 +7,13 @@ interface ExistingProductPhoto {
   display_order: number;
 }
 
+/** A product photo: either a freshly selected File or an already-stored image. */
 type ProductPhoto = File | ExistingProductPhoto;
 
+/**
+ * UI-level form state for the product creation/edit form.
+ * Not the same as the API payload — includes extra UI-only fields.
+ */
 interface ProductFormData {
   // Basic info
   title: string;
@@ -52,6 +56,10 @@ interface CreateItemRequest {
   max_days?: number;
 }
 
+/**
+ * Payload sent to PATCH /api/items/:id.
+ * Extends the create payload with availability and status fields.
+ */
 interface UpdateItemRequest extends CreateItemRequest {
   is_available: boolean;
   item_status: "available" | "withdrawn";

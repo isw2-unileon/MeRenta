@@ -18,7 +18,7 @@ const TERMS_TOC_LINKS = [
   { href: "#contacto", text: "14. Contacto" },
 ];
 
-// 1. Componente para la cabecera
+/** Introductory header with the terms scope, update date and version. */
 const TermsHeader = () => (
   <header className="mb-12">
     <p className="text-card-loc text-subtle tracking-eyebrow mb-3 uppercase">Legal</p>
@@ -36,7 +36,7 @@ const TermsHeader = () => (
   </header>
 );
 
-// 2. Componente para las tarjetas de resumen
+/** High-level summary cards for the main terms themes. */
 const TermsSummary = () => (
   <section className="mb-10 grid gap-4 md:grid-cols-3">
     <div className="border-border-main bg-surface rounded-lg border p-5">
@@ -63,7 +63,7 @@ const TermsSummary = () => (
   </section>
 );
 
-// 3. Componente para la tabla de contenidos
+/** Table of contents linking to each terms section. */
 const TermsTOC = () => {
   return (
     <nav
@@ -87,7 +87,7 @@ const TermsTOC = () => {
   );
 };
 
-// 4. Componente auxiliar para unificar el estilo de las secciones
+/** Shared shell for each legal-content section. */
 const Section = ({ id, title, children }: { id: string; title: string; children: React.ReactNode }) => (
   <section
     id={id}
@@ -98,7 +98,7 @@ const Section = ({ id, title, children }: { id: string; title: string; children:
   </section>
 );
 
-// 5. Componente para el contenido principal (los textos)
+/** Full terms content grouped into the sections exposed in the table of contents. */
 const TermsContent = () => (
   <div className="mt-12 space-y-10">
     <Section

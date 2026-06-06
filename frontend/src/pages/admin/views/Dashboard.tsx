@@ -83,10 +83,12 @@ const INCIDENT_SKELETON_KEYS = ["inc-sk-0", "inc-sk-1", "inc-sk-2", "inc-sk-3"] 
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
 
+/** Reports whether an incident type relates to a product (vs. a user). */
 function isProductIncident(type: string): boolean {
   return ["damage", "item_mismatch", "not_available", "forbidden_item"].includes(type);
 }
 
+/** Formats an ISO date as a short Spanish relative label ("Hoy", "Ayer", "N días"). */
 function fmtDate(iso: string): string {
   if (!iso) return "—";
   const diffDays = Math.floor((Date.now() - new Date(iso).getTime()) / 86_400_000);
@@ -95,6 +97,7 @@ function fmtDate(iso: string): string {
   return `${diffDays} días`;
 }
 
+/** Fetches the aggregated admin dashboard statistics. */
 async function fetchStats(): Promise<AdminStats> {
   const res = await fetch("/api/admin/stats", { credentials: "include" });
   const json = (await res.json()) as ApiResponse<AdminStats>;
@@ -112,6 +115,7 @@ interface KpiCardProps {
   sub?: string;
 }
 
+/** A single KPI tile with icon, value and optional subtitle. */
 function KpiCard({ label, value, icon, accent = false, sub }: KpiCardProps) {
   return (
     <Card className="flex items-start gap-4 p-5">
@@ -130,6 +134,7 @@ function KpiCard({ label, value, icon, accent = false, sub }: KpiCardProps) {
   );
 }
 
+/** Loading placeholder for a single KPI tile. */
 function KpiSkeleton() {
   return (
     <Card className="flex items-start gap-4 p-5">
@@ -143,6 +148,7 @@ function KpiSkeleton() {
   );
 }
 
+/** Loading placeholder shown in place of the dashboard charts. */
 function ChartFallback() {
   return (
     <div className="grid grid-cols-1 gap-4 lg:grid-cols-3">
@@ -166,6 +172,7 @@ function ChartFallback() {
 
 // ── Section components ────────────────────────────────────────────────────────
 
+/** Top row of headline KPIs (users, products, bookings, revenue). */
 function TopKpis({ stats }: { stats: AdminStats }) {
   return (
     <div className="grid grid-cols-2 gap-4 lg:grid-cols-4">
@@ -198,6 +205,7 @@ function TopKpis({ stats }: { stats: AdminStats }) {
   );
 }
 
+/** Secondary row of KPIs (incidents, pending, completed, cancelled). */
 function SecondaryKpis({ stats }: { stats: AdminStats }) {
   return (
     <div className="grid grid-cols-2 gap-4 lg:grid-cols-4">
@@ -233,6 +241,7 @@ interface RecentIncidentsSectionProps {
   onViewAll: () => void;
 }
 
+/** Card listing the most recent incidents with a "view all" action. */
 function RecentIncidentsSection({ incidents, onViewAll }: RecentIncidentsSectionProps) {
   return (
     <Card>
@@ -288,6 +297,7 @@ function RecentIncidentsSection({ incidents, onViewAll }: RecentIncidentsSection
 
 // ── Skeleton views ────────────────────────────────────────────────────────────
 
+/** Loading placeholder for the top KPI row. */
 function TopKpisSkeleton() {
   return (
     <div className="grid grid-cols-2 gap-4 lg:grid-cols-4">
@@ -298,6 +308,7 @@ function TopKpisSkeleton() {
   );
 }
 
+/** Loading placeholder for the secondary KPI row. */
 function SecondaryKpisSkeleton() {
   return (
     <div className="grid grid-cols-2 gap-4 lg:grid-cols-4">
@@ -308,6 +319,7 @@ function SecondaryKpisSkeleton() {
   );
 }
 
+/** Loading placeholder for the recent-incidents card. */
 function RecentIncidentsSkeleton() {
   return (
     <Card>

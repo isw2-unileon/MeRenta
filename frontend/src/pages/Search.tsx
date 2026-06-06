@@ -4,145 +4,26 @@ import { BadgeCheck, ChevronLeft, ChevronRight, Heart, Search as SearchIcon, Sta
 
 import { useFavorites } from "@/hooks/useFavorites";
 import { useAuth } from "@/hooks/useAuth";
+import {
+  CATEGORY_ORDER,
+  CONDITION_ORDER,
+  PAGE_SIZE,
+  SEARCH_SKELETON_IDS,
+  SORT_OPTIONS,
+  emptyReviewSummary,
+  getPageWindow,
+  humanizeCategory,
+  humanizeCondition,
+  initialSearchState,
+  searchReducer,
+  type SearchState,
+} from "./Search.logic";
 
 import type { ApiResponse } from "@/types/common";
 import type { SearchItemResponse, SearchItemsResponse } from "@/types/item";
 import type { ReviewSummary } from "@/types/review";
-import * as React from "react";
 
-const PAGE_SIZE = 12;
-
-const CATEGORY_LABELS: Record<string, string> = {
-  electronics: "Electronica",
-  tools: "Herramientas",
-  sports: "Deportes",
-  vehicles: "Vehículos",
-  home: "Hogar",
-  gardening: "Jardinería",
-  music: "Musica",
-  photography: "Fotografía",
-  camping: "Camping",
-  clothing: "Ropa",
-  leisure: "Ocio",
-  other: "Otros",
-};
-
-const CATEGORY_ORDER = [
-  "electronics",
-  "tools",
-  "sports",
-  "vehicles",
-  "home",
-  "gardening",
-  "music",
-  "photography",
-  "camping",
-  "clothing",
-  "leisure",
-  "other",
-];
-
-const CONDITION_LABELS: Record<string, string> = {
-  new: "Nuevo",
-  like_new: "Excelente",
-  good: "Muy bueno",
-  fair: "Bueno",
-  poor: "Aceptable",
-};
-
-const CONDITION_ORDER = ["new", "like_new", "good", "fair", "poor"];
-
-const SORT_OPTIONS = [
-  { value: "recent", label: "Mas recientes" },
-  { value: "price_asc", label: "Precio: menor a mayor" },
-  { value: "price_desc", label: "Precio: mayor a menor" },
-  { value: "oldest", label: "Mas antiguos" },
-];
-const SEARCH_SKELETON_IDS = [
-  "search-skel-1",
-  "search-skel-2",
-  "search-skel-3",
-  "search-skel-4",
-  "search-skel-5",
-  "search-skel-6",
-  "search-skel-7",
-  "search-skel-8",
-  "search-skel-9",
-  "search-skel-10",
-  "search-skel-11",
-  "search-skel-12",
-];
-
-interface SearchState {
-  items: SearchItemResponse[];
-  total: number;
-  categoryCounts: Record<string, number>;
-  cityCounts: Record<string, number>;
-  conditionCounts: Record<string, number>;
-  loading: boolean;
-  error: string;
-}
-
-type SearchAction =
-  | { type: "FETCH_START" }
-  | { type: "FETCH_SUCCESS"; payload: SearchItemsResponse }
-  | { type: "FETCH_ERROR"; error: string };
-
-const initialSearchState: SearchState = {
-  items: [],
-  total: 0,
-  categoryCounts: {},
-  cityCounts: {},
-  conditionCounts: {},
-  loading: true,
-  error: "",
-};
-
-function searchReducer(state: SearchState, action: SearchAction): SearchState {
-  switch (action.type) {
-    case "FETCH_START":
-      return { ...state, loading: true, error: "" };
-    case "FETCH_SUCCESS":
-      return {
-        ...state,
-        items: action.payload.items,
-        total: action.payload.total,
-        categoryCounts: action.payload.category_counts,
-        cityCounts: action.payload.city_counts,
-        conditionCounts: action.payload.condition_counts,
-        loading: false,
-        error: "",
-      };
-    case "FETCH_ERROR":
-      return {
-        ...state,
-        items: [],
-        total: 0,
-        categoryCounts: {},
-        cityCounts: {},
-        conditionCounts: {},
-        loading: false,
-        error: action.error,
-      };
-    default:
-      return state;
-  }
-}
-
-function humanizeCategory(value: string): string {
-  return CATEGORY_LABELS[value] ?? value.replaceAll("_", " ");
-}
-
-function humanizeCondition(value: string): string {
-  return CONDITION_LABELS[value] ?? value.replaceAll("_", " ");
-}
-
-function getPageWindow(page: number, totalPages: number): number[] {
-  const pages = new Set<number>([1, page, page + 1, page + 2, totalPages].filter((p) => p >= 1 && p <= totalPages));
-  return Array.from(pages).sort((a, b) => a - b);
-}
-
-// Función extraída para aislar el fetch del useEffect y complacer al linter
+/** Fetches a page of searchable items with the current URL parameters. */
 async function fetchItemsData(url: string, signal: AbortSignal): Promise<SearchItemsResponse> {
   const res = await fetch(url, {
     credentials: "include",
@@ -154,12 +35,6 @@ async function fetchItemsData(url: string, signal: AbortSignal): Promise<SearchI
   }
   return json.data;
 }
-
-const emptyReviewSummary: ReviewSummary = {
-  average_rating: 0,
-  total: 0,
-  distribution: {},
-};
 
 async function fetchReviewSummary(ownerId: string, signal: AbortSignal): Promise<ReviewSummary> {
   const res = await fetch(`/api/reviews/summary/${ownerId}`, {
@@ -173,15 +48,12 @@ async function fetchReviewSummary(ownerId: string, signal: AbortSignal): Promise
   return json.data;
 }
 
-// ==========================================
-// INTERFACES Y SUB-COMPONENTES EXTRAÍDOS
-// ==========================================
-
 interface FilterSectionProps {
   title: string;
   children: ReactNode;
 }
 
+/** Framed sidebar section used to group related search filters. */
 function FilterSection({ title, children }: FilterSectionProps) {
   return (
     <section className="border-border-main border-b p-5">
@@ -201,6 +73,7 @@ interface ProductCardProps {
   to: string;
 }
 
+/** Search result card with owner metadata, favorite state and availability. */
 function ProductCard({ item, reviewSummary, isFavorite, isOwnItem, onToggleFavorite, to }: ProductCardProps) {
   const ratingLabel = reviewSummary ? reviewSummary.average_rating.toFixed(1) : "--";
   const reviewsLabel = reviewSummary ? String(reviewSummary.total) : "--";
@@ -259,7 +132,6 @@ function ProductCard({ item, reviewSummary, isFavorite, isOwnItem, onToggleFavor
         <div className="p-4">
           <h2 className="text-ink mb-3 line-clamp-2 min-h-9.5 text-[15px] leading-snug font-medium">{item.title}</h2>
 
-          {/* Owner info */}
           <div className="mb-3 flex items-center gap-2">
             {item.owner_avatar_url ? (
               <img
@@ -299,7 +171,7 @@ function ProductCard({ item, reviewSummary, isFavorite, isOwnItem, onToggleFavor
           </div>
 
           <div className="flex items-center justify-between gap-3">
-            <p className="text-primary text-[17px] font-bold">{Math.round(item.price_per_day)} EUR/dia</p>
+            <p className="text-primary text-[17px] font-bold">{Math.round(item.price_per_day)} EUR/día</p>
             <button
               type="button"
               className="btn-primary btn--sm min-w-23"
@@ -314,6 +186,7 @@ function ProductCard({ item, reviewSummary, isFavorite, isOwnItem, onToggleFavor
   );
 }
 
+/** Placeholder cards displayed while search results are loading. */
 function SearchSkeleton() {
   return (
     <>
@@ -344,6 +217,7 @@ interface SearchHeaderProps {
   updateParam: (key: string, value: string) => void;
 }
 
+/** Search bar, result count and sort selector synced with URL params. */
 function SearchHeader({ initialQuery, resultLabel, sort, updateParam }: SearchHeaderProps) {
   const [draftQuery, setDraftQuery] = useState(initialQuery);
 
@@ -377,7 +251,7 @@ function SearchHeader({ initialQuery, resultLabel, sort, updateParam }: SearchHe
             type="search"
             value={draftQuery}
             onChange={(event) => setDraftQuery(event.target.value)}
-            placeholder="Buscar productos, categorias o marcas"
+            placeholder="Buscar productos, categorías o marcas"
             className="h-full flex-1 border-0 bg-transparent px-0 text-[15px] outline-none focus:border-0"
             aria-label="Buscar productos"
           />
@@ -427,6 +301,7 @@ interface SearchActiveFiltersProps {
   updateParam: (key: string, value: string) => void;
 }
 
+/** Active filter chips that let users remove individual URL-backed filters. */
 function SearchActiveFilters({ activeChips, hasFilters, clearFilters, updateParam }: SearchActiveFiltersProps) {
   return (
     <div className="border-border-main bg-page border-b">
@@ -478,6 +353,7 @@ interface SearchSidebarProps {
   updateParam: (key: string, value: string) => void;
 }
 
+/** Filter sidebar for category, price, location, availability and condition. */
 function SearchSidebar({
   state,
   category,
@@ -494,7 +370,7 @@ function SearchSidebar({
 }: SearchSidebarProps) {
   return (
     <aside className="border-border-main bg-page border-r">
-      <FilterSection title="Categoria">
+      <FilterSection title="Categoría">
         <div className="space-y-2">
           {categoryOptions.map((option) => (
             <label
@@ -511,15 +387,15 @@ function SearchSidebar({
             </label>
           ))}
           {!state.loading && categoryOptions.length === 0 && (
-            <p className="text-card-loc text-subtle">Sin categorias disponibles</p>
+            <p className="text-card-loc text-subtle">Sin categorías disponibles</p>
           )}
         </div>
       </FilterSection>
 
-      <FilterSection title="Precio por dia">
+      <FilterSection title="Precio por día">
         <div className="grid grid-cols-2 gap-3">
           <label className="text-card-loc text-subtle mb-0">
-            Min
+            Mín.
             <input
               type="number"
               aria-label="Precio mínimo"
@@ -531,7 +407,7 @@ function SearchSidebar({
             />
           </label>
           <label className="text-card-loc text-subtle mb-0">
-            Max
+            Máx.
             <input
               type="number"
               aria-label="Precio máximo"
@@ -545,7 +421,7 @@ function SearchSidebar({
         </div>
       </FilterSection>
 
-      <FilterSection title="Ubicacion">
+      <FilterSection title="Ubicación">
         <div className="space-y-2">
           {cityOptions.map((option) => (
             <label
@@ -617,10 +493,7 @@ function SearchSidebar({
   );
 }
 
-// ==========================================
-// COMPONENTE PRINCIPAL
-// ==========================================
-
+/** Marketplace search page with URL-driven filters and paginated results. */
 function Search() {
   const [searchParams, setSearchParams] = useSearchParams();
   const { toggle, isFav } = useFavorites();
@@ -656,7 +529,6 @@ function Search() {
     [searchParams, setSearchParams]
   );
 
-  // CORRECCIÓN 2: Ocultamos el fetch de la vista del linter utilizando una función extraída.
   useEffect(() => {
     const controller = new AbortController();
     const params = new URLSearchParams(searchParams);

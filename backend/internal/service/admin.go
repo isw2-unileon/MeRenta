@@ -325,6 +325,7 @@ func adminUserListResponse[T any](
 	return AdminUserListResponse{Users: rows, Total: total, Page: page, Limit: limit}
 }
 
+// listByQuery returns the customers matching a full-text search on their name.
 func (s *AdminService) listByQuery(
 	ctx context.Context,
 	query string,
@@ -345,6 +346,7 @@ func (s *AdminService) listByQuery(
 	}), nil
 }
 
+// listByStatus returns the customers filtered by account status.
 func (s *AdminService) listByStatus(
 	ctx context.Context,
 	status sqlcdb.AccountStatus,
@@ -365,6 +367,8 @@ func (s *AdminService) listByStatus(
 	}), nil
 }
 
+// listAll returns the full, unfiltered customer list together with its total
+// count.
 func (s *AdminService) listAll(
 	ctx context.Context,
 	page, limit int,
@@ -580,8 +584,12 @@ func (s *AdminService) GetStats(ctx context.Context) (AdminStatsResponse, error)
 	}, nil
 }
 
+// spanishMonths maps a 1-based month number to its short Spanish label for the
+// dashboard revenue chart (index 0 is unused).
 var spanishMonths = [13]string{"", "Ene", "Feb", "Mar", "Abr", "May", "Jun", "Jul", "Ago", "Sep", "Oct", "Nov", "Dic"}
 
+// toMonthlyPoints maps monthly-revenue rows into chart points with localized
+// month labels.
 func toMonthlyPoints(rows []sqlcdb.MonthlyRevenueRow) []MonthlyPoint {
 	pts := make([]MonthlyPoint, len(rows))
 	for i, r := range rows {
@@ -591,6 +599,7 @@ func toMonthlyPoints(rows []sqlcdb.MonthlyRevenueRow) []MonthlyPoint {
 	return pts
 }
 
+// toCategoryPoints maps category-count rows into chart bars.
 func toCategoryPoints(rows []sqlcdb.CountItemCardsByCategoryRow) []CategoryPoint {
 	pts := make([]CategoryPoint, len(rows))
 	for i, r := range rows {
@@ -599,6 +608,7 @@ func toCategoryPoints(rows []sqlcdb.CountItemCardsByCategoryRow) []CategoryPoint
 	return pts
 }
 
+// toRecentIncidents maps incident rows into the compact dashboard summary shape.
 func toRecentIncidents(rows []sqlcdb.IncidentRow) []RecentIncidentRow {
 	pts := make([]RecentIncidentRow, len(rows))
 	for i, r := range rows {
@@ -638,6 +648,8 @@ func (s *AdminService) syncSuspendedUntil(
 
 // ─── private helpers ──────────────────────────────────────────────────────────
 
+// toAdminRow assembles an AdminUserRow from the customer columns shared across
+// the various sqlc list/search row types.
 func toAdminRow(
 	id uuid.UUID,
 	firstName, lastName, email string,
@@ -660,6 +672,7 @@ func toAdminRow(
 	}
 }
 
+// nullableStr returns the string value of a pgtype.Text, or "" when it is NULL.
 func nullableStr(t pgtype.Text) string {
 	if t.Valid {
 		return t.String
@@ -667,6 +680,8 @@ func nullableStr(t pgtype.Text) string {
 	return ""
 }
 
+// nullableTime returns an RFC 3339 UTC string for a pgtype.Timestamptz, or ""
+// when it is NULL.
 func nullableTime(t pgtype.Timestamptz) string {
 	if t.Valid {
 		return t.Time.UTC().Format(time.RFC3339)
@@ -674,6 +689,7 @@ func nullableTime(t pgtype.Timestamptz) string {
 	return ""
 }
 
+// textOrNull wraps a string in a pgtype.Text, marking it NULL when empty.
 func textOrNull(value string) pgtype.Text {
 	return pgtype.Text{String: value, Valid: value != ""}
 }
@@ -685,10 +701,14 @@ func textOrNull(value string) pgtype.Text {
 type PlatformConfigResponse struct {
 	AllowNewRegistrations bool    `json:"allow_new_registrations"`
 	ServiceFeeEUR         float64 `json:"service_fee_eur"`
+	// InsuranceDailyRateEUR is the default rate applied to unknown categories.
 	InsuranceDailyRateEUR float64 `json:"insurance_daily_rate_eur"`
-	BookingExpiryDays     int     `json:"booking_expiry_days"`
-	UpdatedAt             string  `json:"updated_at,omitempty"`
-	UpdatedByEmail        string  `json:"updated_by_email,omitempty"`
+	// InsuranceDailyRatesByCategory maps each product category to its per-day
+	// insurance premium (EUR).
+	InsuranceDailyRatesByCategory map[string]float64 `json:"insurance_daily_rates_by_category"`
+	BookingExpiryDays             int                `json:"booking_expiry_days"`
+	UpdatedAt                     string             `json:"updated_at,omitempty"`
+	UpdatedByEmail                string             `json:"updated_by_email,omitempty"`
 }
 
 // GetPlatformConfig returns the current platform settings.
@@ -713,13 +733,16 @@ func (s *AdminService) UpdatePlatformConfig(
 	return platformConfigToResponse(cfg), nil
 }
 
+// platformConfigToResponse merges the editable DB config with the service-layer
+// fee/insurance constants into the response returned to the admin UI.
 func platformConfigToResponse(cfg sqlcdb.PlatformConfig) PlatformConfigResponse {
 	return PlatformConfigResponse{
-		AllowNewRegistrations: cfg.AllowNewRegistrations,
-		ServiceFeeEUR:         serviceFeeEUR,
-		InsuranceDailyRateEUR: insuranceDailyRateEUR,
-		BookingExpiryDays:     bookingExpiryDays,
-		UpdatedAt:             cfg.UpdatedAt.UTC().Format(time.RFC3339),
-		UpdatedByEmail:        cfg.UpdatedByEmail,
+		AllowNewRegistrations:         cfg.AllowNewRegistrations,
+		ServiceFeeEUR:                 serviceFeeEUR,
+		InsuranceDailyRateEUR:         defaultInsuranceDailyRateEUR,
+		InsuranceDailyRatesByCategory: insuranceDailyRatesByCategory,
+		BookingExpiryDays:             bookingExpiryDays,
+		UpdatedAt:                     cfg.UpdatedAt.UTC().Format(time.RFC3339),
+		UpdatedByEmail:                cfg.UpdatedByEmail,
 	}
 }

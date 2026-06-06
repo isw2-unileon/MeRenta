@@ -64,10 +64,8 @@ function RentalSummary({
 
   return (
     <div className="flex flex-col gap-5">
-      {/* ── Header ── */}
       <h2 className="heading-panel">Resumen del alquiler</h2>
 
-      {/* ── Item card ── */}
       <div className="border-border-main flex items-start gap-4 rounded-lg border bg-white p-4">
         {imageUrl ? (
           <img
@@ -88,7 +86,6 @@ function RentalSummary({
         </div>
       </div>
 
-      {/* ── Dates ── */}
       <div>
         <p className="summary-dates-label mb-1">Fechas del alquiler</p>
         <p className="summary-dates">
@@ -98,10 +95,9 @@ function RentalSummary({
 
       <hr className="divider-subtle" />
 
-      {/* ── Price breakdown ── */}
       <div className="flex flex-col gap-3">
         <div className="flex items-center justify-between">
-          <p className="summary-row-label">Precio por dia</p>
+          <p className="summary-row-label">Precio por día</p>
           <p className="summary-row-value">{fmtPrice(pricePerDay)} EUR</p>
         </div>
         <div className="flex items-center justify-between">
@@ -115,7 +111,6 @@ function RentalSummary({
           <p className="summary-row-value">{fmtPrice(serviceFee)} EUR</p>
         </div>
 
-        {/* Insurance row */}
         <div className="bg-insurance flex items-center justify-between rounded-md px-3 py-2">
           <div>
             <p className="insurance-name flex items-center gap-2">
@@ -130,13 +125,11 @@ function RentalSummary({
 
       <hr className="divider-total" />
 
-      {/* ── Total ── */}
       <div className="flex items-center justify-between">
         <p className="summary-total-label">Total</p>
         <p className="summary-total-value">{fmtPrice(total)} EUR</p>
       </div>
 
-      {/* ── Security badges ── */}
       <div className="flex items-center justify-around pt-1">
         <div className="text-subtle flex items-center gap-1">
           <span className="text-sm">🔒</span>

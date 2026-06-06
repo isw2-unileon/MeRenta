@@ -10,35 +10,22 @@ import { ProductCalendar } from "@/components/product/detail/ProductCalendar";
 import { ProductImageGallery } from "@/components/product/detail/ProductImageGallery";
 import { StarRating } from "@/components/product/detail/StarRating";
 import { useAuth } from "@/hooks/useAuth";
+import {
+  CATEGORY_LABELS,
+  CONDITION_LABELS,
+  INITIAL_STATE,
+  PRODUCT_SKELETON_THUMB_IDS,
+  emptyReviewSummary,
+  expandUnavailableRanges,
+  formatRating,
+  productReducer,
+} from "./Product.logic";
 import type { ApiResponse } from "@/types/common";
 import type { CustomerProfile } from "@/types/customer";
 import type { ItemImageResponse, ItemResponse } from "@/types/item";
 import type { ReviewSummary } from "@/types/review";
 
 // ── Label maps ──────────────────────────────────────────────────────────────
-
-const CATEGORY_LABELS: Record<string, string> = {
-  sports: "Deportes",
-  electronics: "Electronica",
-  tools: "Herramientas",
-  music: "Musica",
-  photography: "Fotografía",
-  camping: "Camping",
-  home: "Hogar",
-  clothing: "Ropa",
-  vehicles: "Vehículos",
-  gardening: "Jardinería",
-  leisure: "Ocio",
-  other: "Otros",
-};
-
-const CONDITION_LABELS: Record<string, string> = {
-  new: "Nuevo",
-  like_new: "Excelente",
-  good: "Muy bueno",
-  fair: "Bueno",
-  poor: "Aceptable",
-};
 
 // ── API helpers ──────────────────────────────────────────────────────────────
 
@@ -72,16 +59,7 @@ async function fetchOccupiedDates(id: string): Promise<Set<string>> {
   const res = await fetch(`/api/items/${id}/unavailable-dates`, { credentials: "include" });
   const json = (await res.json()) as ApiResponse<Array<{ start_date: string; end_date: string }>>;
   if (!json.success || !json.data) return new Set<string>();
-  const dates = new Set<string>();
-  for (const range of json.data) {
-    const cur = new Date(`${range.start_date}T00:00:00`);
-    const endD = new Date(`${range.end_date}T00:00:00`);
-    while (cur <= endD) {
-      dates.add(cur.toISOString().slice(0, 10));
-      cur.setDate(cur.getDate() + 1);
-    }
-  }
-  return dates;
+  return expandUnavailableRanges(json.data);
 }
 
 async function fetchReviewSummary(ownerId: string): Promise<ReviewSummary> {
@@ -97,85 +75,12 @@ async function fetchReviewSummary(ownerId: string): Promise<ReviewSummary> {
 
 // ── Date range state type ────────────────────────────────────────────────────
 
-interface DateRange {
-  start: Date | null;
-  end: Date | null;
-}
-
-interface ProductState {
-  item: ItemResponse | null;
-  images: ItemImageResponse[];
-  owner: CustomerProfile | null;
-  ownerReviewSummary: ReviewSummary | null;
-  loading: boolean;
-  error: string;
-  dateRange: DateRange;
-}
-
-type ProductAction =
-  | { type: "set-loading"; value: boolean }
-  | { type: "set-error"; value: string }
-  | { type: "set-item"; value: ItemResponse | null }
-  | { type: "set-images"; value: ItemImageResponse[] }
-  | { type: "set-owner"; value: CustomerProfile | null }
-  | { type: "set-owner-review-summary"; value: ReviewSummary | null }
-  | { type: "set-date-range"; value: DateRange };
-
-const INITIAL_STATE: ProductState = {
-  item: null,
-  images: [],
-  owner: null,
-  ownerReviewSummary: null,
-  loading: true,
-  error: "",
-  dateRange: { start: null, end: null },
-};
-const PRODUCT_SKELETON_THUMB_IDS = [
-  "product-skel-thumb-1",
-  "product-skel-thumb-2",
-  "product-skel-thumb-3",
-  "product-skel-thumb-4",
-  "product-skel-thumb-5",
-];
-
-function productReducer(state: ProductState, action: ProductAction): ProductState {
-  switch (action.type) {
-    case "set-loading":
-      return { ...state, loading: action.value };
-    case "set-error":
-      return { ...state, error: action.value };
-    case "set-item":
-      return { ...state, item: action.value };
-    case "set-images":
-      return { ...state, images: action.value };
-    case "set-owner":
-      return { ...state, owner: action.value };
-    case "set-owner-review-summary":
-      return { ...state, ownerReviewSummary: action.value };
-    case "set-date-range":
-      return { ...state, dateRange: action.value };
-    default:
-      return state;
-  }
-}
-
-const emptyReviewSummary: ReviewSummary = {
-  average_rating: 0,
-  total: 0,
-  distribution: {},
-};
-
-function formatRating(rating: number): string {
-  return rating.toFixed(2);
-}
-
 // ── Skeleton ─────────────────────────────────────────────────────────────────
 
 function ProductSkeleton() {
   return (
     <div className="animate-pulse">
       <div className="grid grid-cols-[1fr_392px] items-start gap-8">
-        {/* Left */}
         <div className="flex flex-col gap-6">
           <div className="bg-primary-light h-main-img rounded-lg" />
           <div className="flex gap-2">
@@ -199,7 +104,6 @@ function ProductSkeleton() {
           </div>
         </div>
 
-        {/* Right */}
         <div className="flex flex-col gap-5">
           <div className="rounded-panel bg-primary-light h-90" />
           <div className="rounded-panel bg-primary-light h-56" />
@@ -364,9 +268,7 @@ function Product() {
 
         {!state.loading && item && (
           <div className="grid grid-cols-[1fr_392px] items-start gap-8">
-            {/* ════════════════════════════════════ Left column */}
             <div className="flex min-w-0 flex-col gap-6">
-              {/* Image gallery */}
               <ProductImageGallery
                 images={state.images}
                 title={item.title}
@@ -378,7 +280,6 @@ function Product() {
                 }
               />
 
-              {/* Title, badges and rating */}
               <div>
                 <h2 className="text-ink mb-2 text-[22px] leading-tight font-semibold">{item.title}</h2>
 
@@ -387,7 +288,6 @@ function Product() {
                   {condition && <span className="product-estado-badge">Estado: {condition}</span>}
                 </div>
 
-                {/* Rating row */}
                 <div className="flex flex-wrap items-center gap-3">
                   <div className="flex items-center gap-1">
                     <StarRating rating={reviewSummary.average_rating} />
@@ -400,18 +300,16 @@ function Product() {
 
               <hr className="divider-product" />
 
-              {/* Description */}
               {item.description && (
                 <>
                   <div>
-                    <h3 className="heading-section mb-3">Descripcion</h3>
+                    <h3 className="heading-section mb-3">Descripción</h3>
                     <p className="product-desc">{item.description}</p>
                   </div>
                   <hr className="divider-product" />
                 </>
               )}
 
-              {/* Usage rules */}
               {item.usage_rules && (
                 <>
                   <div>
@@ -422,7 +320,6 @@ function Product() {
                 </>
               )}
 
-              {/* Availability calendar */}
               <div>
                 <h3 className="heading-section mb-1">Disponibilidad</h3>
                 <ProductCalendar
@@ -440,11 +337,11 @@ function Product() {
               </div>
             </div>
 
-            {/* ════════════════════════════════════ Right column */}
             <div className="top-8 flex flex-col gap-5">
               <BookingCard
                 itemId={item.item_id}
                 itemTitle={item.title}
+                category={item.category}
                 reporterId={reporterId}
                 reporterName={reporterName}
                 pricePerDay={item.price_per_day}
@@ -459,7 +356,10 @@ function Product() {
                 onDateChange={handleDateChange}
               />
 
-              <InsuranceCard days={rentalDays} />
+              <InsuranceCard
+                days={rentalDays}
+                category={item.category}
+              />
 
               {state.owner && (
                 <OwnerCard

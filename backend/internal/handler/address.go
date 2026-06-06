@@ -2,6 +2,7 @@
 package handler
 
 import (
+	"context"
 	"errors"
 	"net/http"
 
@@ -13,13 +14,21 @@ import (
 	"github.com/isw2-unileon/MeRenta/backend/pkg/response"
 )
 
+// addressService is the subset of the address service used by the handler.
+type addressService interface {
+	ListAddresses(ctx context.Context, customerID uuid.UUID) ([]model.AddressResponse, error)
+	CreateAddress(ctx context.Context, customerID uuid.UUID, req model.CreateAddressRequest) (*model.AddressResponse, error)
+	UpdateAddress(ctx context.Context, customerID uuid.UUID, addressID uuid.UUID, req model.CreateAddressRequest) (*model.AddressResponse, error)
+	DeleteAddress(ctx context.Context, customerID uuid.UUID, addressID uuid.UUID) error
+}
+
 // AddressHandler wires address endpoints to the address service.
 type AddressHandler struct {
-	svc *service.AddressService
+	svc addressService
 }
 
 // NewAddressHandler builds a new AddressHandler.
-func NewAddressHandler(svc *service.AddressService) *AddressHandler {
+func NewAddressHandler(svc addressService) *AddressHandler {
 	return &AddressHandler{svc: svc}
 }
 
@@ -120,7 +129,9 @@ func (h *AddressHandler) Delete(c *gin.Context) {
 		response.Error(c, http.StatusNotFound, err.Error())
 	case errors.Is(err, service.ErrForbidden):
 		response.Error(c, http.StatusForbidden, err.Error())
+	case errors.Is(err, service.ErrAddressInUse):
+		response.Error(c, http.StatusConflict, "address is in use by a listing")
 	default:
-		response.Error(c, http.StatusConflict, "An address used by a product cannot be deleted")
+		response.Error(c, http.StatusInternalServerError, "internal server error")
 	}
 }

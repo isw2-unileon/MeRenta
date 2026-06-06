@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useReducer, useRef, useState } from "react";
+import { useCallback, useEffect, useReducer, useState } from "react";
 import { ExternalLink, ImageIcon, MoreHorizontal, Search } from "lucide-react";
 
 import type { BookingDetailResponse, BookingListResponse, BookingStatus } from "@/types/booking";
@@ -8,6 +8,7 @@ import {
   Badge,
   Card,
   ConfirmModal,
+  Dropdown,
   FilterPills,
   Pagination,
   SectionTitle,
@@ -50,18 +51,22 @@ const NEXT_LABELS: Partial<Record<BookingStatus, string>> = {
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
 
+/** Returns the renter's full name, or a short ID fallback. */
 function renterName(b: BookingDetailResponse): string {
   return `${b.renter_first_name} ${b.renter_last_name}`.trim() || b.renter_id.slice(0, 8);
 }
 
+/** Reports whether a booking's payment has been refunded. */
 function isRefunded(b: BookingDetailResponse): boolean {
   return REFUNDED_STATUSES.includes(b.booking_status);
 }
 
+/** Builds the Stripe dashboard URL for a payment intent. */
 function stripeUrl(id: string): string {
   return `https://dashboard.stripe.com/payments/${id}`;
 }
 
+/** Returns the confirmation message for a given status change. */
 function confirmMsg(next: BookingStatus, item: string): string {
   if (next === "cancelled") return `¿Cancelar la reserva de «${item}» y emitir el reembolso a Stripe?`;
   if (next === "rejected") return `¿Rechazar la reserva de «${item}» y emitir el reembolso a Stripe?`;
@@ -87,6 +92,7 @@ type PaymentsAction =
 
 const initialState: PaymentsState = { payments: [], total: 0, loading: true, error: null };
 
+/** Reduces payment-list fetch and optimistic status-patch actions. */
 function paymentsReducer(state: PaymentsState, action: PaymentsAction): PaymentsState {
   switch (action.type) {
     case "fetch_start":
@@ -107,6 +113,7 @@ function paymentsReducer(state: PaymentsState, action: PaymentsAction): Payments
 
 // ── API ───────────────────────────────────────────────────────────────────────
 
+/** Fetches a page of payments filtered by payment status and search query. */
 function fetchPayments(paymentStatus: string, query: string, page: number): Promise<BookingListResponse> {
   const params = new URLSearchParams({ page: String(page), limit: String(LIMIT) });
   if (paymentStatus) params.set("payment_status", paymentStatus);
@@ -114,6 +121,7 @@ function fetchPayments(paymentStatus: string, query: string, page: number): Prom
   return getAdminData<BookingListResponse>(`/api/admin/payments?${params.toString()}`, "Error al cargar transacciones");
 }
 
+/** Sets a booking's status via the admin override endpoint (may trigger refund). */
 function patchAdminBookingStatus(bookingId: string, status: BookingStatus): Promise<void> {
   return sendAdminMutation(
     `/api/admin/bookings/${bookingId}/status`,
@@ -130,53 +138,33 @@ interface StatusMenuProps {
   onRequest: (bookingId: string, status: BookingStatus) => void;
 }
 
+/** Dropdown of allowed next statuses for a payment's booking (null if terminal). */
 function StatusMenu({ payment, onRequest }: StatusMenuProps) {
-  const [open, setOpen] = useState(false);
-  const ref = useRef<HTMLDivElement>(null);
-
-  useEffect(() => {
-    if (!open) return;
-    function onDown(e: MouseEvent) {
-      if (ref.current && !ref.current.contains(e.target as Node)) setOpen(false);
-    }
-    document.addEventListener("mousedown", onDown);
-    return () => document.removeEventListener("mousedown", onDown);
-  }, [open]);
-
   const options = ADMIN_NEXT[payment.booking_status] ?? [];
   if (options.length === 0) return null;
 
   return (
-    <div
-      className="relative"
-      ref={ref}
+    <Dropdown
+      ariaLabel={`Acciones para ${payment.item_title}`}
+      panelClassName="min-w-44 py-1"
+      button={<MoreHorizontal size={16} />}
     >
-      <button
-        type="button"
-        className="rounded p-1 text-neutral-400 hover:text-neutral-700"
-        onClick={() => setOpen((v) => !v)}
-        aria-label={`Acciones para ${payment.item_title}`}
-      >
-        <MoreHorizontal size={16} />
-      </button>
-      {open && (
-        <div className="absolute right-0 z-10 mt-1 w-44 rounded-lg border border-neutral-200 bg-white py-1 shadow-md">
-          {options.map((next) => (
-            <button
-              key={next}
-              type="button"
-              className="flex w-full items-center gap-2 px-3 py-2 text-left text-sm text-neutral-700 hover:bg-neutral-50"
-              onClick={() => {
-                onRequest(payment.booking_id, next);
-                setOpen(false);
-              }}
-            >
-              {NEXT_LABELS[next]}
-            </button>
-          ))}
-        </div>
-      )}
-    </div>
+      {(close) =>
+        options.map((next) => (
+          <button
+            key={next}
+            type="button"
+            className="flex w-full items-center gap-2 px-3 py-2 text-left text-sm text-neutral-700 hover:bg-neutral-50"
+            onClick={() => {
+              onRequest(payment.booking_id, next);
+              close();
+            }}
+          >
+            {NEXT_LABELS[next]}
+          </button>
+        ))
+      }
+    </Dropdown>
   );
 }
 
@@ -247,7 +235,6 @@ function Payments() {
         />
       )}
 
-      {/* Filter bar */}
       <div className="flex flex-wrap items-center justify-between gap-3">
         <FilterPills
           options={FILTER_OPTIONS}

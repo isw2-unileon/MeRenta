@@ -15,7 +15,7 @@ const steps = [
   {
     number: "03",
     title: "Disfruta y devuelve",
-    desc: "Recibe el producto, usalo y devuélvelo. Todo el proceso esta protegido y verificado.",
+    desc: "Recibe el producto, úsalo y devuélvelo. Todo el proceso esta protegido y verificado.",
   },
 ];
 
@@ -31,7 +31,7 @@ function HowItWorks() {
     >
       <div className="max-w-alert-width mx-auto">
         <span className="eyebrow">SENCILLO Y SEGURO</span>
-        <h2 className="mt-3 mb-[48px]">Como funciona?</h2>
+        <h2 className="mt-3 mb-[48px]">¿Cómo funciona?</h2>
 
         <div className="grid grid-cols-3 gap-[40px]">
           {steps.map((step) => (

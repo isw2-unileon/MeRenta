@@ -2,23 +2,34 @@
 package handler
 
 import (
+	"context"
 	"errors"
 	"log/slog"
 	"net/http"
 
 	"github.com/gin-gonic/gin"
+	"github.com/google/uuid"
 
+	"github.com/isw2-unileon/MeRenta/backend/internal/model"
 	"github.com/isw2-unileon/MeRenta/backend/internal/service"
 	"github.com/isw2-unileon/MeRenta/backend/pkg/response"
 )
 
+// favoriteService is the subset of the favorite service used by the handler.
+type favoriteService interface {
+	ListFavorites(ctx context.Context, customerID uuid.UUID) (*model.FavoritesResponse, error)
+	AddFavorite(ctx context.Context, customerID, itemID uuid.UUID) error
+	RemoveFavorite(ctx context.Context, customerID, itemID uuid.UUID) error
+	IsFavorite(ctx context.Context, customerID, itemID uuid.UUID) (bool, error)
+}
+
 // FavoriteHandler wires favorite endpoints to the favorite service.
 type FavoriteHandler struct {
-	svc *service.FavoriteService
+	svc favoriteService
 }
 
 // NewFavoriteHandler builds a new FavoriteHandler.
-func NewFavoriteHandler(svc *service.FavoriteService) *FavoriteHandler {
+func NewFavoriteHandler(svc favoriteService) *FavoriteHandler {
 	return &FavoriteHandler{svc: svc}
 }
 

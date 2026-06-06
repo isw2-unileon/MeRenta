@@ -9,11 +9,13 @@ import type { IncidentType } from "@/types/incident";
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
 
+/** Formats an ISO date as a short Spanish date. */
 function fmtDate(value: string): string {
   const d = new Date(value);
   return d.toLocaleDateString("es-ES", { day: "numeric", month: "short", year: "numeric" });
 }
 
+/** Formats a price with two decimals and a comma decimal separator. */
 function fmtPrice(value: number): string {
   return value.toFixed(2).replace(".", ",");
 }
@@ -34,6 +36,7 @@ const STATUS_CLASSES: Record<BookingStatus, string> = {
   completed: "bg-[#dcfce7] text-[#15803d]",
 };
 
+/** Fetches the user's bookings, either as renter ("mine") or as owner. */
 async function fetchBookings(role: "mine" | "as-owner"): Promise<BookingListResponse> {
   const res = await fetch(`/api/bookings/${role}`, { credentials: "include" });
   const json = (await res.json()) as ApiResponse<BookingListResponse>;
@@ -43,6 +46,7 @@ async function fetchBookings(role: "mine" | "as-owner"): Promise<BookingListResp
   return json.data;
 }
 
+/** Opens (or returns) a conversation for an item and returns its ID. */
 async function openConversation(itemId: string, withUserId?: string): Promise<string> {
   const body: Record<string, string> = { item_id: itemId };
   if (withUserId) body.with_user_id = withUserId;
@@ -60,6 +64,7 @@ async function openConversation(itemId: string, withUserId?: string): Promise<st
   return json.data.conversation_id;
 }
 
+/** Applies a status-change action (accept/reject/cancel/complete) to a booking. */
 async function patchBookingStatus(
   bookingId: string,
   action: "accept" | "reject" | "cancel" | "complete"
@@ -88,6 +93,7 @@ const INCIDENT_TYPE_LABELS: Record<IncidentType, string> = {
 
 const BOOKING_INCIDENT_TYPES: IncidentType[] = ["damage", "late_return", "item_mismatch", "not_delivered", "other"];
 
+/** Files an incident report against a booking. */
 async function submitIncident(bookingId: string, type: IncidentType, description: string): Promise<void> {
   const res = await fetch("/api/incidents", {
     method: "POST",
@@ -109,6 +115,7 @@ interface IncidentModalProps {
   onSuccess: () => void;
 }
 
+/** Modal for filing an incident against a booking (type + description). */
 function IncidentModal({ booking, onClose, onSuccess }: IncidentModalProps) {
   const [type, setType] = useState<IncidentType>("damage");
   const [description, setDescription] = useState("");
@@ -156,7 +163,6 @@ function IncidentModal({ booking, onClose, onSuccess }: IncidentModalProps) {
           onSubmit={(e) => void handleSubmit(e)}
           className="space-y-4"
         >
-          {/* Type */}
           <div>
             <p className="mb-1.5 text-sm font-medium text-neutral-700">Tipo de incidencia</p>
             <div className="grid grid-cols-1 gap-2 sm:grid-cols-2">
@@ -178,7 +184,6 @@ function IncidentModal({ booking, onClose, onSuccess }: IncidentModalProps) {
             </div>
           </div>
 
-          {/* Description */}
           <div>
             <label
               htmlFor="incident-description"
@@ -241,6 +246,7 @@ type BookingsAction =
 
 const initialState: BookingsState = { items: [], total: 0, loading: true, error: "" };
 
+/** Reduces booking-list fetch and local status-update actions. */
 function bookingsReducer(state: BookingsState, action: BookingsAction): BookingsState {
   switch (action.type) {
     case "fetch_start":
@@ -276,6 +282,7 @@ interface BookingCardProps {
   actionLoading: string | null;
 }
 
+/** Card for a single booking, with role-aware action buttons. */
 function BookingCard({
   booking,
   viewMode,
@@ -303,7 +310,6 @@ function BookingCard({
 
   return (
     <article className="border-border-main bg-page flex gap-4 overflow-hidden rounded-xl border p-4">
-      {/* Image */}
       <button
         type="button"
         className="size-20 shrink-0 overflow-hidden rounded-lg p-0"
@@ -321,7 +327,6 @@ function BookingCard({
         )}
       </button>
 
-      {/* Content */}
       <div className="min-w-0 flex-1">
         <div className="mb-1 flex flex-wrap items-start justify-between gap-2">
           <button
@@ -365,7 +370,6 @@ function BookingCard({
 
         {booking.notes && <p className="text-subtle text-card-loc mt-1 line-clamp-1 italic">"{booking.notes}"</p>}
 
-        {/* Actions */}
         <div className="mt-3 flex flex-wrap gap-2">
           {viewMode === "owner" && isPending && (
             <>
@@ -438,6 +442,7 @@ interface TabPanelProps {
   dispatch: React.Dispatch<BookingsAction>;
 }
 
+/** Renders one bookings tab (renter or owner) with its cards and actions. */
 function TabPanel({ viewMode, state, dispatch }: TabPanelProps) {
   const navigate = useNavigate();
   const [actionLoading, setActionLoading] = useState<string | null>(null);
@@ -602,7 +607,6 @@ function Bookings() {
 
   return (
     <div className="bg-page min-h-screen">
-      {/* Hero strip */}
       <section className="profile-hero h-auto min-h-28">
         <div className="mx-auto flex h-full max-w-340 flex-col justify-center gap-1 px-6 py-6 md:px-10">
           <p className="text-subtle text-[13px]">Hola, {firstName}</p>
@@ -615,7 +619,6 @@ function Bookings() {
 
       <main className="mx-auto max-w-340 px-6 pt-8 pb-12 md:px-10">
         <div className="mx-auto max-w-3xl">
-          {/* Tabs */}
           <div className="border-border-main flex border-b">
             {tabs.map((tab) => (
               <button
@@ -640,7 +643,6 @@ function Bookings() {
             ))}
           </div>
 
-          {/* Tab content */}
           {activeTab === "renter" && (
             <TabPanel
               viewMode="renter"
@@ -656,7 +658,6 @@ function Bookings() {
             />
           )}
 
-          {/* Link to explore */}
           {activeTab === "renter" && !renterState.loading && renterState.items.length === 0 && (
             <div className="mt-4 text-center">
               <a

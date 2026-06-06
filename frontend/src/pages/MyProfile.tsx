@@ -8,6 +8,16 @@ import type { ApiResponse } from "@/types/common";
 import type { VerificationStatus } from "@/types/customer";
 import type { SearchItemResponse } from "@/types/item";
 import {
+  PRODUCT_TONES,
+  PRODUCTS_SKELETON_IDS,
+  VERIFICATION_BUTTON_LABEL,
+  distributionPercent,
+  getStatusLabel,
+  initialReviewsState,
+  reviewsReducer,
+  type ReviewsState,
+} from "./MyProfile.logic";
+import {
   fetchMyItems,
   fetchReceivedReviews,
   formatMemberSince,
@@ -19,104 +29,7 @@ import {
   reviewerInitials,
   uniqueProductCities,
   type ReceivedReview,
-  type ReceivedReviewsResponseBase,
-  type ReviewsSummary,
 } from "@/components/profile/profileShared";
-
-const PRODUCT_TONES: Record<string, string> = {
-  sports: "bg-cat-deporte",
-  photography: "bg-cat-fotografia",
-  camping: "bg-cat-aventura",
-  music: "bg-cat-musica",
-  tools: "bg-cat-herramientas",
-  electronics: "bg-cat-electronica",
-  home: "bg-cat-orange-alt",
-  gardening: "bg-cat-deporte",
-  vehicles: "bg-cat-blue-alt",
-  clothing: "bg-cat-purple-alt",
-  other: "bg-primary-light",
-};
-
-type ReceivedReviewsResponse = ReceivedReviewsResponseBase<ReceivedReview>;
-
-interface ReviewsState {
-  items: ReceivedReview[];
-  total: number;
-  summary: ReviewsSummary;
-  loading: boolean;
-  error: string;
-}
-
-type ReviewsAction =
-  | { type: "fetch_start" }
-  | { type: "fetch_success"; payload: ReceivedReviewsResponse }
-  | { type: "fetch_error"; error: string };
-
-const emptyReviewsSummary: ReviewsSummary = {
-  average_rating: 0,
-  total: 0,
-  distribution: {},
-};
-
-const initialReviewsState: ReviewsState = {
-  items: [],
-  total: 0,
-  summary: emptyReviewsSummary,
-  loading: true,
-  error: "",
-};
-const PRODUCTS_SKELETON_IDS = [
-  "profile-product-skel-1",
-  "profile-product-skel-2",
-  "profile-product-skel-3",
-  "profile-product-skel-4",
-  "profile-product-skel-5",
-  "profile-product-skel-6",
-];
-
-const VERIFICATION_BUTTON_LABEL: Record<VerificationStatus, string> = {
-  none: "Solicitar badge verificado",
-  pending: "Solicitud pendiente",
-  verified: "Perfil verificado",
-  rejected: "Solicitar de nuevo",
-};
-
-function reviewsReducer(state: ReviewsState, action: ReviewsAction): ReviewsState {
-  switch (action.type) {
-    case "fetch_start":
-      return { ...state, loading: true, error: "" };
-    case "fetch_success":
-      return {
-        items: action.payload.items,
-        total: action.payload.total,
-        summary: action.payload.summary,
-        loading: false,
-        error: "",
-      };
-    case "fetch_error":
-      return {
-        items: [],
-        total: 0,
-        summary: emptyReviewsSummary,
-        loading: false,
-        error: action.error,
-      };
-    default:
-      return state;
-  }
-}
-
-function getStatusLabel(product: SearchItemResponse) {
-  if (product.item_status === "rented") return "Reservado";
-  if (product.item_status === "retired") return "Retirado";
-  if (product.is_available) return "Disponible";
-  return "No disponible";
-}
-
-function distributionPercent(count: number, total: number) {
-  if (total === 0) return 0;
-  return Math.round((count / total) * 100);
-}
 
 function handleAbortable<T>(
   promise: Promise<T>,
@@ -197,7 +110,7 @@ function ProfileProductCard({ product }: ProductCardProps) {
           </button>
         </div>
 
-        <p className="text-primary mt-2 text-[15px] font-bold">{Math.round(product.price_per_day)} EUR/dia</p>
+        <p className="text-primary mt-2 text-[15px] font-bold">{Math.round(product.price_per_day)} EUR/día</p>
       </div>
     </article>
   );
@@ -262,7 +175,7 @@ function ReviewsSection({ state }: ReviewsSectionProps) {
 
       {!state.loading && !state.error && total === 0 && (
         <div className="profile-info-panel mt-3 flex min-h-36 flex-col items-center justify-center p-6 text-center">
-          <p className="text-ink font-medium">Todavia no hay valoraciones</p>
+          <p className="text-ink font-medium">Todavía no hay valoraciones</p>
           <p className="text-subtle mt-1 text-[13px]">Cuando otros usuarios valoren tus alquileres apareceran aqui.</p>
         </div>
       )}
@@ -544,7 +457,7 @@ function MyProfile() {
           </section>
 
           <section className="mt-5">
-            <h2 className="heading-panel--sm">Articulos en alquiler</h2>
+            <h2 className="heading-panel--sm">Artículos en alquiler</h2>
             <p className="profile-products-sub mt-1">
               {productsState.loading
                 ? "Cargando tus productos..."
@@ -569,14 +482,14 @@ function MyProfile() {
             </div>
             {!productsState.loading && productsState.items.length === 0 && !productsState.error && (
               <div className="profile-info-panel mt-3 flex min-h-36 flex-col items-center justify-center p-6 text-center">
-                <p className="text-ink font-medium">Todavia no has publicado productos</p>
-                <p className="text-subtle mt-1 text-[13px]">Cuando publiques articulos apareceran aqui.</p>
+                <p className="text-ink font-medium">Todavía no has publicado productos</p>
+                <p className="text-subtle mt-1 text-[13px]">Cuando publiques artículos aparecerán aquí.</p>
                 <button
                   type="button"
                   className="btn-primary btn--sm mt-4"
                   onClick={() => navigate("/product/new")}
                 >
-                  Publicar articulo
+                  Publicar artículo
                 </button>
               </div>
             )}

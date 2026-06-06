@@ -16,6 +16,7 @@ interface ProductCalendarProps {
   navigateTo?: Date | null;
 }
 
+/** One grid cell: a day number, or null for the padding before/after the month. */
 interface CalendarCell {
   key: string;
   day: number | null;
@@ -47,35 +48,48 @@ function toISODate(date: Date): string {
   return `${y}-${m}-${d}`;
 }
 
+/** Returns today's date with the time component zeroed out. */
 function getToday(): Date {
   const date = new Date();
   date.setHours(0, 0, 0, 0);
   return date;
 }
 
+/** Returns today's date as a "YYYY-MM-DD" string. */
 function getTodayISO(): string {
   return toISODate(getToday());
 }
 
+/**
+ * useSyncExternalStore subscriber that re-reads "today" once a minute so the
+ * calendar rolls over at midnight without a reload.
+ */
 function subscribeToTodayChange(onStoreChange: () => void): () => void {
   const intervalId = window.setInterval(onStoreChange, 60_000);
   return () => window.clearInterval(intervalId);
 }
 
+/** Splits a "YYYY-MM-DD" string into numeric parts (month is 0-indexed). */
 function parseISODateParts(value: string): { year: number; month: number; day: number } {
   const [year = 1970, month = 1, day = 1] = value.split("-").map(Number);
   return { year, month: month - 1, day };
 }
 
+/** Reports whether the given year is a leap year. */
 function isLeapYear(year: number): boolean {
   return year % 4 === 0 && (year % 100 !== 0 || year % 400 === 0);
 }
 
+/** Returns the number of days in the given 0-indexed month. */
 function getDaysInMonth(year: number, month: number): number {
   if (month === 1) return isLeapYear(year) ? 29 : 28;
   return [0, 2, 4, 6, 7, 9, 11].includes(month) ? 31 : 30;
 }
 
+/**
+ * Returns the Monday-first offset (Mon=0 … Sun=6) of the first day of the month,
+ * used to pad the leading empty cells of the grid.
+ */
 function getFirstDayOffset(year: number, month: number): number {
   const m = month < 2 ? month + 12 : month;
   const y = month < 2 ? year - 1 : year;
@@ -84,6 +98,7 @@ function getFirstDayOffset(year: number, month: number): number {
   return (dayOfWeek + 5) % 7;
 }
 
+/** Reports whether the given y/m/d matches the calendar day of date. */
 function isSameCalendarDay(year: number, month: number, day: number, date: Date | null): boolean {
   return date !== null && date.getFullYear() === year && date.getMonth() === month && date.getDate() === day;
 }
@@ -149,7 +164,6 @@ function ProductCalendar({
       <p className="calendar-hint mb-3">Los días en gris están ocupados</p>
 
       <div className="border-border-main bg-surface rounded-xl border p-4">
-        {/* Month navigation */}
         <div className="mb-3 flex items-center justify-between">
           <button
             type="button"
@@ -173,7 +187,6 @@ function ProductCalendar({
           </button>
         </div>
 
-        {/* Weekday header row */}
         <div className="mb-1 grid grid-cols-7">
           {WEEKDAY_LABELS.map((label) => (
             <div
@@ -185,7 +198,6 @@ function ProductCalendar({
           ))}
         </div>
 
-        {/* Day cells */}
         <div className="grid grid-cols-7 gap-y-0.5">
           {cells.map(({ key, day }) => {
             if (!day) {
@@ -235,7 +247,6 @@ function ProductCalendar({
           })}
         </div>
 
-        {/* Legend */}
         <div className="mt-3 flex items-center justify-end gap-4">
           <div className="flex items-center gap-1.5">
             <span className="calendar-legend-dot calendar-legend-dot--occupied" />

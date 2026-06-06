@@ -1,3 +1,4 @@
+/** A single recorded admin action in the audit log. */
 interface AuditEntry {
   log_id: string;
   admin_email: string;
@@ -10,6 +11,7 @@ interface AuditEntry {
   created_at: string;
 }
 
+/** Paginated response from GET /api/admin/audit. */
 interface AuditLogListResponse {
   entries: AuditEntry[];
   total: number;

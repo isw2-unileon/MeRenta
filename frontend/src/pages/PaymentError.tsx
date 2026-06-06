@@ -34,7 +34,6 @@ function PaymentError() {
         className="w-full rounded-(--radius-panel) border border-(--color-border-main) bg-white p-10"
         style={{ maxWidth: 600 }}
       >
-        {/* ── Icon ── */}
         <div className="mb-6 flex justify-center">
           <div className="error-pay-icon-ring">
             <div className="error-pay-icon-circle">
@@ -56,11 +55,9 @@ function PaymentError() {
           </div>
         </div>
 
-        {/* ── Title ── */}
         <p className="error-pay-title mb-1 text-center">Pago rechazado</p>
-        <p className="error-pay-desc mb-6 text-center">No se pudo procesar el pago. No se ha realizado ningun cargo.</p>
+        <p className="error-pay-desc mb-6 text-center">No se pudo procesar el pago. No se ha realizado ningún cargo.</p>
 
-        {/* ── Stripe error box ── */}
         <div className="error-pay-stripe-box mb-6 w-full">
           <p className="error-pay-code">
             Error Stripe: <span>{errorCode}</span>
@@ -68,7 +65,6 @@ function PaymentError() {
           <p className="mt-1 text-[13px] text-(--color-subtle)">{errorMessage}</p>
         </div>
 
-        {/* ── Retry button ── */}
         <button
           type="button"
           className="btn-danger btn--error-pay mb-3 w-full"
@@ -77,7 +73,6 @@ function PaymentError() {
           Intentar de nuevo
         </button>
 
-        {/* ── Cancel link ── */}
         <div className="mb-4 flex justify-center">
           <button
             type="button"
@@ -88,7 +83,6 @@ function PaymentError() {
           </button>
         </div>
 
-        {/* ── Support ── */}
         <p className="error-pay-support text-center">
           ¿Sigues teniendo problemas? Contacta en{" "}
           <a

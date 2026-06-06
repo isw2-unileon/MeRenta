@@ -6,7 +6,7 @@ import { useNavigate } from "react-router-dom";
 const cards = [
   {
     title: "Seguro incluido",
-    desc: "Cobertura para danos, robo o perdida.",
+    desc: "Cobertura para daños, robo o perdida.",
   },
   {
     title: "Valoraciones reales",
@@ -44,7 +44,7 @@ function Trust() {
               className="btn-on-primary btn--xl"
               onClick={() => navigate("/more-info")}
             >
-              Saber mas sobre los seguros
+              Saber más sobre los seguros
             </button>
           </div>
         </div>

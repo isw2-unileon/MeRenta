@@ -1,3 +1,4 @@
+// Package service contains business logic for the API.
 package service
 
 import (
@@ -10,6 +11,7 @@ import (
 	"github.com/isw2-unileon/MeRenta/backend/internal/sqlcdb"
 )
 
+// reviewQuerier is the minimal DB interface needed by ReviewService.
 type reviewQuerier interface {
 	CreateReview(ctx context.Context, arg sqlcdb.CreateReviewParams) (sqlcdb.ReviewRow, error)
 	ListReceivedReviews(ctx context.Context, arg sqlcdb.ListReceivedReviewsParams) ([]sqlcdb.ReceivedReviewRow, error)
@@ -145,6 +147,8 @@ func (s *ReviewService) GetReceivedReviewSummary(ctx context.Context, reviewedID
 	}, nil
 }
 
+// emptyReceivedReviewsResponse returns a zero-valued, well-formed reviews
+// response for the given page, used when reviews cannot be loaded.
 func emptyReceivedReviewsResponse(page int, limit int) *model.ReceivedReviewsResponse {
 	return &model.ReceivedReviewsResponse{
 		Items:   []model.ReceivedReviewResponse{},
@@ -155,6 +159,8 @@ func emptyReceivedReviewsResponse(page int, limit int) *model.ReceivedReviewsRes
 	}
 }
 
+// emptyReviewSummary returns a zero-valued rating summary with an all-zero
+// star distribution.
 func emptyReviewSummary() *model.ReviewSummaryResponse {
 	return &model.ReviewSummaryResponse{
 		AverageRating: 0,

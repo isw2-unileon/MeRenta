@@ -40,6 +40,7 @@ const STATUS_BADGE_COLORS: Record<QueueStatus, "amber" | "green" | "red"> = {
   rejected: "red",
 };
 
+/** Returns the uppercase initials for a verification-queue row. */
 function userInitials(u: AdminVerificationRequest): string {
   return `${u.first_name[0] ?? ""}${u.last_name[0] ?? ""}`.toUpperCase();
 }
@@ -59,6 +60,7 @@ type VerificationAction =
 
 const initialState: VerificationState = { requests: [], total: 0, loading: true, error: null };
 
+/** Reduces verification-queue fetch and optimistic decision actions. */
 function verificationReducer(state: VerificationState, action: VerificationAction): VerificationState {
   switch (action.type) {
     case "fetch_start":
@@ -77,6 +79,7 @@ function verificationReducer(state: VerificationState, action: VerificationActio
   }
 }
 
+/** Fetches a page of verification requests filtered by queue status. */
 function fetchVerification(status: QueueStatus, page: number): Promise<AdminVerificationListResponse> {
   const params = new URLSearchParams({ status, page: String(page), limit: String(LIMIT) });
   return getAdminData<AdminVerificationListResponse>(
@@ -85,6 +88,7 @@ function fetchVerification(status: QueueStatus, page: number): Promise<AdminVeri
   );
 }
 
+/** Submits an admin verification decision (verified/rejected) for a customer. */
 function updateVerification(customerId: string, status: DecisionStatus): Promise<void> {
   return sendAdminMutation(
     `/api/admin/verification/${customerId}`,
@@ -94,6 +98,7 @@ function updateVerification(customerId: string, status: DecisionStatus): Promise
   );
 }
 
+/** Green check or grey cross indicating whether a requirement is met. */
 function CheckMark({ ok }: { ok: boolean }) {
   return (
     <span
@@ -114,6 +119,10 @@ interface PendingDecision {
   status: DecisionStatus;
 }
 
+/**
+ * Admin verification view — paginated queue of badge requests with approve /
+ * reject actions guarded by a confirmation modal.
+ */
 function Verification() {
   const [state, dispatch] = useReducer(verificationReducer, initialState);
   const [filters, setFilters] = useState({ status: "pending" as QueueStatus, page: 1 });

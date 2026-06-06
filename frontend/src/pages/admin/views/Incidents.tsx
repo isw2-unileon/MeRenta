@@ -1,10 +1,10 @@
-import { useCallback, useEffect, useReducer, useRef, useState } from "react";
+import { useCallback, useEffect, useReducer, useState } from "react";
 import { AlertTriangle, Check, ChevronDown, Filter, Package, RotateCcw, Users } from "lucide-react";
 
 import type { ApiResponse } from "@/types/common";
 import type { IncidentListResponse, IncidentPriority, IncidentResponse, IncidentStatus } from "@/types/incident";
 import { GREEN } from "@/components/admin/adminTokens";
-import { Badge, Card } from "@/components/admin/adminUi";
+import { Badge, Card, Dropdown } from "@/components/admin/adminUi";
 
 // ── Constants ─────────────────────────────────────────────────────────────────
 
@@ -34,6 +34,7 @@ const PRIORITY_LABEL: Record<IncidentPriority, string> = {
   low: "baja",
 };
 
+/** Formats an ISO date as a short Spanish date. */
 function fmtIncidentDate(iso: string): string {
   return new Date(iso).toLocaleDateString("es-ES", {
     day: "numeric",
@@ -42,10 +43,12 @@ function fmtIncidentDate(iso: string): string {
   });
 }
 
+/** Notifies other views (e.g. the sidebar badge) that incidents changed. */
 function notifyIncidentsChanged(): void {
   window.dispatchEvent(new Event("merenta:incidents-updated"));
 }
 
+/** Loads a page of incidents and returns the items plus total count. */
 async function loadIncidents(
   typeFilter: string,
   statusFilter: string,
@@ -88,6 +91,7 @@ const initialState: IncidentsState = {
   selected: null,
 };
 
+/** Reduces incident list/selection/optimistic-patch actions. */
 function incidentsReducer(state: IncidentsState, action: IncidentsAction): IncidentsState {
   switch (action.type) {
     case "fetch_start":
@@ -131,6 +135,7 @@ function incidentsReducer(state: IncidentsState, action: IncidentsAction): Incid
 
 // ── API helpers ───────────────────────────────────────────────────────────────
 
+/** Fetches a page of incidents filtered by type and status. */
 async function fetchIncidents(typeFilter: string, statusFilter: string, page: number): Promise<IncidentListResponse> {
   const params = new URLSearchParams({ page: String(page), limit: "20" });
   if (typeFilter) params.set("type", typeFilter);
@@ -143,6 +148,7 @@ async function fetchIncidents(typeFilter: string, statusFilter: string, page: nu
   return json.data;
 }
 
+/** Updates an incident's status. */
 async function patchStatus(id: string, status: IncidentStatus): Promise<void> {
   const res = await fetch(`/api/admin/incidents/${id}/status`, {
     method: "PATCH",
@@ -154,6 +160,7 @@ async function patchStatus(id: string, status: IncidentStatus): Promise<void> {
   if (!res.ok || !json.success) throw new Error(json.error ?? "Error");
 }
 
+/** Updates an incident's triage priority. */
 async function patchPriority(id: string, priority: IncidentPriority): Promise<void> {
   const res = await fetch(`/api/admin/incidents/${id}/priority`, {
     method: "PATCH",
@@ -177,10 +184,12 @@ const INCIDENT_TYPE_LABELS: Record<string, string> = {
   forbidden_item: "Producto no permitido",
 };
 
+/** Reports whether an incident type relates to a product (vs. a user). */
 function isProductIncident(type: string): boolean {
   return ["damage", "item_mismatch", "not_available", "forbidden_item"].includes(type);
 }
 
+/** Icon distinguishing product vs. user incidents. */
 function TypeIcon({ type }: { type: string }) {
   const isProduct = isProductIncident(type);
   return (
@@ -218,50 +227,36 @@ interface AdminDropdownProps<T extends string> {
   onUpdate: (value: T) => void;
 }
 
+/** Generic labeled dropdown for selecting one of a fixed set of values. */
 function AdminDropdown<T extends string>({ label, value, options, labels, onUpdate }: AdminDropdownProps<T>) {
-  const [open, setOpen] = useState(false);
-  const ref = useRef<HTMLDivElement>(null);
-
-  useEffect(() => {
-    if (!open) return;
-    function onClick(e: MouseEvent) {
-      if (ref.current && !ref.current.contains(e.target as Node)) setOpen(false);
-    }
-    document.addEventListener("mousedown", onClick);
-    return () => document.removeEventListener("mousedown", onClick);
-  }, [open]);
-
   return (
-    <div
-      className="relative"
-      ref={ref}
+    <Dropdown
+      ariaLabel={`${label}: ${labels[value]}`}
+      panelClassName="min-w-44 py-1"
+      buttonClassName="inline-flex items-center gap-1.5 rounded-lg border border-neutral-200 px-3 py-2 text-sm font-medium text-neutral-700 hover:bg-neutral-50"
+      button={
+        <>
+          {label}: {labels[value]} <ChevronDown size={14} />
+        </>
+      }
     >
-      <button
-        type="button"
-        onClick={() => setOpen((v) => !v)}
-        className="inline-flex items-center gap-1.5 rounded-lg border border-neutral-200 px-3 py-2 text-sm font-medium text-neutral-700 hover:bg-neutral-50"
-      >
-        {label}: {labels[value]} <ChevronDown size={14} />
-      </button>
-      {open && (
-        <div className="absolute right-0 z-10 mt-1 w-44 rounded-lg border border-neutral-200 bg-white py-1 shadow-md">
-          {options.map((option) => (
-            <button
-              key={option}
-              type="button"
-              onClick={() => {
-                onUpdate(option);
-                setOpen(false);
-              }}
-              className="flex w-full items-center gap-2 px-3 py-2 text-left text-sm text-neutral-700 hover:bg-neutral-50"
-            >
-              {option === value && <Check size={14} />}
-              <span className={option === value ? "font-semibold" : ""}>{labels[option]}</span>
-            </button>
-          ))}
-        </div>
-      )}
-    </div>
+      {(close) =>
+        options.map((option) => (
+          <button
+            key={option}
+            type="button"
+            onClick={() => {
+              onUpdate(option);
+              close();
+            }}
+            className="flex w-full items-center gap-2 px-3 py-2 text-left text-sm text-neutral-700 hover:bg-neutral-50"
+          >
+            {option === value && <Check size={14} />}
+            <span className={option === value ? "font-semibold" : ""}>{labels[option]}</span>
+          </button>
+        ))
+      }
+    </Dropdown>
   );
 }
 
@@ -272,6 +267,7 @@ interface DetailPanelProps {
   onPriorityUpdate: (id: string, priority: IncidentPriority) => void;
 }
 
+/** Side panel showing full incident detail with status/priority controls. */
 function DetailPanel({ incident, onStatusUpdate, onPriorityUpdate }: DetailPanelProps) {
   return (
     <Card className="sticky top-4 p-5">
@@ -493,7 +489,6 @@ function Incidents() {
 
   return (
     <div className="space-y-4">
-      {/* Filters */}
       <div className="flex flex-wrap items-center gap-2">
         <div className="flex gap-1.5">
           {TYPE_FILTERS.map(({ value, label }) => (
@@ -551,7 +546,6 @@ function Incidents() {
 
       {(loading || incidents.length > 0) && (
         <div className="grid grid-cols-1 gap-4 xl:grid-cols-5">
-          {/* List */}
           <div className="space-y-2 xl:col-span-3">
             {loading ? (
               Array.from({ length: 5 }).map((_, i) => (
@@ -627,7 +621,6 @@ function Incidents() {
             )}
           </div>
 
-          {/* Detail panel */}
           {selected && (
             <div className="xl:col-span-2">
               <DetailPanel
