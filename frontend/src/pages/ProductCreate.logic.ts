@@ -1,5 +1,8 @@
+// Form state model, reducer and validation for the product creation page,
+// kept UI-free for easy unit testing.
 import type { ProductFormData } from "@/types/item";
 
+/** Default values for a blank product creation form. */
 const INITIAL_FORM: ProductFormData = {
   title: "",
   category: "",
@@ -20,9 +23,12 @@ const INITIAL_FORM: ProductFormData = {
   usageRules: "",
 };
 
+/** Validation error messages keyed by form field. */
 type FormErrors = Partial<Record<keyof ProductFormData, string>>;
+/** Stages of the multi-step submit (create item, then upload photos). */
 type SubmitStep = "idle" | "creating" | "uploading" | "done";
 
+/** User-facing button labels for each submit step. */
 const STEP_LABELS: Record<SubmitStep, string> = {
   idle: "",
   creating: "Creando anuncio...",
@@ -46,6 +52,7 @@ type FormAction =
   | { type: "set-submit-step"; step: SubmitStep }
   | { type: "set-submit-error"; message: string };
 
+/** Initial reducer state for a blank creation form. */
 const INITIAL_STATE: FormState = {
   data: INITIAL_FORM,
   errors: {},
@@ -53,6 +60,7 @@ const INITIAL_STATE: FormState = {
   submitError: "",
 };
 
+/** Reduces creation-form actions (field edits, photos, submit) into the next state. */
 function formReducer(state: FormState, action: FormAction): FormState {
   switch (action.type) {
     case "update-field": {
@@ -83,6 +91,10 @@ function formReducer(state: FormState, action: FormAction): FormState {
   }
 }
 
+/**
+ * Validates the product form and returns a map of field errors (empty when the
+ * form is valid).
+ */
 function validateForm(data: ProductFormData): FormErrors {
   const errors: FormErrors = {};
 

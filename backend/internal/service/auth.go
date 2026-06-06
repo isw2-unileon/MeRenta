@@ -506,11 +506,15 @@ func (s *AuthService) GetPublicProfile(ctx context.Context, id uuid.UUID) (*mode
 	}, nil
 }
 
+// isUniqueViolation reports whether err is a PostgreSQL unique-constraint
+// violation (SQLSTATE 23505).
 func isUniqueViolation(err error) bool {
 	var pgErr *pgconn.PgError
 	return errors.As(err, &pgErr) && pgErr.Code == "23505"
 }
 
+// getVerificationStatusOrDefault returns the customer's verification status,
+// falling back to VerificationStatusNone when it cannot be read.
 func getVerificationStatusOrDefault(
 	ctx context.Context,
 	q authQuerier,

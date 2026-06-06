@@ -66,6 +66,7 @@ const VIEWS: Record<Exclude<SectionId, "dashboard">, React.ComponentType> = {
   settings: SettingsView,
 };
 
+/** Fetches the total number of incidents with the given status. */
 async function fetchIncidentTotal(status: IncidentStatus): Promise<number> {
   const params = new URLSearchParams({ page: "1", limit: "1" });
   params.set("status", status);
@@ -79,11 +80,13 @@ async function fetchIncidentTotal(status: IncidentStatus): Promise<number> {
   return json.data.total;
 }
 
+/** Total of open + under-review incidents, for the sidebar badge. */
 async function fetchUnresolvedIncidentTotal(): Promise<number> {
   const totals = await Promise.all([fetchIncidentTotal("open"), fetchIncidentTotal("under_review")]);
   return totals.reduce((sum, total) => sum + total, 0);
 }
 
+/** Fetches the total number of products, for the sidebar badge. */
 async function fetchProductTotal(): Promise<number> {
   const params = new URLSearchParams({ page: "1", limit: "1" });
   const res = await fetch(`/api/admin/items?${params.toString()}`, {
@@ -96,6 +99,7 @@ async function fetchProductTotal(): Promise<number> {
   return json.data.total;
 }
 
+/** Fetches the number of pending verification requests, for the sidebar badge. */
 async function fetchPendingVerificationTotal(): Promise<number> {
   const params = new URLSearchParams({ status: "pending", page: "1", limit: "1" });
   const res = await fetch(`/api/admin/verification?${params.toString()}`, {
@@ -116,10 +120,10 @@ interface SidebarProps {
   onSelect: (id: SectionId) => void;
 }
 
+/** Admin panel left sidebar: brand, nav items and per-section badges. */
 function Sidebar({ active, navItems, onSelect }: SidebarProps) {
   return (
     <aside className="flex w-60 shrink-0 flex-col border-r border-neutral-200 bg-white">
-      {/* Logo */}
       <div className="flex h-16 items-center border-b border-neutral-100 px-5">
         <a
           href="/"
@@ -137,7 +141,6 @@ function Sidebar({ active, navItems, onSelect }: SidebarProps) {
         </span>
       </div>
 
-      {/* Nav */}
       <nav className="flex-1 space-y-0.5 overflow-y-auto p-3">
         {navItems.map(({ id, label, Icon, badge }) => {
           const on = active === id;
@@ -281,7 +284,6 @@ function AdminPanel() {
       />
 
       <div className="flex min-w-0 flex-1 flex-col">
-        {/* Top header */}
         <header className="flex h-16 items-center gap-4 border-b border-neutral-200 bg-white px-6">
           <div>
             <h1 className="text-lg leading-tight font-bold">{current.label}</h1>
@@ -289,7 +291,6 @@ function AdminPanel() {
           </div>
         </header>
 
-        {/* Section content */}
         <main className="flex-1 overflow-y-auto p-6">
           {active === "dashboard" ? (
             <Dashboard onViewAllIncidents={() => setActive("incidents")} />

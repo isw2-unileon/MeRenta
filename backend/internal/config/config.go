@@ -66,6 +66,9 @@ func Load() *Config {
 	}
 }
 
+// getMessageEncryptionKey returns the configured 32-byte message encryption
+// key, decoding it from base64. When unset it derives the key from the first
+// 32 bytes of the provided fallback (the JWT secret).
 func getMessageEncryptionKey(fallback []byte) []byte {
 	raw := strings.TrimSpace(getEnv("MESSAGE_ENCRYPTION_KEY", ""))
 	if raw == "" {
@@ -83,6 +86,8 @@ func getMessageEncryptionKey(fallback []byte) []byte {
 	return key
 }
 
+// mustGetEnv returns the trimmed value of the environment variable, or exits
+// the process when it is missing or empty.
 func mustGetEnv(key string) string {
 	value := strings.TrimSpace(getEnv(key, ""))
 	if value == "" {
@@ -91,6 +96,8 @@ func mustGetEnv(key string) string {
 	return value
 }
 
+// mustDecodeJWTSecret decodes the base64 JWT_SECRET and ensures it is at least
+// 32 bytes long, exiting the process if either check fails.
 func mustDecodeJWTSecret() []byte {
 	jwtSecret := mustGetEnv("JWT_SECRET")
 	jwtSecretBytes, err := base64.StdEncoding.DecodeString(jwtSecret)
@@ -103,6 +110,8 @@ func mustDecodeJWTSecret() []byte {
 	return jwtSecretBytes
 }
 
+// mustParsePositiveDuration parses value as a strictly positive duration,
+// exiting the process if it is invalid or non-positive.
 func mustParsePositiveDuration(key, value string) time.Duration {
 	parsed, err := time.ParseDuration(strings.TrimSpace(value))
 	if err != nil || parsed <= 0 {
@@ -111,6 +120,8 @@ func mustParsePositiveDuration(key, value string) time.Duration {
 	return parsed
 }
 
+// mustParseNonNegativeDuration parses value as a non-negative duration,
+// exiting the process if it is invalid or negative.
 func mustParseNonNegativeDuration(key, value string) time.Duration {
 	parsed, err := time.ParseDuration(strings.TrimSpace(value))
 	if err != nil || parsed < 0 {
@@ -119,6 +130,8 @@ func mustParseNonNegativeDuration(key, value string) time.Duration {
 	return parsed
 }
 
+// ensureCORSAllowOrigin guards against a wildcard CORS origin in production,
+// exiting the process when one is configured.
 func ensureCORSAllowOrigin(mode, corsAllowOrigin string) {
 	if isProductionMode(mode) && strings.TrimSpace(corsAllowOrigin) == "*" {
 		log.Fatal("CORS_ALLOW_ORIGIN must be an explicit allowlist in production")
@@ -133,6 +146,8 @@ func getEnv(key, fallback string) string {
 	return fallback
 }
 
+// isProductionMode reports whether the given Gin mode represents a production
+// deployment.
 func isProductionMode(mode string) bool {
 	switch strings.ToLower(strings.TrimSpace(mode)) {
 	case "production", "prod", "release":

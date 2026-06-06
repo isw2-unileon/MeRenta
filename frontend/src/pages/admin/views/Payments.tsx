@@ -51,18 +51,22 @@ const NEXT_LABELS: Partial<Record<BookingStatus, string>> = {
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
 
+/** Returns the renter's full name, or a short ID fallback. */
 function renterName(b: BookingDetailResponse): string {
   return `${b.renter_first_name} ${b.renter_last_name}`.trim() || b.renter_id.slice(0, 8);
 }
 
+/** Reports whether a booking's payment has been refunded. */
 function isRefunded(b: BookingDetailResponse): boolean {
   return REFUNDED_STATUSES.includes(b.booking_status);
 }
 
+/** Builds the Stripe dashboard URL for a payment intent. */
 function stripeUrl(id: string): string {
   return `https://dashboard.stripe.com/payments/${id}`;
 }
 
+/** Returns the confirmation message for a given status change. */
 function confirmMsg(next: BookingStatus, item: string): string {
   if (next === "cancelled") return `¿Cancelar la reserva de «${item}» y emitir el reembolso a Stripe?`;
   if (next === "rejected") return `¿Rechazar la reserva de «${item}» y emitir el reembolso a Stripe?`;
@@ -88,6 +92,7 @@ type PaymentsAction =
 
 const initialState: PaymentsState = { payments: [], total: 0, loading: true, error: null };
 
+/** Reduces payment-list fetch and optimistic status-patch actions. */
 function paymentsReducer(state: PaymentsState, action: PaymentsAction): PaymentsState {
   switch (action.type) {
     case "fetch_start":
@@ -108,6 +113,7 @@ function paymentsReducer(state: PaymentsState, action: PaymentsAction): Payments
 
 // ── API ───────────────────────────────────────────────────────────────────────
 
+/** Fetches a page of payments filtered by payment status and search query. */
 function fetchPayments(paymentStatus: string, query: string, page: number): Promise<BookingListResponse> {
   const params = new URLSearchParams({ page: String(page), limit: String(LIMIT) });
   if (paymentStatus) params.set("payment_status", paymentStatus);
@@ -115,6 +121,7 @@ function fetchPayments(paymentStatus: string, query: string, page: number): Prom
   return getAdminData<BookingListResponse>(`/api/admin/payments?${params.toString()}`, "Error al cargar transacciones");
 }
 
+/** Sets a booking's status via the admin override endpoint (may trigger refund). */
 function patchAdminBookingStatus(bookingId: string, status: BookingStatus): Promise<void> {
   return sendAdminMutation(
     `/api/admin/bookings/${bookingId}/status`,
@@ -131,6 +138,7 @@ interface StatusMenuProps {
   onRequest: (bookingId: string, status: BookingStatus) => void;
 }
 
+/** Dropdown of allowed next statuses for a payment's booking (null if terminal). */
 function StatusMenu({ payment, onRequest }: StatusMenuProps) {
   const options = ADMIN_NEXT[payment.booking_status] ?? [];
   if (options.length === 0) return null;
@@ -227,7 +235,6 @@ function Payments() {
         />
       )}
 
-      {/* Filter bar */}
       <div className="flex flex-wrap items-center justify-between gap-3">
         <FilterPills
           options={FILTER_OPTIONS}

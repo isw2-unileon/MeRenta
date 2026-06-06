@@ -27,11 +27,13 @@ const dayLabelFormatter = new Intl.DateTimeFormat("es-ES", {
 });
 const CHAT_SKELETON_IDS = ["chat-skel-1", "chat-skel-2", "chat-skel-3", "chat-skel-4", "chat-skel-5"];
 
+/** Formats a timestamp as "HH:MM" for message bubbles. */
 function formatChatTime(iso?: string): string {
   if (!iso) return "";
   return chatTimeFormatter.format(new Date(iso));
 }
 
+/** Formats a conversation's last-activity time: time today, "Ayer", else weekday. */
 function formatConversationTime(iso?: string): string {
   if (!iso) return "";
 
@@ -47,11 +49,13 @@ function formatConversationTime(iso?: string): string {
   return conversationDayFormatter.format(date);
 }
 
+/** Formats a date as a "day month" separator label, defaulting to "Hoy". */
 function dayLabel(iso?: string): string {
   if (!iso) return "Hoy";
   return dayLabelFormatter.format(new Date(iso));
 }
 
+/** Resolves after ms, or rejects with AbortError if the signal aborts first. */
 function wait(ms: number, signal?: AbortSignal): Promise<void> {
   return new Promise((resolve, reject) => {
     const timeoutID = window.setTimeout(resolve, ms);
@@ -67,6 +71,7 @@ function wait(ms: number, signal?: AbortSignal): Promise<void> {
   });
 }
 
+/** GETs a URL and unwraps the API envelope, throwing on failure. */
 async function apiGet<T>(url: string, signal?: AbortSignal): Promise<T> {
   const res = await fetch(url, { credentials: "include", signal });
   const json = (await res.json()) as ApiResponse<T>;
@@ -76,6 +81,7 @@ async function apiGet<T>(url: string, signal?: AbortSignal): Promise<T> {
   return json.data;
 }
 
+/** apiGet with up to three backoff retries; aborts are never retried. */
 async function apiGetWithRetry<T>(url: string, signal?: AbortSignal): Promise<T> {
   const delays = [700, 1400, 2500];
 
@@ -95,6 +101,7 @@ async function apiGetWithRetry<T>(url: string, signal?: AbortSignal): Promise<T>
   return attemptFetch(0);
 }
 
+/** Sends a chat message via REST (fallback when the socket is closed). */
 async function sendMessage(conversationID: string, body: string): Promise<MessageResponse> {
   const res = await fetch(`/api/conversations/${conversationID}/messages`, {
     method: "POST",
@@ -109,6 +116,7 @@ async function sendMessage(conversationID: string, body: string): Promise<Messag
   return json.data;
 }
 
+/** Deletes a conversation from the current user's inbox. */
 async function deleteConversation(conversationID: string): Promise<void> {
   const res = await fetch(`/api/conversations/${conversationID}`, {
     method: "DELETE",
@@ -120,6 +128,7 @@ async function deleteConversation(conversationID: string): Promise<void> {
   }
 }
 
+/** Marks all messages in a conversation as read (best effort). */
 async function markConversationRead(conversationID: string): Promise<void> {
   await fetch(`/api/conversations/${conversationID}/read`, {
     method: "POST",
@@ -127,6 +136,7 @@ async function markConversationRead(conversationID: string): Promise<void> {
   });
 }
 
+/** Builds the same-origin (dev) or backend (prod) WebSocket URL for a conversation. */
 function buildWebSocketURL(conversationID: string): string {
   // In dev the Vite proxy (ws: true) forwards /api/* to the backend, so we connect
   // to the dev server origin and let the proxy handle the upgrade. This keeps the
@@ -142,6 +152,7 @@ function buildWebSocketURL(conversationID: string): string {
   return url.toString();
 }
 
+/** Avatar image with initials fallback, used across the chat UI. */
 function ChatAvatar({ name, image, small = false }: { name: string; image?: string; small?: boolean }) {
   const initials = initialsFromName(name);
   const size = small ? "size-7 text-[11px]" : "size-11 text-[14px]";
@@ -163,6 +174,7 @@ function ChatAvatar({ name, image, small = false }: { name: string; image?: stri
   );
 }
 
+/** A single row in the conversation sidebar (with unread badge / select mode). */
 function ConversationRow({
   conversation,
   active,
@@ -240,6 +252,7 @@ function ConversationRow({
   );
 }
 
+/** A single chat message bubble, aligned by ownership with read receipts. */
 function MessageBubble({ message, otherUser }: { message: MessageResponse; otherUser: ConversationResponse }) {
   const isMine = message.is_mine;
 
@@ -275,6 +288,7 @@ function MessageBubble({ message, otherUser }: { message: MessageResponse; other
   );
 }
 
+/** Sidebar with search, bulk-select/delete controls and the conversation rows. */
 function ConversationList({
   conversations,
   loading,
@@ -386,6 +400,7 @@ function ConversationList({
   );
 }
 
+/** Header of the active conversation: other user, item and "view product" link. */
 function ChatHeader({
   conversation,
   onViewProduct,
@@ -429,6 +444,7 @@ function ChatHeader({
   );
 }
 
+/** Scrollable message list for the active conversation with day separators. */
 function MessagesPanel({
   conversation,
   messages,
@@ -481,6 +497,7 @@ function MessagesPanel({
   );
 }
 
+/** Message input and send button at the bottom of the conversation. */
 function ChatComposer({
   draft,
   sending,
@@ -517,6 +534,7 @@ function ChatComposer({
   );
 }
 
+/** Confirmation modal for deleting selected conversations. */
 function DeleteConversationDialog({
   count,
   deleting,
@@ -574,6 +592,11 @@ function DeleteConversationDialog({
 }
 
 // ── Chat page hook — keeps all state, effects and handlers out of the render ──
+/**
+ * Encapsulates all chat page state: loads conversations and messages (with
+ * polling and a live WebSocket), tracks unread counts, and exposes the send and
+ * bulk-delete handlers consumed by the Chat component.
+ */
 function useChatPage(conversationId: string | undefined) {
   const navigate = useNavigate();
   const { user } = useAuth();

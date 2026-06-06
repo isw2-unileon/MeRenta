@@ -43,6 +43,7 @@ type ItemImageHandler struct {
 	httpClient *http.Client
 }
 
+// itemImageService is the subset of the image service used by the handler.
 type itemImageService interface {
 	GetImages(ctx context.Context, itemID uuid.UUID) ([]model.ItemImageResponse, error)
 	AddItemImages(ctx context.Context, ownerID uuid.UUID, itemID uuid.UUID, files []*multipart.FileHeader) ([]model.ItemImageResponse, error)

@@ -81,7 +81,6 @@ function ProductSkeleton() {
   return (
     <div className="animate-pulse">
       <div className="grid grid-cols-[1fr_392px] items-start gap-8">
-        {/* Left */}
         <div className="flex flex-col gap-6">
           <div className="bg-primary-light h-main-img rounded-lg" />
           <div className="flex gap-2">
@@ -105,7 +104,6 @@ function ProductSkeleton() {
           </div>
         </div>
 
-        {/* Right */}
         <div className="flex flex-col gap-5">
           <div className="rounded-panel bg-primary-light h-90" />
           <div className="rounded-panel bg-primary-light h-56" />
@@ -270,9 +268,7 @@ function Product() {
 
         {!state.loading && item && (
           <div className="grid grid-cols-[1fr_392px] items-start gap-8">
-            {/* ════════════════════════════════════ Left column */}
             <div className="flex min-w-0 flex-col gap-6">
-              {/* Image gallery */}
               <ProductImageGallery
                 images={state.images}
                 title={item.title}
@@ -284,7 +280,6 @@ function Product() {
                 }
               />
 
-              {/* Title, badges and rating */}
               <div>
                 <h2 className="text-ink mb-2 text-[22px] leading-tight font-semibold">{item.title}</h2>
 
@@ -293,7 +288,6 @@ function Product() {
                   {condition && <span className="product-estado-badge">Estado: {condition}</span>}
                 </div>
 
-                {/* Rating row */}
                 <div className="flex flex-wrap items-center gap-3">
                   <div className="flex items-center gap-1">
                     <StarRating rating={reviewSummary.average_rating} />
@@ -306,7 +300,6 @@ function Product() {
 
               <hr className="divider-product" />
 
-              {/* Description */}
               {item.description && (
                 <>
                   <div>
@@ -317,7 +310,6 @@ function Product() {
                 </>
               )}
 
-              {/* Usage rules */}
               {item.usage_rules && (
                 <>
                   <div>
@@ -328,7 +320,6 @@ function Product() {
                 </>
               )}
 
-              {/* Availability calendar */}
               <div>
                 <h3 className="heading-section mb-1">Disponibilidad</h3>
                 <ProductCalendar
@@ -346,7 +337,6 @@ function Product() {
               </div>
             </div>
 
-            {/* ════════════════════════════════════ Right column */}
             <div className="top-8 flex flex-col gap-5">
               <BookingCard
                 itemId={item.item_id}

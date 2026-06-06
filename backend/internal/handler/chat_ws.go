@@ -17,6 +17,9 @@ import (
 	"github.com/isw2-unileon/MeRenta/backend/pkg/response"
 )
 
+// chatWebSocketUpgrader upgrades HTTP requests to WebSocket connections.
+// Origin checks are intentionally permissive because access is gated by JWT
+// authentication and conversation-participant checks before upgrading.
 var chatWebSocketUpgrader = websocket.Upgrader{
 	CheckOrigin: func(*http.Request) bool {
 		return true
@@ -48,6 +51,9 @@ func (h *ChatHandler) WebSocket(c *gin.Context) {
 	h.handleWebSocketConnection(c.Request.Context(), ws, customerID, conversationID)
 }
 
+// authenticateWebSocket extracts and verifies the JWT from the cookie or query
+// params (browsers cannot set headers on a WebSocket handshake), returning the
+// authenticated customer ID or writing a 401 and returning false.
 func (h *ChatHandler) authenticateWebSocket(c *gin.Context) (uuid.UUID, bool) {
 	tokenStr := ""
 	tokenSource := ""
@@ -99,6 +105,8 @@ func (h *ChatHandler) authenticateWebSocket(c *gin.Context) (uuid.UUID, bool) {
 	return claims.CustomerID, true
 }
 
+// ensureConversationAccess verifies the customer participates in the
+// conversation, writing 404/500 and returning false when they do not.
 func (h *ChatHandler) ensureConversationAccess(c *gin.Context, customerID, conversationID uuid.UUID) bool {
 	if err := h.svc.EnsureParticipant(c.Request.Context(), customerID, conversationID); err != nil {
 		if errors.Is(err, service.ErrConversationNotFound) {
@@ -113,6 +121,9 @@ func (h *ChatHandler) ensureConversationAccess(c *gin.Context, customerID, conve
 	return true
 }
 
+// handleWebSocketConnection subscribes the connection to the conversation hub,
+// fans out broadcast events in a goroutine, and processes inbound messages
+// until the socket closes, cleaning up the subscription on return.
 func (h *ChatHandler) handleWebSocketConnection(
 	ctx context.Context,
 	ws *websocket.Conn,
@@ -134,6 +145,8 @@ func (h *ChatHandler) handleWebSocketConnection(
 	h.receiveWebSocketEvents(ctx, ws, customerID, conversationID, out)
 }
 
+// forwardWebSocketEvents writes hub events to the socket until the channel is
+// closed or a write fails.
 func (h *ChatHandler) forwardWebSocketEvents(ws *websocket.Conn, out <-chan model.ChatWebSocketOut) {
 	for event := range out {
 		if err := ws.WriteJSON(event); err != nil {
@@ -142,6 +155,9 @@ func (h *ChatHandler) forwardWebSocketEvents(ws *websocket.Conn, out <-chan mode
 	}
 }
 
+// receiveWebSocketEvents reads inbound "message" events from the socket,
+// persists each via the chat service and broadcasts it to the conversation,
+// returning errors to the sender over the out channel.
 func (h *ChatHandler) receiveWebSocketEvents(
 	ctx context.Context,
 	ws *websocket.Conn,

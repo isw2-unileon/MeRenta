@@ -62,7 +62,6 @@ function PaymentSuccess() {
         className="border-border-main w-full rounded-(--radius-panel) border bg-white p-10"
         style={{ maxWidth: 600 }}
       >
-        {/* ── Icon ── */}
         <div className="mb-6 flex justify-center">
           <div
             className="flex items-center justify-center rounded-full"
@@ -99,11 +98,9 @@ function PaymentSuccess() {
           </div>
         </div>
 
-        {/* ── Title ── */}
         <p className="error-pay-title mb-2 text-center">Pago completado</p>
         <p className="error-pay-desc mb-6 text-center">Tu alquiler ha sido confirmado y el seguro activado.</p>
 
-        {/* ── Stripe info bar ── */}
         <div className="bg-error-info mb-5 rounded-md px-4 py-3">
           <p className="text-http-info text-[13px]">
             Stripe ID: <span className="font-medium">{paymentIntentId}</span>
@@ -112,10 +109,8 @@ function PaymentSuccess() {
           </p>
         </div>
 
-        {/* ── Rental item card ── */}
         <div className="border-border-main mb-6 rounded-lg border p-4">
           <div className="flex items-start gap-4">
-            {/* Item image */}
             {itemImageUrl ? (
               <img
                 src={itemImageUrl}
@@ -140,7 +135,6 @@ function PaymentSuccess() {
             </div>
           </div>
 
-          {/* Insurance badge */}
           <div className="bg-insurance mt-3 flex items-center gap-2 rounded-md px-3 py-2">
             <span
               className="text-xs font-bold"
@@ -157,7 +151,6 @@ function PaymentSuccess() {
           </div>
         </div>
 
-        {/* ── Actions ── */}
         <div className="flex gap-3">
           <button
             type="button"

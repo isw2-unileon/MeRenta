@@ -42,6 +42,9 @@ func JWTAuth(jwtMgr *jwt.Manager) gin.HandlerFunc {
 	}
 }
 
+// authTokenFromRequest extracts the JWT from the request, checking the auth
+// cookie first, then the Authorization bearer header, and finally the
+// "access_token"/"token" query parameters (used by the WebSocket handshake).
 func authTokenFromRequest(c *gin.Context) string {
 	if tokenStr, err := c.Cookie(authCookieName); err == nil && tokenStr != "" {
 		return tokenStr
@@ -82,6 +85,8 @@ func RequireRole(roles ...sqlcdb.UserRole) gin.HandlerFunc {
 	}
 }
 
+// normalizeRole validates the claim role string and converts it to a known
+// sqlcdb.UserRole, reporting false for any unrecognized value.
 func normalizeRole(role string) (sqlcdb.UserRole, bool) {
 	switch sqlcdb.UserRole(role) {
 	case sqlcdb.UserRoleUser, sqlcdb.UserRoleAdmin:

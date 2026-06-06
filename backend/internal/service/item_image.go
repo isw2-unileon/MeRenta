@@ -30,6 +30,8 @@ var (
 
 // signedURLTTL is how long (in seconds) a signed URL remains valid.
 const signedURLTTL = 315_360_000
+
+// maxItemImageCount is the maximum number of images allowed per item listing.
 const maxItemImageCount = 10
 
 // itemImageQuerier is the minimal DB interface required by ItemImageService.
@@ -122,6 +124,8 @@ func (s *ItemImageService) DeleteImage(ctx context.Context, ownerID, itemID, ima
 	return nil
 }
 
+// displayOrderToInt32 validates that displayOrder is within the allowed image
+// range and narrows it to int32.
 func displayOrderToInt32(displayOrder int) (int32, error) {
 	if displayOrder < 1 || displayOrder > maxItemImageCount {
 		return 0, fmt.Errorf("invalid image display order %d", displayOrder)

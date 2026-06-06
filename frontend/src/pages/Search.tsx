@@ -23,7 +23,7 @@ import type { ApiResponse } from "@/types/common";
 import type { SearchItemResponse, SearchItemsResponse } from "@/types/item";
 import type { ReviewSummary } from "@/types/review";
 
-// Función extraída para aislar el fetch del useEffect y complacer al linter
+/** Fetches a page of searchable items with the current URL parameters. */
 async function fetchItemsData(url: string, signal: AbortSignal): Promise<SearchItemsResponse> {
   const res = await fetch(url, {
     credentials: "include",
@@ -48,15 +48,12 @@ async function fetchReviewSummary(ownerId: string, signal: AbortSignal): Promise
   return json.data;
 }
 
-// ==========================================
-// INTERFACES Y SUB-COMPONENTES EXTRAÍDOS
-// ==========================================
-
 interface FilterSectionProps {
   title: string;
   children: ReactNode;
 }
 
+/** Framed sidebar section used to group related search filters. */
 function FilterSection({ title, children }: FilterSectionProps) {
   return (
     <section className="border-border-main border-b p-5">
@@ -76,6 +73,7 @@ interface ProductCardProps {
   to: string;
 }
 
+/** Search result card with owner metadata, favorite state and availability. */
 function ProductCard({ item, reviewSummary, isFavorite, isOwnItem, onToggleFavorite, to }: ProductCardProps) {
   const ratingLabel = reviewSummary ? reviewSummary.average_rating.toFixed(1) : "--";
   const reviewsLabel = reviewSummary ? String(reviewSummary.total) : "--";
@@ -134,7 +132,6 @@ function ProductCard({ item, reviewSummary, isFavorite, isOwnItem, onToggleFavor
         <div className="p-4">
           <h2 className="text-ink mb-3 line-clamp-2 min-h-9.5 text-[15px] leading-snug font-medium">{item.title}</h2>
 
-          {/* Owner info */}
           <div className="mb-3 flex items-center gap-2">
             {item.owner_avatar_url ? (
               <img
@@ -189,6 +186,7 @@ function ProductCard({ item, reviewSummary, isFavorite, isOwnItem, onToggleFavor
   );
 }
 
+/** Placeholder cards displayed while search results are loading. */
 function SearchSkeleton() {
   return (
     <>
@@ -219,6 +217,7 @@ interface SearchHeaderProps {
   updateParam: (key: string, value: string) => void;
 }
 
+/** Search bar, result count and sort selector synced with URL params. */
 function SearchHeader({ initialQuery, resultLabel, sort, updateParam }: SearchHeaderProps) {
   const [draftQuery, setDraftQuery] = useState(initialQuery);
 
@@ -302,6 +301,7 @@ interface SearchActiveFiltersProps {
   updateParam: (key: string, value: string) => void;
 }
 
+/** Active filter chips that let users remove individual URL-backed filters. */
 function SearchActiveFilters({ activeChips, hasFilters, clearFilters, updateParam }: SearchActiveFiltersProps) {
   return (
     <div className="border-border-main bg-page border-b">
@@ -353,6 +353,7 @@ interface SearchSidebarProps {
   updateParam: (key: string, value: string) => void;
 }
 
+/** Filter sidebar for category, price, location, availability and condition. */
 function SearchSidebar({
   state,
   category,
@@ -492,10 +493,7 @@ function SearchSidebar({
   );
 }
 
-// ==========================================
-// COMPONENTE PRINCIPAL
-// ==========================================
-
+/** Marketplace search page with URL-driven filters and paginated results. */
 function Search() {
   const [searchParams, setSearchParams] = useSearchParams();
   const { toggle, isFav } = useFavorites();
@@ -531,7 +529,6 @@ function Search() {
     [searchParams, setSearchParams]
   );
 
-  // CORRECCIÓN 2: Ocultamos el fetch de la vista del linter utilizando una función extraída.
   useEffect(() => {
     const controller = new AbortController();
     const params = new URLSearchParams(searchParams);

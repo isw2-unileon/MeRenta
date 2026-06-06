@@ -11,6 +11,7 @@ import (
 	"github.com/isw2-unileon/MeRenta/backend/pkg/response"
 )
 
+// paymentService is the subset of the payment service used by the handler.
 type paymentService interface {
 	CreatePaymentIntent(ctx context.Context, req model.CreatePaymentIntentRequest) (model.CreatePaymentIntentResponse, error)
 }

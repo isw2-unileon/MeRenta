@@ -49,6 +49,7 @@ func Setup(
 	return r
 }
 
+// addCoreRoutes registers the unauthenticated /health and /ready probes.
 func addCoreRoutes(r *gin.Engine, readiness func(context.Context) error) {
 	r.GET("/health", func(c *gin.Context) {
 		c.JSON(http.StatusOK, gin.H{"status": "ok"})
@@ -64,6 +65,8 @@ func addCoreRoutes(r *gin.Engine, readiness func(context.Context) error) {
 	})
 }
 
+// registerPublicRoutes registers the unauthenticated /api routes (auth and
+// landing).
 func registerPublicRoutes(api *gin.RouterGroup, authH *handler.AuthHandler, landingH *handler.LandingHandler) {
 	auth := api.Group("/auth")
 	auth.POST("/register", authH.Register)
@@ -73,7 +76,9 @@ func registerPublicRoutes(api *gin.RouterGroup, authH *handler.AuthHandler, land
 	api.GET("/landing", landingH.Get)
 }
 
-// centralizes protected API wiring for readability.
+// registerProtectedRoutes registers all JWT-authenticated /api routes
+// (profile, items, addresses, favorites, conversations, reviews, payment,
+// bookings and incidents).
 func registerProtectedRoutes(
 	protected *gin.RouterGroup,
 	authH *handler.AuthHandler,
@@ -146,6 +151,7 @@ func registerProtectedRoutes(
 	incidents.GET("/mine", incidentH.ListMine)
 }
 
+// registerConversationRoutes registers the chat conversation and message routes.
 func registerConversationRoutes(protected *gin.RouterGroup, chatH *handler.ChatHandler) {
 	conversations := protected.Group("/conversations")
 	conversations.GET("", chatH.ListConversations)
@@ -156,6 +162,8 @@ func registerConversationRoutes(protected *gin.RouterGroup, chatH *handler.ChatH
 	conversations.POST("/:id/messages", chatH.SendMessage)
 }
 
+// registerBookingRoutes registers the booking creation, listing and
+// status-transition routes.
 func registerBookingRoutes(protected *gin.RouterGroup, bookingH *handler.BookingHandler) {
 	bookings := protected.Group("/bookings")
 	bookings.POST("", bookingH.Create)
@@ -167,6 +175,8 @@ func registerBookingRoutes(protected *gin.RouterGroup, bookingH *handler.Booking
 	bookings.PATCH("/:id/complete", bookingH.Complete)
 }
 
+// registerAdminRoutes registers the /api/admin routes, guarded by JWT auth and
+// the admin role.
 func registerAdminRoutes(api *gin.RouterGroup, adminH *handler.AdminHandler, incidentH *handler.IncidentHandler, jwtMgr *jwt.Manager) {
 	admin := api.Group("/admin")
 	admin.Use(middleware.JWTAuth(jwtMgr), middleware.RequireRole(sqlcdb.UserRoleAdmin))

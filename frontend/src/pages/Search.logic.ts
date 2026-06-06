@@ -1,8 +1,12 @@
+// Pure constants, state model and helpers for the search page, kept UI-free for
+// easy unit testing.
 import type { SearchItemResponse, SearchItemsResponse } from "@/types/item";
 import type { ReviewSummary } from "@/types/review";
 
+/** Number of results requested per page. */
 const PAGE_SIZE = 12;
 
+/** Spanish display labels for each item category. */
 const CATEGORY_LABELS: Record<string, string> = {
   electronics: "Electrónica",
   tools: "Herramientas",
@@ -65,6 +69,7 @@ const SEARCH_SKELETON_IDS = [
   "search-skel-12",
 ];
 
+/** Reducer state for the search results page. */
 interface SearchState {
   items: SearchItemResponse[];
   total: number;
@@ -80,6 +85,7 @@ type SearchAction =
   | { type: "FETCH_SUCCESS"; payload: SearchItemsResponse }
   | { type: "FETCH_ERROR"; error: string };
 
+/** Initial search state (loading, no results yet). */
 const initialSearchState: SearchState = {
   items: [],
   total: 0,
@@ -96,6 +102,7 @@ const emptyReviewSummary: ReviewSummary = {
   distribution: {},
 };
 
+/** Reduces search fetch lifecycle actions into the next state. */
 function searchReducer(state: SearchState, action: SearchAction): SearchState {
   switch (action.type) {
     case "FETCH_START":
@@ -127,14 +134,20 @@ function searchReducer(state: SearchState, action: SearchAction): SearchState {
   }
 }
 
+/** Returns the display label for a category, or a humanized fallback. */
 function humanizeCategory(value: string): string {
   return CATEGORY_LABELS[value] ?? value.replaceAll("_", " ");
 }
 
+/** Returns the display label for a condition, or a humanized fallback. */
 function humanizeCondition(value: string): string {
   return CONDITION_LABELS[value] ?? value.replaceAll("_", " ");
 }
 
+/**
+ * Computes the page numbers to show in the pager: first, current, the next two,
+ * and last, de-duplicated and sorted.
+ */
 function getPageWindow(page: number, totalPages: number): number[] {
   const pages = new Set<number>([1, page, page + 1, page + 2, totalPages].filter((p) => p >= 1 && p <= totalPages));
   return Array.from(pages).sort((a, b) => a - b);

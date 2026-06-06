@@ -54,10 +54,12 @@ const FILTER_OPTIONS: { value: string; label: string }[] = [
 
 // ── Pure helpers (module scope) ───────────────────────────────────────────────
 
+/** Returns the uppercase initials for an admin user row. */
 function userInitials(u: AdminUser): string {
   return `${u.first_name[0] ?? ""}${u.last_name[0] ?? ""}`.toUpperCase();
 }
 
+/** Renders a user's avatar image, falling back to colored initials. */
 function UserAvatar({ user, index }: { user: AdminUser; index: number }) {
   if (user.avatar_url) {
     return (
@@ -96,6 +98,7 @@ type UsersAction =
 
 const initialState: UsersState = { users: [], total: 0, loading: true, error: null };
 
+/** Reduces user-list fetch and optimistic status-patch actions. */
 function usersReducer(state: UsersState, action: UsersAction): UsersState {
   switch (action.type) {
     case "fetch_start":
@@ -116,6 +119,7 @@ function usersReducer(state: UsersState, action: UsersAction): UsersState {
 
 // ── API helpers ───────────────────────────────────────────────────────────────
 
+/** Fetches a page of users filtered by search query and status. */
 function fetchUsers(query: string, status: string, page: number): Promise<AdminUserListResponse> {
   const params = new URLSearchParams({ page: String(page), limit: String(LIMIT) });
   if (query) params.set("q", query);
@@ -124,6 +128,7 @@ function fetchUsers(query: string, status: string, page: number): Promise<AdminU
   return getAdminData<AdminUserListResponse>(`/api/admin/users?${params.toString()}`, "Error al cargar usuarios");
 }
 
+/** Sends a customer account-status change, with optional suspension end date. */
 function updateStatus(customerId: string, status: AccountStatus, suspendedUntil?: string): Promise<void> {
   const body: { status: string; suspended_until?: string } = { status };
   if (suspendedUntil) body.suspended_until = suspendedUntil;
@@ -227,6 +232,7 @@ function StatusMenu({ user, onUpdate }: StatusMenuProps) {
 
 // ── Verification badges ───────────────────────────────────────────────────────
 
+/** Small email/phone verification indicators for a user row. */
 function VerifBadges({ hasPhone }: { hasPhone: boolean }) {
   const items: { key: string; label: string; verified: boolean }[] = [
     { key: "email", label: "Email verificado", verified: true },
@@ -320,7 +326,6 @@ function UsersView() {
 
   return (
     <div className="space-y-4">
-      {/* Header + filters */}
       <div className="flex flex-wrap items-center justify-between gap-3">
         <FilterPills
           options={FILTER_OPTIONS}
@@ -425,7 +430,6 @@ function UsersView() {
           </table>
         )}
 
-        {/* Pagination */}
         {!loading && (
           <Pagination
             page={filters.page}

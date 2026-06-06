@@ -80,6 +80,7 @@ const initialProfileState: PublicProfileState = {
   error: "",
 };
 
+/** Reduces public-profile fetch lifecycle actions. */
 function profileReducer(state: PublicProfileState, action: PublicProfileAction): PublicProfileState {
   switch (action.type) {
     case "fetch_start":
@@ -124,6 +125,7 @@ const initialReviewsState: ReviewsState = {
   error: "",
 };
 
+/** Reduces received-reviews fetch lifecycle actions. */
 function reviewsReducer(state: ReviewsState, action: ReviewsAction): ReviewsState {
   switch (action.type) {
     case "fetch_start":
@@ -149,6 +151,7 @@ function reviewsReducer(state: ReviewsState, action: ReviewsAction): ReviewsStat
   }
 }
 
+/** Fetches a customer's public profile. */
 async function fetchPublicProfile(id: string, signal: AbortSignal): Promise<CustomerProfile> {
   const res = await fetch(`/api/customers/${id}/profile`, {
     credentials: "include",
@@ -161,6 +164,7 @@ async function fetchPublicProfile(id: string, signal: AbortSignal): Promise<Cust
   return json.data;
 }
 
+/** Fetches the listings published by a given owner. */
 async function fetchOwnerProducts(ownerId: string, signal: AbortSignal): Promise<SearchItemsResponse> {
   const res = await fetch(`/api/customers/${ownerId}/items?limit=48`, {
     credentials: "include",
@@ -173,6 +177,7 @@ async function fetchOwnerProducts(ownerId: string, signal: AbortSignal): Promise
   return json.data;
 }
 
+/** Fetches the first page of reviews received by a customer. */
 async function fetchReceivedReviews(ownerId: string, signal: AbortSignal): Promise<ReceivedReviewsResponse> {
   const res = await fetch(`/api/reviews/received/${ownerId}?limit=4`, {
     credentials: "include",
@@ -185,6 +190,7 @@ async function fetchReceivedReviews(ownerId: string, signal: AbortSignal): Promi
   return json.data;
 }
 
+/** Submits a new review for another customer. */
 async function createReview(reviewedId: string, rating: number, comment: string): Promise<ReceivedReview> {
   const res = await fetch("/api/reviews", {
     method: "POST",
@@ -205,6 +211,7 @@ async function createReview(reviewedId: string, rating: number, comment: string)
   return json.data;
 }
 
+/** Opens (or returns) a conversation about an item and returns its ID. */
 async function openConversation(itemId: string): Promise<string> {
   const res = await fetch("/api/conversations", {
     method: "POST",
@@ -221,6 +228,7 @@ async function openConversation(itemId: string): Promise<string> {
   return json.data.conversation_id;
 }
 
+/** Files an incident report against another customer. */
 async function createUserReport(profileId: string, type: UserIncidentType, description: string): Promise<void> {
   const res = await fetch(`/api/customers/${profileId}/reports`, {
     method: "POST",
@@ -239,16 +247,19 @@ async function createUserReport(profileId: string, type: UserIncidentType, descr
   }
 }
 
+/** Formats a "Miembro desde …" label, with a graceful fallback. */
 function formatCompactMemberSince(date?: string) {
   const formatted = formatMemberSince(date);
   return formatted ? `Miembro desde ${formatted}` : "Miembro desde fecha no disponible";
 }
 
+/** Returns part as a whole-number percentage of total (0 when total is 0). */
 function percent(part: number, total: number) {
   if (total === 0) return 0;
   return Math.round((part / total) * 100);
 }
 
+/** Product card shown in the public profile's listings grid. */
 function ProductCard({ product, ownerRating }: { product: SearchItemResponse; ownerRating: number }) {
   const navigate = useNavigate();
   const tone = productTones[product.category] ?? productTones.other;
@@ -317,6 +328,7 @@ function ProductCard({ product, ownerRating }: { product: SearchItemResponse; ow
   );
 }
 
+/** Average rating plus a per-star distribution breakdown. */
 function RatingSummary({ summary }: { summary: ReviewSummary }) {
   const total = summary.total;
 
@@ -359,6 +371,7 @@ function RatingSummary({ summary }: { summary: ReviewSummary }) {
   );
 }
 
+/** A single received-review card with reviewer, rating and comment. */
 function ReviewCard({ review }: { review: ReceivedReview }) {
   return (
     <article className="review-card p-5">
@@ -400,6 +413,7 @@ interface ReviewFormProps {
   onSubmit: (event: FormEvent<HTMLFormElement>) => void;
 }
 
+/** Form for rating and commenting on the profile owner. */
 function ReviewForm({
   profileName,
   rating,
@@ -505,6 +519,7 @@ const initialReviewDraftState: ReviewDraftState = {
   submitting: false,
 };
 
+/** Reduces the in-progress review draft (rating, comment, submit state). */
 function reviewDraftReducer(state: ReviewDraftState, action: ReviewDraftAction): ReviewDraftState {
   switch (action.type) {
     case "set_rating":
@@ -532,6 +547,7 @@ type MessageFlowAction = { type: "open_start" } | { type: "open_error"; error: s
 
 const initialMessageFlowState: MessageFlowState = { error: "", opening: false };
 
+/** Reduces the "open conversation" flow state (opening / error). */
 function messageFlowReducer(_state: MessageFlowState, action: MessageFlowAction): MessageFlowState {
   switch (action.type) {
     case "open_start":
@@ -543,6 +559,7 @@ function messageFlowReducer(_state: MessageFlowState, action: MessageFlowAction)
   }
 }
 
+/** Modal for reporting another user (type + description). */
 function UserReportModal({
   profileId,
   profileName,
@@ -685,6 +702,7 @@ interface ProfileActionProps {
 }
 
 // ── Profile hero ──────────────────────────────────────────────────
+/** Top banner with avatar, name, rating and primary actions. */
 function ProfileHero({
   data,
   profileLoading,
@@ -765,6 +783,7 @@ interface StatItem {
   rating?: boolean;
 }
 
+/** Horizontal strip of profile KPI stats. */
 function ProfileStatsStrip({ stats }: { stats: StatItem[] }) {
   return (
     <section className="profile-stats-strip h-auto py-5">
@@ -793,6 +812,7 @@ function ProfileStatsStrip({ stats }: { stats: StatItem[] }) {
 }
 
 // ── Sidebar card ──────────────────────────────────────────────────
+/** Sticky sidebar summarizing the profile with contact/report actions. */
 function ProfileSidebar({
   data,
   openingMessage,
@@ -889,6 +909,7 @@ interface ProfileProductsSectionProps {
   onCategoryChange: (category: string) => void;
 }
 
+/** Section listing the profile owner's products with category filters. */
 function ProfileProductsSection({
   firstName,
   loading,
@@ -974,6 +995,7 @@ interface ProfileReviewsSectionProps {
   onSubmit: (event: FormEvent<HTMLFormElement>) => void;
 }
 
+/** Section with the rating summary, review list and (optional) review form. */
 function ProfileReviewsSection({
   isOwnProfile,
   hasProfile,

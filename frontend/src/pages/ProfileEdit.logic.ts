@@ -1,3 +1,5 @@
+// State models, reducers and helpers for the profile-edit page: profile fields,
+// review summary and the address book. Kept UI-free for easy unit testing.
 import type { AddressResponse, CreateAddressRequest } from "@/types/address";
 import type { CustomerPublic } from "@/types/customer";
 import type { ReceivedReviewsResponseBase } from "@/components/profile/profileShared";
@@ -77,6 +79,7 @@ const initialReviewsState: ReviewsState = {
   error: "",
 };
 
+/** Returns a blank address draft (country defaulted to Spain). */
 function createEmptyAddress(): CreateAddressRequest {
   return {
     street: "",
@@ -101,6 +104,7 @@ const initialAddressState: AddressState = {
   deletingId: null,
 };
 
+/** Reduces review summary fetch actions into the next state. */
 function reviewsReducer(state: ReviewsState, action: ReviewsAction): ReviewsState {
   switch (action.type) {
     case "fetch_start":
@@ -124,6 +128,7 @@ function reviewsReducer(state: ReviewsState, action: ReviewsAction): ReviewsStat
   }
 }
 
+/** Builds the initial profile-form state, prefilled from the user when present. */
 function createInitialProfileState(user?: CustomerPublic | null): ProfileState {
   return {
     firstName: user?.first_name ?? "",
@@ -141,6 +146,7 @@ function createInitialProfileState(user?: CustomerPublic | null): ProfileState {
   };
 }
 
+/** Reduces profile-form actions (field edits, avatar, messages) into the next state. */
 function profileReducer(state: ProfileState, action: ProfileAction): ProfileState {
   switch (action.type) {
     case "hydrate_user":
@@ -175,6 +181,7 @@ function profileReducer(state: ProfileState, action: ProfileAction): ProfileStat
   }
 }
 
+/** Reduces address-book actions (load, edit, save, delete) into the next state. */
 function addressReducer(state: AddressState, action: AddressAction): AddressState {
   switch (action.type) {
     case "load_start":
@@ -229,6 +236,7 @@ function addressReducer(state: AddressState, action: AddressAction): AddressStat
   }
 }
 
+/** Converts a stored address into an editable draft for the form. */
 function addressToDraft(address: AddressResponse): CreateAddressRequest {
   return {
     street: address.street,
@@ -243,10 +251,12 @@ function addressToDraft(address: AddressResponse): CreateAddressRequest {
   };
 }
 
+/** Formats an address as a one-line "street number, floor" summary. */
 function formatAddress(address: AddressResponse) {
   return `${address.street} ${address.number}${address.floor ? `, ${address.floor}` : ""}`;
 }
 
+/** Validates an address draft, returning a map of required-field errors. */
 function validateAddressDraft(draft: CreateAddressRequest) {
   const errors: Partial<CreateAddressRequest> = {};
   if (!draft.street.trim()) errors.street = "Obligatorio";

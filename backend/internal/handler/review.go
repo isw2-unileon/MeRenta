@@ -1,3 +1,4 @@
+// Package handler provides HTTP handlers for the API.
 package handler
 
 import (
@@ -14,6 +15,7 @@ import (
 	"github.com/isw2-unileon/MeRenta/backend/pkg/response"
 )
 
+// reviewService is the subset of the review service used by the handler.
 type reviewService interface {
 	CreateReview(ctx context.Context, reviewerID uuid.UUID, req model.CreateReviewRequest) (*model.ReceivedReviewResponse, error)
 	ListReceivedReviews(ctx context.Context, reviewedID uuid.UUID, page int, limit int) (*model.ReceivedReviewsResponse, error)
@@ -80,6 +82,8 @@ func (h *ReviewHandler) ListReceivedByCustomer(c *gin.Context) {
 	h.respondWithReceivedReviews(c, reviewedID, "list public received reviews failed")
 }
 
+// respondWithReceivedReviews writes a paginated list of reviews received by
+// reviewedID, shared by ListReceived and ListReceivedByCustomer.
 func (h *ReviewHandler) respondWithReceivedReviews(c *gin.Context, reviewedID uuid.UUID, logMessage string) {
 	respondWithPaginated(c, 4, 24, logMessage, "customer_id", reviewedID, func(page int, limit int) (any, error) {
 		return h.svc.ListReceivedReviews(c.Request.Context(), reviewedID, page, limit)

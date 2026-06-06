@@ -1,3 +1,8 @@
+// Pure state model and reducer for the chat page: conversation list, messages,
+// unread tracking and WebSocket event handling. Kept UI-free so it can be unit
+// tested in isolation.
+
+/** A conversation row in the chat sidebar, as returned by the API. */
 interface ConversationResponse {
   conversation_id: string;
   item_id: string;
@@ -13,6 +18,7 @@ interface ConversationResponse {
   unread_count: number;
 }
 
+/** A single chat message. */
 interface MessageResponse {
   message_id: string;
   conversation_id: string;
@@ -24,16 +30,19 @@ interface MessageResponse {
   is_read: boolean;
 }
 
+/** Paginated list of conversations. */
 interface ConversationsResponse {
   items: ConversationResponse[];
   total: number;
 }
 
+/** Paginated list of messages for a conversation. */
 interface MessagesResponse {
   items: MessageResponse[];
   total: number;
 }
 
+/** Event pushed over the chat WebSocket (new message, read receipt or error). */
 interface ChatWebSocketEvent {
   type: "message" | "read" | "error";
   data?: MessageResponse;
@@ -45,6 +54,7 @@ interface ChatWebSocketEvent {
   error?: string;
 }
 
+/** Full reducer state for the chat page. */
 interface ChatState {
   conversations: ConversationResponse[];
   unreadCountsByConversationID: Map<string, number>;
@@ -77,6 +87,7 @@ type ChatAction =
   | { type: "error:clear" }
   | { type: "error:set"; message: string };
 
+/** Initial chat state (sidebar loading, nothing selected). */
 const initialState: ChatState = {
   conversations: [],
   unreadCountsByConversationID: new Map<string, number>(),
@@ -89,6 +100,7 @@ const initialState: ChatState = {
   error: "",
 };
 
+/** Returns conversations sorted by most recent activity first. */
 function sortConversations(conversations: ConversationResponse[]): ConversationResponse[] {
   return conversations.toSorted((a, b) => {
     const aTime = new Date(a.last_message_at ?? a.updated_at).getTime();
@@ -97,6 +109,10 @@ function sortConversations(conversations: ConversationResponse[]): ConversationR
   });
 }
 
+/**
+ * Replaces the conversation list and recomputes unread counts, clearing the
+ * badge for the currently open conversation.
+ */
 function refreshConversations(
   state: ChatState,
   items: ConversationResponse[],
@@ -122,6 +138,11 @@ function refreshConversations(
   };
 }
 
+/**
+ * Appends a newly received message (deduplicated), updates the owning
+ * conversation's preview and bumps its unread count unless it is the active
+ * conversation or the message is the user's own.
+ */
 function applyIncomingMessage(state: ChatState, message: MessageResponse, activeConversationID?: string): ChatState {
   const messages = state.messages.some((item) => item.message_id === message.message_id)
     ? state.messages
@@ -153,6 +174,11 @@ function applyIncomingMessage(state: ChatState, message: MessageResponse, active
   return { ...state, messages, conversations: sortConversations(updatedConversations), unreadCountsByConversationID };
 }
 
+/**
+ * Merges an incoming message page into the current list: updates read state for
+ * known messages and appends unseen ones, returning both the merged list and
+ * the newly added messages.
+ */
 function mergeMessages(
   current: MessageResponse[],
   incoming: MessageResponse[]
@@ -185,6 +211,7 @@ function mergeMessages(
   return { messages: next, added };
 }
 
+/** Reduces chat actions (loads, sends, receives, reads) into the next state. */
 function chatReducer(state: ChatState, action: ChatAction): ChatState {
   switch (action.type) {
     case "conversations:success":
@@ -260,6 +287,7 @@ function chatReducer(state: ChatState, action: ChatAction): ChatState {
   }
 }
 
+/** Derives up to two uppercase initials from a full name. */
 function initialsFromName(name: string): string {
   let result = "";
   for (const part of name.split(" ")) {

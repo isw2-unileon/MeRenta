@@ -66,6 +66,7 @@ const NEXT_LABELS: Partial<Record<BookingStatus, string>> = {
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
 
+/** Returns the renter's full name, or a short ID fallback. */
 function renterName(b: BookingDetailResponse): string {
   const name = `${b.renter_first_name} ${b.renter_last_name}`.trim();
   return name || b.renter_id.slice(0, 8);
@@ -88,6 +89,7 @@ type OperationsAction =
 
 const initialState: OperationsState = { bookings: [], total: 0, loading: true, error: null };
 
+/** Reduces booking-list fetch and optimistic status-patch actions. */
 function operationsReducer(state: OperationsState, action: OperationsAction): OperationsState {
   switch (action.type) {
     case "fetch_start":
@@ -108,6 +110,7 @@ function operationsReducer(state: OperationsState, action: OperationsAction): Op
 
 // ── API ───────────────────────────────────────────────────────────────────────
 
+/** Fetches a page of bookings filtered by status/search and sorted as requested. */
 function fetchBookings(status: string, query: string, sort: string, page: number): Promise<BookingListResponse> {
   const params = new URLSearchParams({ page: String(page), limit: String(LIMIT) });
   if (status) params.set("status", status);
@@ -116,6 +119,7 @@ function fetchBookings(status: string, query: string, sort: string, page: number
   return getAdminData<BookingListResponse>(`/api/admin/bookings?${params.toString()}`, "Error al cargar operaciones");
 }
 
+/** Sets a booking's status via the admin override endpoint. */
 function patchAdminBookingStatus(bookingId: string, status: BookingStatus): Promise<void> {
   return sendAdminMutation(
     `/api/admin/bookings/${bookingId}/status`,
@@ -166,6 +170,7 @@ function StatusMenu({ booking, onUpdate }: StatusMenuProps) {
 
 // ── Small helpers ─────────────────────────────────────────────────────────────
 
+/** Booking item thumbnail, with a placeholder when no image exists. */
 function BookingThumb({ booking }: { booking: BookingDetailResponse }) {
   if (!booking.item_image_url) {
     return (
@@ -184,6 +189,7 @@ function BookingThumb({ booking }: { booking: BookingDetailResponse }) {
   );
 }
 
+/** Renders a "start → end" date range with a calendar icon. */
 function DateRange({ start, end }: { start: string; end: string }) {
   return (
     <span className="inline-flex items-center gap-1.5 text-neutral-600">
@@ -281,16 +287,13 @@ function Operations() {
         />
       )}
 
-      {/* ── Filter bar ── */}
       <div className="flex flex-wrap items-center justify-between gap-3">
-        {/* Status pills */}
         <FilterPills
           options={FILTER_OPTIONS}
           value={filters.status}
           onChange={handleStatusFilter}
         />
 
-        {/* Sort + search */}
         <div className="flex items-center gap-2">
           <select
             value={filters.sort}
@@ -324,7 +327,6 @@ function Operations() {
         </div>
       </div>
 
-      {/* ── Table ── */}
       <Card className="overflow-hidden">
         <div className="border-b border-neutral-100 px-5 py-4">
           <SectionTitle
@@ -410,7 +412,6 @@ function Operations() {
           </table>
         )}
 
-        {/* ── Pagination ── */}
         {!loading && (
           <Pagination
             page={filters.page}

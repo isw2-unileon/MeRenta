@@ -14,6 +14,7 @@ import (
 	"github.com/isw2-unileon/MeRenta/backend/pkg/response"
 )
 
+// incidentService is the subset of the incident service used by the handler.
 type incidentService interface {
 	Create(ctx context.Context, reporterID uuid.UUID, req model.CreateIncidentRequest) (*model.IncidentResponse, error)
 	CreateProductReport(ctx context.Context, reporterID uuid.UUID, itemID uuid.UUID, req model.CreateProductReportRequest) (*model.IncidentResponse, error)
@@ -118,6 +119,9 @@ func (h *IncidentHandler) AdminUpdatePriority(c *gin.Context) {
 	respondIncidentMutation(c, res, err, service.ErrIncidentInvalidPriority)
 }
 
+// respondIncidentMutation writes the result of an incident status/priority
+// update: 200 on success, 404 when missing, 400 for the given invalid-value
+// error, or 500 otherwise.
 func respondIncidentMutation(c *gin.Context, res *model.IncidentResponse, err error, invalidErr error) {
 	switch {
 	case err == nil:
@@ -133,6 +137,8 @@ func respondIncidentMutation(c *gin.Context, res *model.IncidentResponse, err er
 
 // ── helpers ───────────────────────────────────────────────────────────────────
 
+// incidentErrStatus maps an incident service error to the appropriate HTTP
+// status.
 func incidentErrStatus(err error) int {
 	switch {
 	case errors.Is(err, service.ErrIncidentForbidden),

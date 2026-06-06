@@ -18,6 +18,7 @@ import {
 } from "@/components/product/detail/BookingCard.logic";
 import type { ApiResponse } from "@/types/common";
 
+/** Minimal conversation payload returned when starting a chat. */
 interface ConversationResponse {
   conversation_id: string;
 }
@@ -42,6 +43,7 @@ interface BookingCardProps {
   onDateChange?: (start: Date | null, end: Date | null) => void;
 }
 
+/** Incident categories a user can choose when reporting a product. */
 type ProductIncidentType = "item_mismatch" | "damage" | "forbidden_item" | "not_available" | "other";
 
 const PRODUCT_INCIDENT_LABELS: Record<ProductIncidentType, string> = {
@@ -52,6 +54,7 @@ const PRODUCT_INCIDENT_LABELS: Record<ProductIncidentType, string> = {
   other: "Otra incidencia",
 };
 
+/** Opens (or returns the existing) conversation with the owner of an item. */
 async function startConversation(itemId: string): Promise<ConversationResponse> {
   const res = await fetch("/api/conversations", {
     method: "POST",
@@ -72,6 +75,10 @@ interface ProductReportModalProps {
   onSuccess: () => void;
 }
 
+/**
+ * Modal dialog for reporting a problem with a product listing. Lets the user
+ * pick an incident type and write a description, then POSTs it to the API.
+ */
 function ProductReportModal({ itemId, onClose, onSuccess }: ProductReportModalProps) {
   const [incidentType, setIncidentType] = useState<ProductIncidentType>("item_mismatch");
   const [description, setDescription] = useState("");
@@ -292,7 +299,6 @@ function BookingCard({
 
   return (
     <div className="booking-card p-5">
-      {/* ── Price + rating ── */}
       <div className="mb-4 flex items-start justify-between">
         <p className="booking-price">
           {pricePerDay} EUR<span className="text-2xl">/día</span>
@@ -341,7 +347,6 @@ function BookingCard({
       </div>
       <p className="booking-row-label mb-2">{periodHint}</p>
 
-      {/* ── Mini calendar dropdown ── */}
       {calendarOpen && (
         <div className="mb-4">
           <ProductCalendar
@@ -387,7 +392,6 @@ function BookingCard({
         </p>
       )}
 
-      {/* ── Actions ── */}
       <div className="flex flex-col gap-2">
         <button
           type="button"
@@ -417,7 +421,6 @@ function BookingCard({
         </p>
       )}
 
-      {/* Disclaimer */}
       <p className="booking-disclaimer mt-3 text-center">
         El pago queda retenido hasta que el propietario acepte. Si rechaza o no responde en 5 días, recibirás un
         reembolso completo.
@@ -427,7 +430,6 @@ function BookingCard({
         <>
           <hr className="divider-booking my-4" />
 
-          {/* Report link */}
           <button
             type="button"
             className="booking-report flex w-full items-center justify-center gap-1.5 bg-transparent p-0 text-center"

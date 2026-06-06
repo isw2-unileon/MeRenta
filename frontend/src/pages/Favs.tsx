@@ -57,6 +57,7 @@ const initialState: FavsState = {
   error: "",
 };
 
+/** Reduces favorites fetch lifecycle and local removal actions. */
 function favsReducer(state: FavsState, action: FavsAction): FavsState {
   switch (action.type) {
     case "FETCH_START":
@@ -82,11 +83,13 @@ function favsReducer(state: FavsState, action: FavsAction): FavsState {
   }
 }
 
+/** Derives a stable mock rating (4.5–5.0) from an item ID for display. */
 function seededRating(id: string): string {
   const seed = Array.from(id).reduce((sum, char) => sum + char.charCodeAt(0), 0);
   return (4.5 + (seed % 6) / 10).toFixed(1);
 }
 
+/** Formats an ISO date as a Spanish relative "time ago" label. */
 function timeAgo(iso: string): string {
   const diff = Date.now() - new Date(iso).getTime();
   const days = Math.floor(diff / 86_400_000);
@@ -100,6 +103,7 @@ function timeAgo(iso: string): string {
   return months === 1 ? "Hace 1 mes" : `Hace ${months} meses`;
 }
 
+/** Returns favorites sorted by price or, by default, most recently saved. */
 function sortItems(items: FavoriteItemResponse[], sort: string): FavoriteItemResponse[] {
   interface Sortable {
     toSorted(compareFn: (a: FavoriteItemResponse, b: FavoriteItemResponse) => number): FavoriteItemResponse[];
@@ -112,6 +116,7 @@ function sortItems(items: FavoriteItemResponse[], sort: string): FavoriteItemRes
   });
 }
 
+/** Fetches the current user's favorite items. */
 async function fetchFavorites(): Promise<FavoritesResponse> {
   const res = await fetch("/api/favorites", { credentials: "include" });
   const json = (await res.json()) as ApiResponse<FavoritesResponse>;
@@ -121,6 +126,7 @@ async function fetchFavorites(): Promise<FavoritesResponse> {
   return json.data;
 }
 
+/** Removes an item from the user's favorites. */
 async function removeFavorite(itemId: string): Promise<void> {
   const res = await fetch(`/api/favorites/${itemId}`, {
     method: "DELETE",
@@ -135,6 +141,7 @@ interface StatusBadgeProps {
   item: FavoriteItemResponse;
 }
 
+/** Availability badge (reserved / available / unavailable) for a favorite card. */
 function StatusBadge({ item }: StatusBadgeProps) {
   const isRented = item.item_status === "rented";
   const isAvailable = item.is_available && !isRented;
@@ -165,6 +172,7 @@ interface ActionButtonProps {
   onRent: (event: React.MouseEvent<HTMLButtonElement>) => void;
 }
 
+/** Rent button, disabled when the item is reserved or unavailable. */
 function ActionButton({ item, onRent }: ActionButtonProps) {
   const isRented = item.item_status === "rented";
   const isAvailable = item.is_available && !isRented;
@@ -207,6 +215,7 @@ interface FavCardProps {
   onRemove: (id: string) => void;
 }
 
+/** Card for a single favorited product with rating, status and actions. */
 function FavCard({ item, onRemove }: FavCardProps) {
   const navigate = useNavigate();
   const rating = seededRating(item.item_id);
@@ -286,6 +295,7 @@ function FavCard({ item, onRemove }: FavCardProps) {
   );
 }
 
+/** Filler card prompting the user to explore more products. */
 function EmptySlot() {
   const navigate = useNavigate();
   return (
@@ -309,6 +319,7 @@ function EmptySlot() {
   );
 }
 
+/** Loading placeholder grid shown while favorites load. */
 function FavsSkeleton() {
   return (
     <>

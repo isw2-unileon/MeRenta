@@ -1,7 +1,10 @@
+// Pure state model and helpers for the product detail page, kept UI-free for
+// easy unit testing.
 import type { CustomerProfile } from "@/types/customer";
 import type { ItemImageResponse, ItemResponse } from "@/types/item";
 import type { ReviewSummary } from "@/types/review";
 
+/** Spanish display labels for each item category. */
 const CATEGORY_LABELS: Record<string, string> = {
   sports: "Deportes",
   electronics: "Electrónica",
@@ -17,6 +20,7 @@ const CATEGORY_LABELS: Record<string, string> = {
   other: "Otros",
 };
 
+/** Spanish display labels for each item condition. */
 const CONDITION_LABELS: Record<string, string> = {
   new: "Nuevo",
   like_new: "Excelente",
@@ -25,11 +29,13 @@ const CONDITION_LABELS: Record<string, string> = {
   poor: "Aceptable",
 };
 
+/** Selected rental range on the product page. */
 interface DateRange {
   start: Date | null;
   end: Date | null;
 }
 
+/** Reducer state for the product detail page. */
 interface ProductState {
   item: ItemResponse | null;
   images: ItemImageResponse[];
@@ -49,6 +55,7 @@ type ProductAction =
   | { type: "set-owner-review-summary"; value: ReviewSummary | null }
   | { type: "set-date-range"; value: DateRange };
 
+/** Initial product detail state (loading, nothing fetched yet). */
 const INITIAL_STATE: ProductState = {
   item: null,
   images: [],
@@ -73,6 +80,7 @@ const PRODUCT_SKELETON_THUMB_IDS = [
   "product-skel-thumb-5",
 ];
 
+/** Reduces product detail actions into the next state. */
 function productReducer(state: ProductState, action: ProductAction): ProductState {
   switch (action.type) {
     case "set-loading":
@@ -94,10 +102,12 @@ function productReducer(state: ProductState, action: ProductAction): ProductStat
   }
 }
 
+/** Formats a rating value with two decimals. */
 function formatRating(rating: number): string {
   return rating.toFixed(2);
 }
 
+/** Formats a Date as a local "YYYY-MM-DD" string (no timezone shift). */
 function toLocalISODate(date: Date): string {
   const year = date.getFullYear();
   const month = String(date.getMonth() + 1).padStart(2, "0");
@@ -105,6 +115,10 @@ function toLocalISODate(date: Date): string {
   return `${year}-${month}-${day}`;
 }
 
+/**
+ * Expands a list of inclusive {start_date, end_date} ranges into a flat set of
+ * occupied "YYYY-MM-DD" date strings for the calendar.
+ */
 function expandUnavailableRanges(ranges: Array<{ start_date: string; end_date: string }>): Set<string> {
   const dates = new Set<string>();
   for (const range of ranges) {

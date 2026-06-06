@@ -15,6 +15,7 @@ import (
 	"github.com/isw2-unileon/MeRenta/backend/pkg/response"
 )
 
+// favoriteService is the subset of the favorite service used by the handler.
 type favoriteService interface {
 	ListFavorites(ctx context.Context, customerID uuid.UUID) (*model.FavoritesResponse, error)
 	AddFavorite(ctx context.Context, customerID, itemID uuid.UUID) error
