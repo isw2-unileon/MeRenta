@@ -1,20 +1,26 @@
-import {test, expect } from '@playwright/test';
+import { expect, test } from "@playwright/test";
 
-test.describe('Login Tests', () => {
-  test('should login successfully with valid credentials', async ({ page }) => {
+import { apiResponse, fulfillJson, mockGuestSession, mockMarketplaceApi, mockUser } from "./fixtures";
 
-    await page.goto('http://localhost:5173/');
+test.describe("Login Tests", () => {
+  test.beforeEach(async ({ page }) => {
+    await mockGuestSession(page);
+    await mockMarketplaceApi(page);
+  });
 
-    await page.getByRole('button', {name: 'Iniciar sesión', exact: true}).click();
+  test("should login successfully with valid credentials", async ({ page }) => {
+    await page.route("**/api/auth/login", (route) => fulfillJson(route, apiResponse({ customer: mockUser() })));
 
-    await expect(page).toHaveURL("/auth");
+    await page.goto("/", { waitUntil: "domcontentloaded" });
+    await page.getByRole("button", { name: /Iniciar sesi/i }).click();
 
-    await page.getByLabel('Email').fill('joao.pereira@nomerenta.com');
-    await page.getByLabel('Contraseña', {exact: true}).fill('GatitoMono');
+    await expect(page).toHaveURL(/\/auth$/);
 
-    await page.locator('form').getByRole('button', { name: 'Iniciar sesión', exact: true }).click();
+    await page.locator("#login-email").fill("lucia@merenta.test");
+    await page.locator("#login-password").fill("password123");
+    await page.locator("form").getByRole("button", { name: /Iniciar sesi/i }).click();
 
-
-    await expect(page).toHaveURL("/home");
+    await expect(page).toHaveURL(/\/home$/);
+    await expect(page.getByText("Lucia G.")).toBeVisible();
   });
 });
