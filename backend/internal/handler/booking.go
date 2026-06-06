@@ -32,8 +32,8 @@ type bookingAction int
 
 const (
 	bookingActionAccept bookingAction = iota // owner accepts a pending booking
-	bookingActionReject                       // owner rejects a pending booking
-	bookingActionCancel                       // renter cancels their booking
+	bookingActionReject                      // owner rejects a pending booking
+	bookingActionCancel                      // renter cancels their booking
 )
 
 // BookingHandler exposes booking-related endpoints.
