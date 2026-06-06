@@ -27,7 +27,7 @@ const STEP_LABELS: Record<SubmitStep, string> = {
   idle: "",
   creating: "Creando anuncio...",
   uploading: "Subiendo fotos...",
-  done: "Â¡Publicado!",
+  done: "¡Publicado!",
 };
 
 interface FormState {
@@ -87,42 +87,42 @@ function validateForm(data: ProductFormData): FormErrors {
   const errors: FormErrors = {};
 
   if (!data.title.trim()) {
-    errors.title = "El tÃ­tulo es obligatorio";
+    errors.title = "El título es obligatorio";
   } else if (data.title.length > 80) {
-    errors.title = "El tÃ­tulo no puede superar 80 caracteres";
+    errors.title = "El título no puede superar 80 caracteres";
   }
 
   if (!data.category) {
-    errors.category = "Selecciona una categorÃ­a";
+    errors.category = "Selecciona una categoría";
   }
 
   if (!data.condition) {
-    errors.condition = "Selecciona el estado de conservaciÃ³n";
+    errors.condition = "Selecciona el estado de conservación";
   }
 
   if (!data.description.trim()) {
-    errors.description = "La descripciÃ³n es obligatoria";
+    errors.description = "La descripción es obligatoria";
   } else if (data.description.trim().length < 100) {
-    errors.description = "La descripciÃ³n debe tener al menos 100 caracteres";
+    errors.description = "La descripción debe tener al menos 100 caracteres";
   }
 
   if (!data.pricePerDay || parseFloat(data.pricePerDay) <= 0) {
-    errors.pricePerDay = "El precio por dÃ­a debe ser mayor que 0";
+    errors.pricePerDay = "El precio por día debe ser mayor que 0";
   }
 
   const minRentalPeriod = Number.parseInt(data.minRentalPeriod, 10);
   const maxRentalPeriod = Number.parseInt(data.maxRentalPeriod, 10);
   if (data.maxRentalPeriod !== "0" && minRentalPeriod > maxRentalPeriod) {
-    errors.minRentalPeriod = "El perÃ­odo mÃ­nimo no puede superar el mÃ¡ximo";
-    errors.maxRentalPeriod = "El perÃ­odo mÃ¡ximo debe ser igual o mayor que el mÃ­nimo";
+    errors.minRentalPeriod = "El período mínimo no puede superar el máximo";
+    errors.maxRentalPeriod = "El período máximo debe ser igual o mayor que el mínimo";
   }
 
   if (!data.address) {
-    errors.address = "Selecciona una direcciÃ³n de recogida";
+    errors.address = "Selecciona una dirección de recogida";
   }
 
   if (data.photos.length === 0) {
-    errors.photos = "AÃ±ade al menos una foto del producto";
+    errors.photos = "Añade al menos una foto del producto";
   }
 
   return errors;

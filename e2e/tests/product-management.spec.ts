@@ -1,7 +1,7 @@
 import { expect, test, type Page } from "@playwright/test";
 import { Buffer } from "node:buffer";
 
-import { apiResponse, fulfillJson, mockAuthenticatedSession, mockUser } from "./fixtures";
+import { apiResponse, fulfillJson, mockAuthenticatedSession } from "./fixtures";
 
 const savedAddress = {
   address_id: "address-user-1",

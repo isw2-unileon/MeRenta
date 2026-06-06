@@ -45,7 +45,7 @@ interface BookingCardProps {
 type ProductIncidentType = "item_mismatch" | "damage" | "forbidden_item" | "not_available" | "other";
 
 const PRODUCT_INCIDENT_LABELS: Record<ProductIncidentType, string> = {
-  item_mismatch: "InformaciÃ³n incorrecta",
+  item_mismatch: "Información incorrecta",
   damage: "Producto en mal estado",
   forbidden_item: "Producto no permitido",
   not_available: "No disponible",

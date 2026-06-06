@@ -44,10 +44,10 @@ const CONDITION_LABELS: Record<string, string> = {
 const CONDITION_ORDER = ["new", "like_new", "good", "fair", "poor"];
 
 const SORT_OPTIONS = [
-  { value: "recent", label: "MÃ¡s recientes" },
+  { value: "recent", label: "Más recientes" },
   { value: "price_asc", label: "Precio: menor a mayor" },
   { value: "price_desc", label: "Precio: mayor a menor" },
-  { value: "oldest", label: "MÃ¡s antiguos" },
+  { value: "oldest", label: "Más antiguos" },
 ];
 
 const SEARCH_SKELETON_IDS = [
