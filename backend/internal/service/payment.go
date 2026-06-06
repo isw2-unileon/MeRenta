@@ -17,9 +17,37 @@ import (
 const (
 	// serviceFeeEUR is the fixed platform fee added to every rental.
 	serviceFeeEUR = 5.0
-	// insuranceDailyRateEUR is the per-day insurance cost.
-	insuranceDailyRateEUR = 2.3
+	// defaultInsuranceDailyRateEUR is the per-day insurance cost for unknown
+	// or unspecified categories.
+	defaultInsuranceDailyRateEUR = 2.3
 )
+
+// insuranceDailyRatesByCategory holds the mock per-day insurance premium (EUR)
+// for each product category. Higher-value or higher-risk categories cost more.
+// These are computed on the fly — there is no insurance table in the database.
+var insuranceDailyRatesByCategory = map[string]float64{
+	"vehicles":    4.5,
+	"electronics": 3.5,
+	"photography": 3.5,
+	"music":       3.0,
+	"sports":      2.5,
+	"camping":     2.5,
+	"tools":       2.0,
+	"gardening":   2.0,
+	"leisure":     1.8,
+	"home":        1.8,
+	"clothing":    1.2,
+	"other":       2.3,
+}
+
+// insuranceDailyRate returns the per-day insurance premium for a category,
+// falling back to the default rate for empty or unknown categories.
+func insuranceDailyRate(category string) float64 {
+	if rate, ok := insuranceDailyRatesByCategory[category]; ok {
+		return rate
+	}
+	return defaultInsuranceDailyRateEUR
+}
 
 // PaymentService handles Stripe PaymentIntent creation.
 type PaymentService struct{}
@@ -47,7 +75,7 @@ func (s *PaymentService) CreatePaymentIntent(
 	}
 
 	subtotal := req.PricePerDay * float64(days)
-	insurance := math.Round(insuranceDailyRateEUR*float64(days)*100) / 100
+	insurance := math.Round(insuranceDailyRate(req.Category)*float64(days)*100) / 100
 	total := subtotal + serviceFeeEUR + insurance
 
 	// Stripe amounts are in the smallest currency unit (cents for EUR).

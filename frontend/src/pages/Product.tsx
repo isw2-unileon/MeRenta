@@ -351,6 +351,7 @@ function Product() {
               <BookingCard
                 itemId={item.item_id}
                 itemTitle={item.title}
+                category={item.category}
                 reporterId={reporterId}
                 reporterName={reporterName}
                 pricePerDay={item.price_per_day}
@@ -365,7 +366,10 @@ function Product() {
                 onDateChange={handleDateChange}
               />
 
-              <InsuranceCard days={rentalDays} />
+              <InsuranceCard
+                days={rentalDays}
+                category={item.category}
+              />
 
               {state.owner && (
                 <OwnerCard

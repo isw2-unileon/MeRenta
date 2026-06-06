@@ -25,6 +25,9 @@ interface ConversationResponse {
 interface BookingCardProps {
   itemId: string;
   itemTitle: string;
+  /** Product category — determines the per-day insurance premium. */
+  category?: string;
+  /** Name of the user viewing the listing. */
   reporterName: string;
   reporterId: string;
   pricePerDay: number;
@@ -217,6 +220,7 @@ function ProductReportModal({ itemId, onClose, onSuccess }: ProductReportModalPr
  */
 function BookingCard({
   itemId,
+  category,
   pricePerDay,
   rating,
   reviewCount,
@@ -254,7 +258,7 @@ function BookingCard({
   };
 
   const days = rentalDays(selectedStart, selectedEnd);
-  const { subtotal, insurance, serviceFee, total } = priceBreakdown(pricePerDay, days);
+  const { subtotal, insurance, serviceFee, total } = priceBreakdown(pricePerDay, days, category);
   const { isBelowMinimum, isAboveMaximum, canBook } = bookingAvailability(days, minDays, maxDay);
   const periodHint = maxDay ? `Mín. ${minDays} días · Máx. ${maxDay} días` : `Mín. ${minDays} días`;
   const ratingLabel = formatRating(rating);

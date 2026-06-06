@@ -4,15 +4,15 @@ import type { ReviewSummary } from "@/types/review";
 
 const CATEGORY_LABELS: Record<string, string> = {
   sports: "Deportes",
-  electronics: "ElectrÃ³nica",
+  electronics: "Electrónica",
   tools: "Herramientas",
-  music: "MÃºsica",
-  photography: "FotografÃ­a",
+  music: "Música",
+  photography: "Fotografía",
   camping: "Camping",
   home: "Hogar",
   clothing: "Ropa",
-  vehicles: "VehÃ­culos",
-  gardening: "JardinerÃ­a",
+  vehicles: "Vehículos",
+  gardening: "Jardinería",
   leisure: "Ocio",
   other: "Otros",
 };

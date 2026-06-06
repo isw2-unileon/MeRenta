@@ -1,5 +1,6 @@
+import { insuranceDailyRate } from "@/components/product/insurance";
+
 const SERVICE_FEE = 5;
-const INSURANCE_DAILY_RATE = 2.3;
 
 interface BookingCardFormState {
   messageLoading: boolean;
@@ -82,9 +83,9 @@ function rentalDays(start: Date | null, end: Date | null): number {
   return start && end ? Math.round((end.getTime() - start.getTime()) / 86400000) : 0;
 }
 
-function priceBreakdown(pricePerDay: number, days: number) {
+function priceBreakdown(pricePerDay: number, days: number, category?: string) {
   const subtotal = pricePerDay * days;
-  const insurance = Math.round(INSURANCE_DAILY_RATE * days * 100) / 100;
+  const insurance = Math.round(insuranceDailyRate(category) * days * 100) / 100;
   const total = subtotal + SERVICE_FEE + insurance;
   return { subtotal, insurance, serviceFee: SERVICE_FEE, total };
 }
@@ -100,7 +101,6 @@ function bookingAvailability(days: number, minDays: number, maxDay?: number | nu
 }
 
 export {
-  INSURANCE_DAILY_RATE,
   SERVICE_FEE,
   initialFormState,
   toISODateStr,

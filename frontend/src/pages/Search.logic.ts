@@ -4,14 +4,14 @@ import type { ReviewSummary } from "@/types/review";
 const PAGE_SIZE = 12;
 
 const CATEGORY_LABELS: Record<string, string> = {
-  electronics: "ElectrÃ³nica",
+  electronics: "Electrónica",
   tools: "Herramientas",
   sports: "Deportes",
-  vehicles: "VehÃ­culos",
+  vehicles: "Vehículos",
   home: "Hogar",
-  gardening: "JardinerÃ­a",
-  music: "MÃºsica",
-  photography: "FotografÃ­a",
+  gardening: "Jardinería",
+  music: "Música",
+  photography: "Fotografía",
   camping: "Camping",
   clothing: "Ropa",
   leisure: "Ocio",
