@@ -22,9 +22,7 @@ test.describe("authenticated marketplace", () => {
   });
 
   test("search lists products, applies filters and keeps URL state", async ({ page }) => {
-    const itemRequests: string[] = [];
     await page.route("**/api/items**", async (route) => {
-      itemRequests.push(route.request().url());
       await route.fulfill({
         status: 200,
         headers: { "content-type": "application/json" },
@@ -38,13 +36,25 @@ test.describe("authenticated marketplace", () => {
     await expect(page.getByText("Bicicleta urbana")).toBeVisible();
     await expect(page.getByText("Camara mirrorless")).toBeVisible();
 
+    const categoryRequestPromise = page.waitForRequest((request) => {
+      const url = new URL(request.url());
+      return url.pathname === "/api/items" && url.searchParams.get("category") === "sports";
+    });
     await page.getByLabel(/Deportes/i).click();
+    await categoryRequestPromise;
     await expect(page).toHaveURL(/category=sports/);
 
+    const priceRequestPromise = page.waitForRequest((request) => {
+      const url = new URL(request.url());
+      return (
+        url.pathname === "/api/items" &&
+        url.searchParams.get("category") === "sports" &&
+        url.searchParams.get("min_price") === "10"
+      );
+    });
     await page.getByLabel(/Precio.*n/i).fill("10");
+    await priceRequestPromise;
     await expect(page).toHaveURL(/min_price=10/);
-
-    expect(itemRequests.some((url) => url.includes("category=sports"))).toBeTruthy();
   });
 
   test("favorite toggles optimistically on product cards", async ({ page }) => {

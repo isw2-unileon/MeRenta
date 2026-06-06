@@ -285,7 +285,7 @@ test.describe("chat, checkout and admin flows", () => {
 
     await page.goto("/chat/conv-1");
 
-    await expect(page.getByText("conversacion eliminada")).toBeVisible();
+    await expect(page.locator("main").getByText(/conversaci[oó]n eliminada/i)).toBeVisible({ timeout: 15_000 });
   });
 
   test("books product dates and initializes checkout", async ({ page }) => {

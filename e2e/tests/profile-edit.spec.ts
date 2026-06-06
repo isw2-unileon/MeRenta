@@ -117,22 +117,26 @@ test.describe("profile edit", () => {
 
     await page.goto("/profile/edit");
     await page.getByRole("button", { name: /Nueva direcci/i }).click();
-    await page.getByLabel("Calle").fill("Calle Atocha");
-    await page.getByLabel(/N.mero/i).fill("22");
-    await page.getByLabel(/C.digo postal/i).fill("28012");
-    await page.getByLabel("Ciudad").fill("Madrid");
-    await page.getByLabel("Provincia").fill("Madrid");
+    await expect(page.getByRole("heading", { name: /A.adir direcci/i })).toBeVisible();
+    await page.locator("input[name='street']").fill("Calle Atocha");
+    await page.locator("input[name='number']").fill("22");
+    await page.locator("input[name='postal_code']").fill("28012");
+    await page.locator("input[name='city']").fill("Madrid");
+    await page.locator("input[name='province']").fill("Madrid");
     await page.getByRole("button", { name: /Guardar direcci/i }).click();
 
     await expect(page.getByText("Calle Atocha 22")).toBeVisible();
 
-    await page.getByRole("button", { name: "Editar" }).last().click();
-    await page.getByLabel("Calle").fill("Calle Mayor");
+    const createdAddressRow = page.locator("div", { hasText: "Calle Atocha 22" }).filter({ hasText: "Quitar" }).last();
+    await createdAddressRow.getByRole("button", { name: "Editar" }).click();
+    await expect(page.getByRole("heading", { name: /Editar direcci/i })).toBeVisible();
+    await page.locator("input[name='street']").fill("Calle Mayor");
     await page.getByRole("button", { name: /Guardar direcci/i }).click();
 
     await expect(page.getByText("Calle Mayor 22")).toBeVisible();
 
-    await page.getByRole("button", { name: "Quitar" }).last().click();
+    const updatedAddressRow = page.locator("div", { hasText: "Calle Mayor 22" }).filter({ hasText: "Quitar" }).last();
+    await updatedAddressRow.getByRole("button", { name: "Quitar" }).click();
     await expect(page.getByText("Calle Mayor 22")).toHaveCount(0);
 
     expect(requests.map((request) => request.method)).toEqual(["POST", "PATCH", "DELETE"]);
